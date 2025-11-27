@@ -33,11 +33,11 @@ class Database {
       });
 
       mongoose.connection.on('disconnected', () => {
-        console.warn('⚠️  MongoDB disconnected');
+        console.warn(' MongoDB disconnected');
       });
 
       mongoose.connection.on('reconnected', () => {
-        console.log('✅ MongoDB reconnected');
+        console.log(' MongoDB reconnected');
       });
 
       // Graceful shutdown
@@ -61,7 +61,7 @@ class Database {
     try {
       if (this.connection) {
         await mongoose.disconnect();
-        console.log('✅ MongoDB disconnected');
+        console.log(' MongoDB disconnected');
       }
     } catch (error) {
       console.error('❌ Error disconnecting from MongoDB:', error.message);
@@ -77,7 +77,7 @@ class Database {
     return mongoose.connection.readyState;
   }
 
-  /**
+  /** 
    * Check if connected
    * @returns {boolean}
    */

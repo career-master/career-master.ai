@@ -22,6 +22,13 @@ const nameSchema = z
   .max(100, 'Name cannot exceed 100 characters')
   .trim();
 
+const phoneSchema = z
+  .string()
+  .min(8, 'Phone number must be at least 8 digits')
+  .max(20, 'Phone number cannot exceed 20 characters')
+  .regex(/^[0-9+\-\s()]+$/, 'Phone number can contain digits, spaces, +, -, and parentheses')
+  .optional();
+
 const otpSchema = z
   .string()
   .length(6, 'OTP must be exactly 6 digits')
@@ -47,7 +54,8 @@ const verifyOtpSchema = z.object({
     email: emailSchema,
     otp: otpSchema,
     name: nameSchema,
-    password: passwordSchema
+    password: passwordSchema,
+    phone: phoneSchema
   })
 });
 

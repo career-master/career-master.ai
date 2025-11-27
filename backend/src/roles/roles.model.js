@@ -1,41 +1,35 @@
 const mongoose = require('mongoose');
 
 /**
- * Roles Schema
- * Stores role definitions with permissions
- * Used for Role-Based Access Control (RBAC)
+ * Role Schema
+ * Stores role name and associated permissions
+ *
+ * Example:
+ * {
+ *   name: 'super_admin',
+ *   permissions: ['manage_users', 'assign_roles', 'manage_roles'],
+ * }
  */
-const rolesSchema = new mongoose.Schema(
+const roleSchema = new mongoose.Schema(
   {
     name: {
       type: String,
       required: [true, 'Role name is required'],
       unique: true,
-      lowercase: true,
       trim: true,
-      enum: {
-        values: [
-          'super_admin',
-          'technical_admin',
-          'content_admin',
-          'institution_admin',
-          'partner',
-          'parent',
-          'subscriber',
-          'student'
-        ],
-        message: 'Invalid role name'
-      }
+      lowercase: true,
+      minlength: [2, 'Role name must be at least 2 characters'],
+      maxlength: [100, 'Role name cannot exceed 100 characters']
     },
     permissions: {
       type: [String],
-      required: [true, 'Permissions array is required'],
-      default: []
-    },
-    description: {
-      type: String,
-      trim: true,
-      maxlength: [500, 'Description cannot exceed 500 characters']
+      default: [],
+      validate: {
+        validator(value) {
+          return Array.isArray(value) && value.every(p => typeof p === 'string' && p.trim().length > 0);
+        },
+        message: 'Permissions must be an array of non-empty strings'
+      }
     }
   },
   {
@@ -45,28 +39,10 @@ const rolesSchema = new mongoose.Schema(
 );
 
 // Indexes
-rolesSchema.index({ name: 1 }, { unique: true });
-rolesSchema.index({ permissions: 1 });
+roleSchema.index({ name: 1 }, { unique: true });
+roleSchema.index({ createdAt: -1 });
 
-// Instance method to check if role has a specific permission
-rolesSchema.methods.hasPermission = function(permission) {
-  return this.permissions.includes(permission);
-};
-
-// Instance method to add permission
-rolesSchema.methods.addPermission = function(permission) {
-  if (!this.permissions.includes(permission)) {
-    this.permissions.push(permission);
-  }
-  return this;
-};
-
-// Instance method to remove permission
-rolesSchema.methods.removePermission = function(permission) {
-  this.permissions = this.permissions.filter(p => p !== permission);
-  return this;
-};
-
-const Role = mongoose.model('Role', rolesSchema);
+const Role = mongoose.model('Role', roleSchema);
 
 module.exports = Role;
+

@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const authRoutes = require('./auth/auth.routes');
+const rolesRoutes = require('./roles/roles.routes');
 const env = require('./config/env');
 
 /**
@@ -56,6 +57,7 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/roles', rolesRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -65,7 +67,8 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     endpoints: {
       health: '/health',
-      auth: '/api/auth'
+      auth: '/api/auth',
+      roles: '/api/roles'
     }
   });
 });

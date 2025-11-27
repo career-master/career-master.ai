@@ -10,14 +10,14 @@ const RolesService = require('./src/roles/roles.service');
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
-  console.error('❌ Unhandled Promise Rejection:', err);
+  console.error(' Unhandled Promise Rejection:', err);
   // Close server gracefully
   process.exit(1);
 });
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
-  console.error('❌ Uncaught Exception:', err);
+  console.error(' Uncaught Exception:', err);
   process.exit(1);
 });
 
@@ -42,14 +42,14 @@ async function startServer() {
     // Start Express server
     const PORT = env.PORT;
     app.listen(PORT, () => {
-      console.log(`✅ Server running on port ${PORT}`);
-      console.log(`📡 Environment: ${env.NODE_ENV}`);
-      console.log(`🌐 API Base URL: http://localhost:${PORT}/api`);
-      console.log(`📚 Health Check: http://localhost:${PORT}/health`);
-      console.log(`🔐 Auth Endpoints: http://localhost:${PORT}/api/auth`);
+      console.log(` Server running on port ${PORT}`);
+      console.log(` Environment: ${env.NODE_ENV}`);
+      console.log(` API Base URL: http://localhost:${PORT}/api`);
+      console.log(` Health Check: http://localhost:${PORT}/health`);
+      console.log(` Auth Endpoints: http://localhost:${PORT}/api/auth`);
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error('Failed to start server:', error);
     process.exit(1);
   }
 }

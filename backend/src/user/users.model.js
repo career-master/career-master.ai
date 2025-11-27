@@ -21,6 +21,13 @@ const userSchema = new mongoose.Schema(
       trim: true,
       match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email address']
     },
+    phone: {
+      type: String,
+      required: false,
+      trim: true,
+      minlength: [8, 'Phone number must be at least 8 digits'],
+      maxlength: [20, 'Phone number cannot exceed 20 characters']
+    },
     passwordHash: {
       type: String,
       required: [true, 'Password hash is required'],
@@ -71,6 +78,7 @@ const userSchema = new mongoose.Schema(
 
 // Indexes for performance
 userSchema.index({ email: 1 }, { unique: true });
+userSchema.index({ phone: 1 });
 userSchema.index({ status: 1 });
 userSchema.index({ 'roles': 1 });
 userSchema.index({ createdAt: -1 });

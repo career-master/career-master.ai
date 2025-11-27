@@ -65,11 +65,12 @@ class AuthService {
    * @param {string} otp - OTP code
    * @param {string} name - User name
    * @param {string} password - User password
+   * @param {string} phone - User phone number (optional)
    * @param {string} ip - Request IP address
    * @param {string} userAgent - Request user agent
    * @returns {Promise<Object>} - Success response with user data
    */
-  static async verifySignupOTP(email, otp, name, password, ip, userAgent) {
+  static async verifySignupOTP(email, otp, name, password, phone, ip, userAgent) {
     try {
       // Find valid OTP log
       const otpLog = await AuthRepository.findValidOtpLog(email, 'signup');
@@ -101,6 +102,7 @@ class AuthService {
         name,
         email,
         passwordHash,
+        phone,
         roles: ['student'], // Default role
         otp,
         otpExpiry
