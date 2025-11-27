@@ -26,7 +26,7 @@ class AuthController {
    * Verify OTP and create user account
    */
   static verifyOtp = asyncHandler(async (req, res) => {
-    const { email, otp, name, password } = req.body;
+    const { email, otp, name, password, phone } = req.body;
     const ip = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent') || '';
 
@@ -35,6 +35,7 @@ class AuthController {
       otp,
       name,
       password,
+      phone,
       ip,
       userAgent
     );

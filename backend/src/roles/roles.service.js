@@ -1,235 +1,367 @@
-const Role = require('./roles.model');
-const User = require('../user/users.model');
+const RolesRepository = require('./roles.repository');
 const { ErrorHandler } = require('../middleware/errorHandler');
 
 /**
  * Roles Service
- * Business logic for role and permission management
+ * Contains business logic for roles and permissions
  */
 class RolesService {
   /**
-   * Check if user has a specific permission
-   * @param {string} userId - User ID
-   * @param {string} permission - Permission to check
-   * @returns {Promise<boolean>} - True if user has permission
+   * Default roles supported by the system
    */
-  static async userHasPermission(userId, permission) {
-    try {
-      const user = await User.findById(userId);
+  static DEFAULT_ROLES = [
+    'super_admin',
+    'technical_admin',
+    'content_admin',
+    'institution_admin',
+    'partner',
+    'parent',
+    'subscriber',
+    'student'
+  ];
 
-      if (!user || user.status !== 'active') {
-        return false;
-      }
+  /**
+   * Default permissions in the system
+   */
+  static DEFAULT_PERMISSIONS = [
+    'manage_users',
+    'assign_roles',
+    'manage_roles',
+    'create_question',
+    'edit_question',
+    'delete_question',
+    'view_reports',
+    'view_institution_data',
+    'create_test',
+    'evaluate_test',
+    'manage_subscriptions'
+  ];
 
-      // Super admin has all permissions
-      if (user.roles.includes('super_admin')) {
-        return true;
-      }
+  /**
+   * Mapping of default permissions per role.
+   * This is easily extendable for future roles/permissions.
+   */
+  static ROLE_PERMISSION_MAP = {
+    super_admin: [
+      // super_admin gets everything
+      ...RolesService.DEFAULT_PERMISSIONS
+    ],
+    technical_admin: [
+      'manage_users',
+      'assign_roles',
+      'manage_roles',
+      'view_reports'
+    ],
+    content_admin: [
+      'create_question',
+      'edit_question',
+      'delete_question',
+      'create_test'
+    ],
+    institution_admin: [
+      'view_institution_data',
+      'view_reports',
+      'manage_users'
+    ],
+    partner: [
+      'view_institution_data',
+      'view_reports'
+    ],
+    parent: [
+      'view_reports'
+    ],
+    subscriber: [
+      'manage_subscriptions'
+    ],
+    student: [
+      // typically minimal; no admin permissions
+    ]
+  };
 
-      // Get all roles with permissions
-      const roles = await Role.find({
-        name: { $in: user.roles }
-      });
+  /**
+   * Normalize role name
+   * @param {string} role
+   * @returns {string}
+   */
+  static normalizeRoleName(role) {
+    return role.toLowerCase().trim();
+  }
 
-      // Check if any role has the required permission
-      const hasPermission = roles.some(role =>
-        role.permissions && role.permissions.includes(permission)
-      );
+  /**
+   * Normalize permissions array
+   * @param {string[]} permissions
+   * @returns {string[]}
+   */
+  static normalizePermissions(permissions = []) {
+    return permissions
+      .filter(p => typeof p === 'string')
+      .map(p => p.toLowerCase().trim())
+      .filter(p => p.length > 0);
+  }
 
-      return hasPermission;
-    } catch (error) {
-      console.error('Error checking user permission:', error);
-      return false;
+  /**
+   * Validate that all permissions are known (for stricter setups)
+   * Currently allows any string but can be toggled to strict mode.
+   * @param {string[]} permissions
+   */
+  static validatePermissions(permissions = []) {
+    if (!Array.isArray(permissions)) {
+      throw new ErrorHandler(400, 'Permissions must be an array of strings');
+    }
+
+    const invalid = permissions.filter(p => typeof p !== 'string' || !p.trim());
+
+    if (invalid.length > 0) {
+      throw new ErrorHandler(400, 'Permissions must be non-empty strings');
     }
   }
 
   /**
-   * Get all permissions for a user
-   * @param {string} userId - User ID
-   * @returns {Promise<Array>} - Array of permission strings
+   * Create a new role
+   * @param {Object} payload
+   * @param {string} payload.name
+   * @param {string[]} payload.permissions
    */
-  static async getUserPermissions(userId) {
+  static async createRole(payload) {
     try {
-      const user = await User.findById(userId);
-
-      if (!user || user.status !== 'active') {
-        return [];
+      if (!payload?.name) {
+        throw new ErrorHandler(400, 'Role name is required');
       }
 
-      // Super admin has all permissions (return wildcard)
-      if (user.roles.includes('super_admin')) {
-        return ['*'];
+      const name = RolesService.normalizeRoleName(payload.name);
+      const permissions = RolesService.normalizePermissions(payload.permissions);
+
+      RolesService.validatePermissions(permissions);
+
+      const existing = await RolesRepository.findRoleByName(name);
+      if (existing) {
+        throw new ErrorHandler(409, 'Role with this name already exists');
       }
 
-      // Get all roles with permissions
-      const roles = await Role.find({
-        name: { $in: user.roles }
-      });
+      const role = await RolesRepository.createRole({ name, permissions });
 
-      // Collect all unique permissions
-      const permissionsSet = new Set();
-      roles.forEach(role => {
-        if (role.permissions && Array.isArray(role.permissions)) {
-          role.permissions.forEach(perm => permissionsSet.add(perm));
+      return {
+        success: true,
+        message: 'Role created successfully',
+        data: role
+      };
+    } catch (error) {
+      if (error instanceof ErrorHandler) {
+        throw error;
+      }
+      throw new ErrorHandler(500, `Error creating role: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update an existing role
+   * @param {string} roleId
+   * @param {Object} payload
+   */
+  static async updateRole(roleId, payload) {
+    try {
+      if (!roleId) {
+        throw new ErrorHandler(400, 'Role ID is required');
+      }
+
+      const updateData = {};
+
+      if (payload.name) {
+        updateData.name = RolesService.normalizeRoleName(payload.name);
+      }
+
+      if (payload.permissions) {
+        const permissions = RolesService.normalizePermissions(payload.permissions);
+        RolesService.validatePermissions(permissions);
+        updateData.permissions = permissions;
+      }
+
+      const updated = await RolesRepository.updateRole(roleId, updateData);
+
+      if (!updated) {
+        throw new ErrorHandler(404, 'Role not found');
+      }
+
+      return {
+        success: true,
+        message: 'Role updated successfully',
+        data: updated
+      };
+    } catch (error) {
+      if (error instanceof ErrorHandler) {
+        throw error;
+      }
+      throw new ErrorHandler(500, `Error updating role: ${error.message}`);
+    }
+  }
+
+  /**
+   * Assign a role to a user
+   * @param {string} userId
+   * @param {string} roleName
+   */
+  static async assignRole(userId, roleName) {
+    try {
+      if (!userId || !roleName) {
+        throw new ErrorHandler(400, 'User ID and role name are required');
+      }
+
+      const normalizedRole = RolesService.normalizeRoleName(roleName);
+
+      const role = await RolesRepository.findRoleByName(normalizedRole);
+      if (!role) {
+        throw new ErrorHandler(400, 'Invalid role name');
+      }
+
+      const user = await RolesRepository.assignRoleToUser(userId, normalizedRole);
+      if (!user) {
+        throw new ErrorHandler(404, 'User not found');
+      }
+
+      return {
+        success: true,
+        message: 'Role assigned to user successfully',
+        data: {
+          userId: user._id,
+          roles: user.roles
         }
-      });
-
-      return Array.from(permissionsSet);
+      };
     } catch (error) {
-      console.error('Error getting user permissions:', error);
-      return [];
+      if (error instanceof ErrorHandler) {
+        throw error;
+      }
+      throw new ErrorHandler(500, `Error assigning role: ${error.message}`);
     }
   }
 
   /**
-   * Get role by name
-   * @param {string} roleName - Role name
-   * @returns {Promise<Object|null>} - Role document or null
+   * Remove a role from a user
+   * @param {string} userId
+   * @param {string} roleName
    */
-  static async getRoleByName(roleName) {
+  static async removeRole(userId, roleName) {
     try {
-      const role = await Role.findOne({ name: roleName.toLowerCase() });
-      return role;
-    } catch (error) {
-      throw new ErrorHandler(500, `Error getting role: ${error.message}`);
-    }
-  }
+      if (!userId || !roleName) {
+        throw new ErrorHandler(400, 'User ID and role name are required');
+      }
 
-  /**
-   * Create or update role
-   * @param {string} roleName - Role name
-   * @param {Array} permissions - Array of permission strings
-   * @param {string} description - Role description (optional)
-   * @returns {Promise<Object>} - Created or updated role document
-   */
-  static async createOrUpdateRole(roleName, permissions, description = '') {
-    try {
-      const role = await Role.findOneAndUpdate(
-        { name: roleName.toLowerCase() },
-        {
-          name: roleName.toLowerCase(),
-          permissions: permissions || [],
-          description
-        },
-        {
-          upsert: true,
-          new: true,
-          runValidators: true
+      const normalizedRole = RolesService.normalizeRoleName(roleName);
+
+      const user = await RolesRepository.removeRoleFromUser(userId, normalizedRole);
+      if (!user) {
+        throw new ErrorHandler(404, 'User not found');
+      }
+
+      return {
+        success: true,
+        message: 'Role removed from user successfully',
+        data: {
+          userId: user._id,
+          roles: user.roles
         }
-      );
-
-      return role;
+      };
     } catch (error) {
-      throw new ErrorHandler(500, `Error creating/updating role: ${error.message}`);
+      if (error instanceof ErrorHandler) {
+        throw error;
+      }
+      throw new ErrorHandler(500, `Error removing role: ${error.message}`);
     }
   }
 
   /**
    * Get all roles
-   * @returns {Promise<Array>} - Array of role documents
    */
-  static async getAllRoles() {
+  static async getRoles() {
     try {
-      const roles = await Role.find().sort({ name: 1 });
-      return roles;
+      const roles = await RolesRepository.getAllRoles();
+
+      return {
+        success: true,
+        data: roles
+      };
     } catch (error) {
-      throw new ErrorHandler(500, `Error getting roles: ${error.message}`);
+      if (error instanceof ErrorHandler) {
+        throw error;
+      }
+      throw new ErrorHandler(500, `Error fetching roles: ${error.message}`);
     }
   }
 
   /**
-   * Initialize default roles with permissions
-   * This should be called once during application setup
-   * @returns {Promise<void>}
+   * Get all known permissions
+   */
+  static async getAllPermissions() {
+    return {
+      success: true,
+      data: RolesService.DEFAULT_PERMISSIONS
+    };
+  }
+
+  /**
+   * Seed default permissions (no DB write required, returned for reference)
+   * @returns {Promise<{success: boolean, data: string[]}>}
+   */
+  static async seedDefaultPermissions() {
+    return {
+      success: true,
+      message: 'Default permissions are static and ready to use',
+      data: RolesService.DEFAULT_PERMISSIONS
+    };
+  }
+
+  /**
+   * Initialize default roles (public API used at server startup)
+   * Safe to call multiple times.
    */
   static async initializeDefaultRoles() {
-    try {
-      const defaultRoles = [
-        {
-          name: 'super_admin',
-          permissions: ['*'], // All permissions
-          description: 'Super administrator with all permissions'
-        },
-        {
-          name: 'technical_admin',
-          permissions: [
-            'user.create',
-            'user.update',
-            'user.delete',
-            'user.view',
-            'system.config'
-          ],
-          description: 'Technical administrator'
-        },
-        {
-          name: 'content_admin',
-          permissions: [
-            'content.create',
-            'content.update',
-            'content.delete',
-            'content.view'
-          ],
-          description: 'Content administrator'
-        },
-        {
-          name: 'institution_admin',
-          permissions: [
-            'institution.create',
-            'institution.update',
-            'institution.view',
-            'student.view'
-          ],
-          description: 'Institution administrator'
-        },
-        {
-          name: 'partner',
-          permissions: [
-            'partner.content.view',
-            'partner.reports.view'
-          ],
-          description: 'Partner user'
-        },
-        {
-          name: 'parent',
-          permissions: [
-            'student.view.own',
-            'reports.view.own'
-          ],
-          description: 'Parent user'
-        },
-        {
-          name: 'subscriber',
-          permissions: [
-            'content.view',
-            'courses.view'
-          ],
-          description: 'Subscriber user'
-        },
-        {
-          name: 'student',
-          permissions: [
-            'profile.view.own',
-            'profile.update.own',
-            'courses.view',
-            'courses.enroll'
-          ],
-          description: 'Student user'
+    return RolesService.seedDefaultRoles();
+  }
+
+  /**
+   * Seed default roles with their default permissions.
+   * Idempotent: safe to call multiple times.
+   */
+  static async seedDefaultRoles() {
+    const createdOrUpdated = [];
+
+    for (const roleName of RolesService.DEFAULT_ROLES) {
+      const normalized = RolesService.normalizeRoleName(roleName);
+      const permissions = RolesService.normalizePermissions(
+        RolesService.ROLE_PERMISSION_MAP[normalized] || []
+      );
+
+      // Try to find existing role
+      const existing = await RolesRepository.findRoleByName(normalized);
+
+      if (!existing) {
+        const created = await RolesRepository.createRole({
+          name: normalized,
+          permissions
+        });
+        createdOrUpdated.push(created);
+      } else {
+        // Update permissions if they differ
+        const existingPerms = (existing.permissions || []).sort();
+        const newPerms = permissions.sort();
+
+        const changed =
+          existingPerms.length !== newPerms.length ||
+          existingPerms.some((p, idx) => p !== newPerms[idx]);
+
+        if (changed) {
+          const updated = await RolesRepository.updateRole(existing._id, {
+            permissions
+          });
+          createdOrUpdated.push(updated);
         }
-      ];
-
-      for (const roleData of defaultRoles) {
-        await this.createOrUpdateRole(
-          roleData.name,
-          roleData.permissions,
-          roleData.description
-        );
       }
-
-      console.log('✅ Default roles initialized');
-    } catch (error) {
-      console.error('❌ Error initializing default roles:', error);
-      throw error;
     }
+
+    return {
+      success: true,
+      message: 'Default roles seeded successfully',
+      data: createdOrUpdated
+    };
   }
 }
 
