@@ -392,7 +392,7 @@ curl -X GET http://localhost:3000/api/auth/me \
 
 See `.env.example` for all required environment variables.
 
-## 🤝 Contributing
+##  Contributed by raghuveer Auth module
 
 This is a production-ready auth module. Follow the existing architecture when extending functionality.
 
