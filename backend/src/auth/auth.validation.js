@@ -30,12 +30,11 @@ const otpSchema = z
 /**
  * Signup validation schema
  * POST /auth/signup
+ * Only requires email - sends OTP for verification
  */
 const signupSchema = z.object({
   body: z.object({
-    name: nameSchema,
-    email: emailSchema,
-    password: passwordSchema
+    email: emailSchema
   })
 });
 
