@@ -1,0 +1,41 @@
+# Root level .gitignore for Career Master project
+
+# Environment variables - NEVER commit these
+.env
+.env.local
+.env.*.local
+.env*
+
+# Config files with sensitive data
+config.json
+config.local.json
+*.config.local.*
+secrets.json
+credentials.json
+
+# OS files
+.DS_Store
+.DS_Store?
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Ignore the entire lms3-main folder
+lms3-main/
+
