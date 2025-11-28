@@ -61,19 +61,23 @@ class ApiService {
     const token = this.getToken();
     const url = `${this.baseURL}${endpoint}`;
 
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    };
+    const headers: HeadersInit =
+      typeof options.headers === 'function' || options.headers instanceof Headers
+        ? options.headers
+        : {
+            'Content-Type': 'application/json',
+            ...(options.headers || {}),
+          };
 
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
+    const finalHeaders =
+      token && !(headers instanceof Headers)
+        ? { ...headers, Authorization: `Bearer ${token}` }
+        : headers;
 
     try {
       const response = await fetch(url, {
         ...options,
-        headers,
+        headers: finalHeaders,
       });
 
       const data = await response.json();
@@ -116,6 +120,116 @@ class ApiService {
     return this.request('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
+    });
+  }
+
+  // Quiz admin endpoints
+  async createQuiz(payload: {
+    title: string;
+    description?: string;
+    durationMinutes: number;
+    questions: {
+      questionText: string;
+      options: string[];
+      correctOptionIndex: number;
+      marks?: number;
+      negativeMarks?: number;
+    }[];
+  }): Promise<ApiResponse> {
+    return this.request('/quizzes', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // Quizzes (user + admin)
+  async getQuizById(id: string): Promise<ApiResponse> {
+    return this.request(`/quizzes/${id}`, {
+      method: 'GET',
+    });
+  }
+
+  async getQuizzes(page = 1, limit = 10): Promise<ApiResponse> {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    return this.request(`/quizzes?${params.toString()}`, {
+      method: 'GET',
+    });
+  }
+
+  async uploadQuizExcel(formData: FormData): Promise<ApiResponse> {
+    const token = this.getToken();
+    const url = `${this.baseURL}/quizzes/upload-excel`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error?.message || data.message || 'Request failed');
+    }
+
+    return data;
+  }
+
+  // Batches admin endpoints
+  async getBatches(page = 1, limit = 10): Promise<ApiResponse> {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    return this.request(`/batches?${params.toString()}`, {
+      method: 'GET',
+    });
+  }
+
+  async createBatch(payload: {
+    name: string;
+    code: string;
+    description?: string;
+    startDate?: string;
+    endDate?: string;
+    isActive?: boolean;
+  }): Promise<ApiResponse> {
+    return this.request('/batches', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // Users admin endpoints
+  async getUsers(params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    role?: string;
+    batch?: string;
+  } = {}): Promise<ApiResponse> {
+    const query = new URLSearchParams();
+    if (params.page) query.set('page', String(params.page));
+    if (params.limit) query.set('limit', String(params.limit));
+    if (params.search) query.set('search', params.search);
+    if (params.role) query.set('role', params.role);
+    if (params.batch) query.set('batch', params.batch);
+
+    return this.request(`/users?${query.toString()}`, {
+      method: 'GET',
+    });
+  }
+
+  async createUser(payload: {
+    name: string;
+    email: string;
+    phone?: string;
+    password: string;
+    roles?: string[];
+    batches?: string[];
+  }): Promise<ApiResponse> {
+    return this.request('/users', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
   }
 
