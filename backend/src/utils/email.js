@@ -1,5 +1,10 @@
 const nodemailer = require('nodemailer');
 const env = require('../config/env');
+const {
+  getOTPTemplate,
+  getWelcomeTemplate,
+  getPasswordChangeTemplate
+} = require('./emailTemplates');
 
 /**
  * Email Utilities
@@ -63,39 +68,16 @@ class EmailUtil {
         login: 'Login OTP - Career Master'
       };
 
-      const messageMap = {
-        signup: `
-          <h2>Welcome to Career Master!</h2>
-          <p>Thank you for signing up. Please verify your email address by entering the OTP below:</p>
-          <h1 style="color: #4F46E5; font-size: 32px; text-align: center; letter-spacing: 5px;">${otp}</h1>
-          <p>This OTP will expire in 10 minutes.</p>
-          <p>If you didn't create an account, please ignore this email.</p>
-        `,
-        forgot_password: `
-          <h2>Password Reset Request</h2>
-          <p>You requested to reset your password. Use the OTP below to reset it:</p>
-          <h1 style="color: #4F46E5; font-size: 32px; text-align: center; letter-spacing: 5px;">${otp}</h1>
-          <p>This OTP will expire in 10 minutes.</p>
-          <p>If you didn't request this, please ignore this email.</p>
-        `,
-        login: `
-          <h2>Login OTP</h2>
-          <p>Use the OTP below to complete your login:</p>
-          <h1 style="color: #4F46E5; font-size: 32px; text-align: center; letter-spacing: 5px;">${otp}</h1>
-          <p>This OTP will expire in 10 minutes.</p>
-        `
-      };
+      // Use clean email template
+      const htmlContent = getOTPTemplate(otp, purpose, env.OTP_EXPIRY_MINUTES);
+      const textContent = `Your verification code is: ${otp}. This code will expire in ${env.OTP_EXPIRY_MINUTES} minutes.`;
 
       const mailOptions = {
         from: `"${env.EMAIL_FROM_NAME}" <${env.EMAIL_FROM}>`,
         to: email,
         subject: subjectMap[purpose] || 'OTP Verification - Career Master',
-        html: messageMap[purpose] || `
-          <h2>OTP Verification</h2>
-          <p>Your OTP is: <strong>${otp}</strong></p>
-          <p>This OTP will expire in 10 minutes.</p>
-        `,
-        text: `Your OTP is: ${otp}. This OTP will expire in 10 minutes.`
+        html: htmlContent,
+        text: textContent
       };
 
       const info = await this.transporter.sendMail(mailOptions);
@@ -122,16 +104,16 @@ class EmailUtil {
         throw new Error('Email transporter not initialized');
       }
 
+      // Use clean welcome email template
+      const htmlContent = getWelcomeTemplate(name);
+      const textContent = `Welcome ${name}! Your account has been successfully verified. You can now log in and start using Career Master.`;
+
       const mailOptions = {
         from: `"${env.EMAIL_FROM_NAME}" <${env.EMAIL_FROM}>`,
         to: email,
         subject: 'Welcome to Career Master!',
-        html: `
-          <h2>Welcome ${name}!</h2>
-          <p>Your account has been successfully verified. You can now log in and start using Career Master.</p>
-          <p>Thank you for joining us!</p>
-        `,
-        text: `Welcome ${name}! Your account has been successfully verified.`
+        html: htmlContent,
+        text: textContent
       };
 
       const info = await this.transporter.sendMail(mailOptions);
@@ -158,17 +140,16 @@ class EmailUtil {
         throw new Error('Email transporter not initialized');
       }
 
+      // Use clean password change notification template
+      const htmlContent = getPasswordChangeTemplate(name);
+      const textContent = `Hello ${name}, your password has been successfully changed. If you didn't make this change, please contact support immediately.`;
+
       const mailOptions = {
         from: `"${env.EMAIL_FROM_NAME}" <${env.EMAIL_FROM}>`,
         to: email,
         subject: 'Password Changed Successfully - Career Master',
-        html: `
-          <h2>Password Changed</h2>
-          <p>Hello ${name},</p>
-          <p>Your password has been successfully changed.</p>
-          <p>If you didn't make this change, please contact support immediately.</p>
-        `,
-        text: `Hello ${name}, your password has been successfully changed.`
+        html: htmlContent,
+        text: textContent
       };
 
       const info = await this.transporter.sendMail(mailOptions);

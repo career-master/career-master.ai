@@ -85,7 +85,7 @@ class RolesService {
    */
   static normalizeRoleName(role) {
     return role.toLowerCase().trim();
-  }
+      }
 
   /**
    * Normalize permissions array
@@ -97,7 +97,7 @@ class RolesService {
       .filter(p => typeof p === 'string')
       .map(p => p.toLowerCase().trim())
       .filter(p => p.length > 0);
-  }
+      }
 
   /**
    * Validate that all permissions are known (for stricter setups)
@@ -180,7 +180,7 @@ class RolesService {
 
       if (!updated) {
         throw new ErrorHandler(404, 'Role not found');
-      }
+        }
 
       return {
         success: true,
@@ -353,7 +353,7 @@ class RolesService {
             permissions
           });
           createdOrUpdated.push(updated);
-        }
+      }
       }
     }
 

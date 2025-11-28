@@ -2,6 +2,7 @@ const app = require('./src/app');
 const database = require('./src/config/db');
 const env = require('./src/config/env');
 const RolesService = require('./src/roles/roles.service');
+const AdminSeed = require('./src/admin/admin.seed');
 
 /**
  * Server Entry Point
@@ -37,6 +38,15 @@ async function startServer() {
     } catch (error) {
       console.warn('⚠️  Warning: Could not initialize default roles:', error.message);
       // Continue even if role initialization fails
+    }
+
+    // Seed default admin user (only if it doesn't exist)
+    console.log('🔄 Seeding default admin user...');
+    try {
+      await AdminSeed.seedAdminUser();
+    } catch (error) {
+      console.warn('⚠️  Warning: Could not seed admin user:', error.message);
+      // Continue even if admin seeding fails
     }
 
     // Start Express server
