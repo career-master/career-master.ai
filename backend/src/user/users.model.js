@@ -33,6 +33,10 @@ const userSchema = new mongoose.Schema(
       required: [true, 'Password hash is required'],
       select: false // Don't return password by default
     },
+    batches: {
+      type: [String],
+      default: []
+    },
     roles: {
       type: [String],
       default: ['student'],
@@ -81,6 +85,7 @@ userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ phone: 1 });
 userSchema.index({ status: 1 });
 userSchema.index({ 'roles': 1 });
+userSchema.index({ batches: 1 });
 userSchema.index({ createdAt: -1 });
 
 // Instance method to check if user is verified

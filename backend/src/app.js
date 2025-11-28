@@ -5,6 +5,9 @@ const rateLimit = require('express-rate-limit');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const authRoutes = require('./auth/auth.routes');
 const rolesRoutes = require('./roles/roles.routes');
+const quizRoutes = require('./quiz/quiz.routes');
+const batchesRoutes = require('./batches/batches.routes');
+const usersRoutes = require('./user/users.routes');
 const env = require('./config/env');
 
 /**
@@ -58,6 +61,9 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/roles', rolesRoutes);
+app.use('/api/quizzes', quizRoutes);
+app.use('/api/batches', batchesRoutes);
+app.use('/api/users', usersRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -68,7 +74,10 @@ app.get('/', (req, res) => {
     endpoints: {
       health: '/health',
       auth: '/api/auth',
-      roles: '/api/roles'
+      roles: '/api/roles',
+      quizzes: '/api/quizzes',
+      batches: '/api/batches',
+      users: '/api/users'
     }
   });
 });
