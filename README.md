@@ -85,7 +85,7 @@ See documentation in:
 - `RENDER_ENV_VARS.md` - Render deployment variables
 - `VERCEL_DEPLOYMENT.md` - Vercel deployment guide
 
-## API Endpoints
+\
 
 - `/api/auth` - Authentication endpoints
 - `/api/roles` - Role management
