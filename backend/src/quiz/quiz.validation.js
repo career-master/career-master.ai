@@ -62,6 +62,14 @@ const createQuizSchema = z.object({
       .datetime()
       .optional(),
     batches: z.array(z.string().min(1)).optional(),
+    availableToEveryone: z.boolean().optional(),
+    maxAttempts: z
+      .number()
+      .int('Max attempts must be an integer')
+      .min(1, 'Max attempts must be at least 1')
+      .max(999, 'Max attempts cannot exceed 999')
+      .optional()
+      .default(999),
     questions: z
       .array(questionSchema)
       .min(1, 'At least one question is required')
@@ -91,14 +99,27 @@ const updateQuizSchema = z.object({
       .max(600, 'Duration cannot exceed 600 minutes')
       .optional(),
     availableFrom: z
-      .string()
-      .datetime()
-      .optional(),
+      .union([
+        z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Available from date must be in YYYY-MM-DD format'),
+        z.literal('')
+      ])
+      .optional()
+      .transform((val) => val === '' ? undefined : val),
     availableTo: z
-      .string()
-      .datetime()
-      .optional(),
+      .union([
+        z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Available to date must be in YYYY-MM-DD format'),
+        z.literal('')
+      ])
+      .optional()
+      .transform((val) => val === '' ? undefined : val),
     batches: z.array(z.string().min(1)).optional(),
+    availableToEveryone: z.boolean().optional(),
+    maxAttempts: z
+      .number()
+      .int('Max attempts must be an integer')
+      .min(1, 'Max attempts must be at least 1')
+      .max(999, 'Max attempts cannot exceed 999')
+      .optional(),
     isActive: z.boolean().optional(),
     questions: z.array(questionSchema).optional()
   })

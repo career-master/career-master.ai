@@ -28,7 +28,27 @@ class QuizRepository {
    */
   static async updateQuiz(quizId, updates) {
     try {
-      const quiz = await Quiz.findByIdAndUpdate(quizId, updates, {
+      // Separate fields to unset from fields to update
+      const unsetFields = {};
+      const updateFields = { ...updates };
+
+      // If dates are explicitly set to null, unset them
+      if (updates.availableFrom === null) {
+        unsetFields.availableFrom = '';
+        delete updateFields.availableFrom;
+      }
+      if (updates.availableTo === null) {
+        unsetFields.availableTo = '';
+        delete updateFields.availableTo;
+      }
+
+      // Build update object
+      const updateObj = { ...updateFields };
+      if (Object.keys(unsetFields).length > 0) {
+        updateObj.$unset = unsetFields;
+      }
+
+      const quiz = await Quiz.findByIdAndUpdate(quizId, updateObj, {
         new: true,
         runValidators: true
       });

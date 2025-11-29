@@ -21,7 +21,27 @@ class BatchesRepository {
 
   static async updateBatch(id, updates) {
     try {
-      const batch = await Batch.findByIdAndUpdate(id, updates, {
+      // Separate fields to unset from fields to update
+      const unsetFields = {};
+      const updateFields = { ...updates };
+
+      // If dates are explicitly set to null, unset them
+      if (updates.startDate === null) {
+        unsetFields.startDate = '';
+        delete updateFields.startDate;
+      }
+      if (updates.endDate === null) {
+        unsetFields.endDate = '';
+        delete updateFields.endDate;
+      }
+
+      // Build update object
+      const updateObj = { ...updateFields };
+      if (Object.keys(unsetFields).length > 0) {
+        updateObj.$unset = unsetFields;
+      }
+
+      const batch = await Batch.findByIdAndUpdate(id, updateObj, {
         new: true,
         runValidators: true
       });

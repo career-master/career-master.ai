@@ -34,7 +34,9 @@ class QuizController {
       durationMinutes: req.body.durationMinutes,
       availableFrom: req.body.availableFrom,
       availableTo: req.body.availableTo,
-      batches: req.body.batches
+      batches: req.body.batches,
+      availableToEveryone: req.body.availableToEveryone === 'true' || req.body.availableToEveryone === true,
+      maxAttempts: req.body.maxAttempts ? Number(req.body.maxAttempts) : 999
     };
 
     const quiz = await QuizService.createQuizFromExcel(file?.buffer, metadata, userId);

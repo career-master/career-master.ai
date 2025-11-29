@@ -1,19 +1,84 @@
 'use client';
 
-import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { apiService } from '@/lib/api';
+import { useRouter } from 'next/navigation';
 
-function DashboardContent() {
+interface DashboardStats {
+  overview: {
+    totalAttempts: number;
+    totalQuizzesAttempted: number;
+    availableQuizzes: number;
+    averageScore: number;
+    averagePercentage: number;
+    passRate: number;
+    accuracy: number;
+    questionsPerHour: number;
+    bestScore: number;
+    worstScore: number;
+    improvementTrend: number;
+  };
+  performance: {
+    totalCorrect: number;
+    totalIncorrect: number;
+    totalUnattempted: number;
+    totalMarksObtained: number;
+    totalMarksPossible: number;
+  };
+  charts: {
+    dailyPerformance: Array<{ date: string; score: number; attempts: number }>;
+    recentAttempts: number;
+  };
+  recentAttempts: Array<{
+    _id: string;
+    quizTitle: string;
+    marksObtained: number;
+    totalMarks: number;
+    percentage: number;
+    result: string;
+    submittedAt: string;
+    correctAnswers: number;
+    incorrectAnswers: number;
+  }>;
+}
+
+export default function DashboardPage() {
   const { user, logout } = useAuth();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstanceRef = useRef<any>(null);
 
+  // Fetch dashboard stats
   useEffect(() => {
-    // Initialize chart when component mounts
-    if (typeof window !== 'undefined' && chartRef.current) {
+    const loadStats = async () => {
+      try {
+        setLoading(true);
+        const res = await apiService.getUserDashboardStats();
+        if (res.success && res.data) {
+          setStats(res.data as DashboardStats);
+        }
+      } catch (error) {
+        console.error('Failed to load dashboard stats:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user) {
+      loadStats();
+    }
+  }, [user]);
+
+  // Initialize chart with dynamic data
+  useEffect(() => {
+    if (!stats || !chartRef.current) return;
+
+    if (typeof window !== 'undefined') {
       // @ts-ignore - Chart.js dynamic import
       import('chart.js/auto').then((ChartModule: any) => {
         const Chart = ChartModule.default || ChartModule;
@@ -26,34 +91,34 @@ function DashboardContent() {
         }
         
         if (ctx && Chart) {
+          const labels = stats.charts.dailyPerformance.map(d => {
+            const date = new Date(d.date);
+            return date.toLocaleDateString('en-US', { weekday: 'short' });
+          });
+          const scores = stats.charts.dailyPerformance.map(d => d.score);
+          const attempts = stats.charts.dailyPerformance.map(d => d.attempts);
+
           chartInstanceRef.current = new Chart(ctx, {
             type: 'line',
             data: {
-              labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'],
+              labels,
               datasets: [
                 {
-                  label: 'Accuracy',
-                  data: [65, 70, 68, 75, 78, 80, 82],
+                  label: 'Average Score (%)',
+                  data: scores,
                   borderColor: '#6f42c1',
                   backgroundColor: 'rgba(111, 66, 193, 0.1)',
                   tension: 0.4,
                   fill: true,
                 },
                 {
-                  label: 'Speed (Q/Hr)',
-                  data: [42, 45, 48, 50, 52, 55, 58],
+                  label: 'Attempts',
+                  data: attempts.map(a => a * 10), // Scale for visibility
                   borderColor: '#20c997',
                   backgroundColor: 'rgba(32, 201, 151, 0.1)',
                   tension: 0.4,
                   fill: true,
-                },
-                {
-                  label: 'Knowledge Level',
-                  data: [50, 55, 58, 62, 65, 68, 72],
-                  borderColor: '#0dcaf0',
-                  backgroundColor: 'rgba(13, 202, 240, 0.1)',
-                  tension: 0.4,
-                  fill: true,
+                  yAxisID: 'y1',
                 },
               ],
             },
@@ -72,7 +137,7 @@ function DashboardContent() {
                 },
                 title: {
                   display: true,
-                  text: 'AI Performance Tracking',
+                  text: 'Performance Tracking (Last 7 Days)',
                   color: '#1f2937',
                   font: {
                     size: 16,
@@ -90,8 +155,7 @@ function DashboardContent() {
                   },
                 },
                 y: {
-                  beginAtZero: false,
-                  min: 40,
+                  beginAtZero: true,
                   max: 100,
                   ticks: {
                     color: '#6b7280',
@@ -99,6 +163,11 @@ function DashboardContent() {
                   grid: {
                     color: 'rgba(0, 0, 0, 0.05)',
                   },
+                },
+                y1: {
+                  type: 'linear',
+                  display: false,
+                  position: 'right',
                 },
               },
             },
@@ -114,7 +183,7 @@ function DashboardContent() {
         chartInstanceRef.current = null;
       }
     };
-  }, []);
+  }, [stats]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -236,53 +305,72 @@ function DashboardContent() {
                 <h6 className="font-bold mb-4 text-gray-900 text-sm uppercase tracking-wide">AI Learning Profile</h6>
                 <div className="mb-4">
                   <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Knowledge Level</span>
-                    <span className="text-sm font-bold text-gray-900">Intermediate</span>
+                    <span className="text-sm font-medium text-gray-700">Average Score</span>
+                    <span className="text-sm font-bold text-gray-900">
+                      {loading ? '...' : stats ? `${stats.overview.averagePercentage.toFixed(1)}%` : '0%'}
+                    </span>
                   </div>
                   <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-500 rounded-full" style={{ width: '65%' }}></div>
+                    <div 
+                      className="h-full bg-blue-500 rounded-full" 
+                      style={{ width: loading ? '0%' : stats ? `${Math.min(stats.overview.averagePercentage, 100)}%` : '0%' }}
+                    ></div>
                   </div>
                 </div>
                 <div className="mb-4">
                   <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Learning Speed</span>
-                    <span className="text-sm font-bold text-gray-900">Fast</span>
+                    <span className="text-sm font-medium text-gray-700">Accuracy</span>
+                    <span className="text-sm font-bold text-gray-900">
+                      {loading ? '...' : stats ? `${stats.overview.accuracy.toFixed(1)}%` : '0%'}
+                    </span>
                   </div>
                   <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                    <div className="h-full bg-green-500 rounded-full" style={{ width: '80%' }}></div>
+                    <div 
+                      className="h-full bg-green-500 rounded-full" 
+                      style={{ width: loading ? '0%' : stats ? `${Math.min(stats.overview.accuracy, 100)}%` : '0%' }}
+                    ></div>
                   </div>
                 </div>
                 <div>
                   <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Retention Rate</span>
-                    <span className="text-sm font-bold text-gray-900">72%</span>
+                    <span className="text-sm font-medium text-gray-700">Pass Rate</span>
+                    <span className="text-sm font-bold text-gray-900">
+                      {loading ? '...' : stats ? `${stats.overview.passRate.toFixed(1)}%` : '0%'}
+                    </span>
                   </div>
                   <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                    <div className="h-full bg-purple-500 rounded-full" style={{ width: '72%' }}></div>
+                    <div 
+                      className="h-full bg-purple-500 rounded-full" 
+                      style={{ width: loading ? '0%' : stats ? `${Math.min(stats.overview.passRate, 100)}%` : '0%' }}
+                    ></div>
                   </div>
                 </div>
               </div>
 
               <div className="mb-5">
-                <h6 className="font-bold mb-4 text-gray-900 text-sm uppercase tracking-wide">Study Streak</h6>
+                <h6 className="font-bold mb-4 text-gray-900 text-sm uppercase tracking-wide">Quiz Statistics</h6>
                 <div className="mb-4">
                   <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Current Streak</span>
-                    <span className="text-sm font-bold text-gray-900 flex items-center gap-1">
-                      7 days
-                      <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z" clipRule="evenodd" />
-                      </svg>
+                    <span className="text-sm font-medium text-gray-700">Total Attempts</span>
+                    <span className="text-sm font-bold text-gray-900">
+                      {loading ? '...' : stats ? stats.overview.totalAttempts : 0}
                     </span>
                   </div>
-                  <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                    <div className="h-full bg-yellow-500 rounded-full" style={{ width: '70%' }}></div>
+                </div>
+                <div className="mb-4">
+                  <div className="flex justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">Quizzes Attempted</span>
+                    <span className="text-sm font-bold text-gray-900">
+                      {loading ? '...' : stats ? stats.overview.totalQuizzesAttempted : 0}
+                    </span>
                   </div>
                 </div>
                 <div>
                   <div className="flex justify-between">
-                    <span className="text-sm font-medium text-gray-700">Longest Streak</span>
-                    <span className="text-sm font-bold text-gray-900">21 days</span>
+                    <span className="text-sm font-medium text-gray-700">Available Quizzes</span>
+                    <span className="text-sm font-bold text-gray-900">
+                      {loading ? '...' : stats ? stats.overview.availableQuizzes : 0}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -375,10 +463,42 @@ function DashboardContent() {
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
               {[
-                { title: 'AI Accuracy Score', value: '78%', change: '+5%', icon: 'bullseye', color: 'purple', bgColor: 'bg-purple-500', borderColor: 'border-purple-500' },
-                { title: 'Learning Speed', value: '42s/Q', change: '+8%', icon: 'tachometer', color: 'green', bgColor: 'bg-green-500', borderColor: 'border-green-500' },
-                { title: 'Knowledge Growth', value: '+24%', change: 'This month', icon: 'seedling', color: 'blue', bgColor: 'bg-blue-500', borderColor: 'border-blue-500' },
-                { title: 'AI Rank', value: '#124', change: 'Improved 16 positions', icon: 'trophy', color: 'yellow', bgColor: 'bg-yellow-500', borderColor: 'border-yellow-500' },
+                { 
+                  title: 'Average Score', 
+                  value: loading ? '...' : stats ? `${stats.overview.averagePercentage.toFixed(1)}%` : '0%', 
+                  change: stats && stats.overview.averagePercentage > 0 ? 'Your average' : 'No attempts yet', 
+                  icon: 'bullseye', 
+                  color: 'purple', 
+                  bgColor: 'bg-purple-500', 
+                  borderColor: 'border-purple-500' 
+                },
+                { 
+                  title: 'Questions/Hour', 
+                  value: loading ? '...' : stats ? `${stats.overview.questionsPerHour.toFixed(0)} Q/Hr` : '0 Q/Hr', 
+                  change: stats && stats.overview.questionsPerHour > 0 ? 'Your speed' : 'No data', 
+                  icon: 'tachometer', 
+                  color: 'green', 
+                  bgColor: 'bg-green-500', 
+                  borderColor: 'border-green-500' 
+                },
+                { 
+                  title: 'Accuracy Rate', 
+                  value: loading ? '...' : stats ? `${stats.overview.accuracy.toFixed(1)}%` : '0%', 
+                  change: stats && stats.performance.totalCorrect > 0 ? `${stats.performance.totalCorrect} correct` : 'No attempts', 
+                  icon: 'seedling', 
+                  color: 'blue', 
+                  bgColor: 'bg-blue-500', 
+                  borderColor: 'border-blue-500' 
+                },
+                { 
+                  title: 'Pass Rate', 
+                  value: loading ? '...' : stats ? `${stats.overview.passRate.toFixed(1)}%` : '0%', 
+                  change: stats && stats.overview.totalAttempts > 0 ? `${stats.overview.totalAttempts} attempts` : 'Start quiz', 
+                  icon: 'trophy', 
+                  color: 'yellow', 
+                  bgColor: 'bg-yellow-500', 
+                  borderColor: 'border-yellow-500' 
+                },
               ].map((stat) => (
                 <div key={stat.title} className={`bg-white rounded-xl shadow-lg p-5 border-t-4 ${stat.borderColor} hover:shadow-xl transition-all`}>
                   <div className="flex justify-between items-start mb-3">
@@ -465,27 +585,89 @@ function DashboardContent() {
               </div>
 
               <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
-                <h5 className="font-bold mb-3 text-gray-900 text-lg">Weakness Analysis</h5>
-                <p className="text-gray-700 text-sm mb-4 font-medium">Based on 42 tests and 1,250 questions answered</p>
-                {[
-                  { subject: 'Algebra', percentage: 65, color: 'red', bgColor: 'bg-red-500' },
-                  { subject: 'Geometry', percentage: 42, color: 'yellow', bgColor: 'bg-yellow-500' },
-                  { subject: 'Physics', percentage: 78, color: 'green', bgColor: 'bg-green-500' },
-                  { subject: 'Chemistry', percentage: 55, color: 'blue', bgColor: 'bg-blue-500' },
-                ].map((item) => (
-                  <div key={item.subject} className="mb-4">
-                    <div className="flex justify-between mb-2 text-sm">
-                      <span className="text-gray-800 font-semibold">{item.subject}</span>
-                      <span className="font-bold text-gray-900 text-base">{item.percentage}%</span>
-                    </div>
-                    <div className="h-3 bg-gray-200 rounded-full overflow-hidden shadow-inner">
-                      <div className={`h-full ${item.bgColor} rounded-full shadow-sm`} style={{ width: `${item.percentage}%` }}></div>
-                    </div>
+                <h5 className="font-bold mb-3 text-gray-900 text-lg">Performance Summary</h5>
+                {loading ? (
+                  <div className="text-center py-4">
+                    <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
                   </div>
-                ))}
-                <button className="w-full mt-4 border-2 border-purple-600 text-purple-600 px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-purple-50 transition-all">
-                  Detailed Report
-                </button>
+                ) : stats ? (
+                  <>
+                    <p className="text-gray-700 text-sm mb-4 font-medium">
+                      Based on {stats.overview.totalAttempts} {stats.overview.totalAttempts === 1 ? 'attempt' : 'attempts'} and {stats.performance.totalCorrect + stats.performance.totalIncorrect + stats.performance.totalUnattempted} questions
+                    </p>
+                    {[
+                      { 
+                        label: 'Best Score', 
+                        value: stats.overview.bestScore, 
+                        color: 'green', 
+                        bgColor: 'bg-green-500' 
+                      },
+                      { 
+                        label: 'Average Score', 
+                        value: stats.overview.averagePercentage, 
+                        color: 'blue', 
+                        bgColor: 'bg-blue-500' 
+                      },
+                      { 
+                        label: 'Worst Score', 
+                        value: stats.overview.worstScore, 
+                        color: 'red', 
+                        bgColor: 'bg-red-500' 
+                      },
+                    ].map((item) => (
+                      <div key={item.label} className="mb-4">
+                        <div className="flex justify-between mb-2 text-sm">
+                          <span className="text-gray-800 font-semibold">{item.label}</span>
+                          <span className="font-bold text-gray-900 text-base">{item.value.toFixed(1)}%</span>
+                        </div>
+                        <div className="h-3 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+                          <div className={`h-full ${item.bgColor} rounded-full shadow-sm`} style={{ width: `${Math.min(item.value, 100)}%` }}></div>
+                        </div>
+                      </div>
+                    ))}
+                    {stats.overview.improvementTrend !== 0 && (
+                      <div className="mt-4 p-3 rounded-lg bg-gray-50 border border-gray-200">
+                        <div className="flex items-center gap-2">
+                          {stats.overview.improvementTrend > 0 ? (
+                            <>
+                              <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                              </svg>
+                              <span className="text-sm font-semibold text-green-600">
+                                Improving by {Math.abs(stats.overview.improvementTrend).toFixed(1)}%
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M14.707 12.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                              <span className="text-sm font-semibold text-red-600">
+                                Needs improvement: {Math.abs(stats.overview.improvementTrend).toFixed(1)}%
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    <button 
+                      onClick={() => router.push('/dashboard/quizzes')}
+                      className="w-full mt-4 border-2 border-purple-600 text-purple-600 px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-purple-50 transition-all"
+                    >
+                      View All Quizzes
+                    </button>
+                  </>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-gray-600 mb-2">No performance data yet</p>
+                    <button
+                      onClick={() => router.push('/dashboard/quizzes')}
+                      className="text-purple-600 hover:underline text-sm font-medium"
+                    >
+                      Start Your First Quiz
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -563,96 +745,150 @@ function DashboardContent() {
                     ))}
                   </div>
                 </div>
-                <div className="h-[250px]">
-                  <canvas ref={chartRef}></canvas>
-                </div>
+                {loading ? (
+                  <div className="h-[250px] flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                      <p className="text-gray-600 mt-2 text-sm">Loading chart...</p>
+                    </div>
+                  </div>
+                ) : stats && stats.charts.dailyPerformance.length > 0 ? (
+                  <div className="h-[250px]">
+                    <canvas ref={chartRef}></canvas>
+                  </div>
+                ) : (
+                  <div className="h-[250px] flex items-center justify-center">
+                    <p className="text-gray-600 text-sm">No performance data yet. Start taking quizzes to see your progress!</p>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* AI Predictions & Recent Tests */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-white rounded-xl shadow-md p-5 border-t-4 border-pink-500">
-                <h5 className="font-bold mb-3 text-gray-900">AI Performance Prediction</h5>
-                <p className="text-gray-600 text-sm mb-4">Based on your current progress</p>
-                {[
-                  { label: 'Next Test Score', value: 82 },
-                  { label: 'Exam Readiness', value: 74 },
-                  { label: 'Knowledge Growth', value: 68 },
-                ].map((pred) => (
-                  <div key={pred.label} className="mb-4">
-                    <div className="flex justify-between mb-2 text-sm">
-                      <span className="text-gray-700 font-medium">{pred.label}</span>
-                      <span className="font-bold text-gray-900">{pred.value}%</span>
-                    </div>
-                    <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-[#0dcaf0] to-[#6f42c1] rounded-full transition-all duration-1500"
-                        style={{ width: `${pred.value}%` }}
-                      ></div>
-                    </div>
+                <h5 className="font-bold mb-3 text-gray-900">Performance Overview</h5>
+                <p className="text-gray-600 text-sm mb-4">Based on your quiz attempts</p>
+                {loading ? (
+                  <div className="text-center py-4">
+                    <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
                   </div>
-                ))}
-                <button className="w-full mt-3 border border-purple-600 text-purple-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-purple-50 transition-colors">
-                  View Detailed Predictions
-                </button>
+                ) : stats ? (
+                  <>
+                    {[
+                      { label: 'Average Score', value: stats.overview.averagePercentage },
+                      { label: 'Accuracy Rate', value: stats.overview.accuracy },
+                      { label: 'Pass Rate', value: stats.overview.passRate },
+                    ].map((pred) => (
+                      <div key={pred.label} className="mb-4">
+                        <div className="flex justify-between mb-2 text-sm">
+                          <span className="text-gray-700 font-medium">{pred.label}</span>
+                          <span className="font-bold text-gray-900">{pred.value.toFixed(1)}%</span>
+                        </div>
+                        <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-[#0dcaf0] to-[#6f42c1] rounded-full transition-all duration-1500"
+                            style={{ width: `${Math.min(pred.value, 100)}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    ))}
+                    <button 
+                      onClick={() => router.push('/dashboard/quizzes')}
+                      className="w-full mt-3 border border-purple-600 text-purple-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-purple-50 transition-colors"
+                    >
+                      Take More Quizzes
+                    </button>
+                  </>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-gray-600 mb-2">No data available</p>
+                    <button
+                      onClick={() => router.push('/dashboard/quizzes')}
+                      className="text-purple-600 hover:underline text-sm font-medium"
+                    >
+                      Start Your First Quiz
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="md:col-span-2 bg-white rounded-xl shadow-md p-5">
                 <div className="flex justify-between items-center mb-3">
-                  <h5 className="font-bold text-gray-900">Recent AI Tests</h5>
-                  <button className="text-sm text-purple-600 hover:underline font-medium">View All</button>
+                  <h5 className="font-bold text-gray-900">Recent Quiz Attempts</h5>
+                  <button 
+                    onClick={() => router.push('/dashboard/quizzes')}
+                    className="text-sm text-purple-600 hover:underline font-medium"
+                  >
+                    View All
+                  </button>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left py-2 text-sm font-semibold text-gray-900">Test</th>
-                        <th className="text-left py-2 text-sm font-semibold text-gray-900">Type</th>
-                        <th className="text-left py-2 text-sm font-semibold text-gray-900">Score</th>
-                        <th className="text-left py-2 text-sm font-semibold text-gray-900">AI Feedback</th>
-                        <th className="text-left py-2 text-sm font-semibold text-gray-900">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        { test: 'Algebra Focus', type: 'Adaptive', score: 85, feedback: 'Good Progress', typeBg: 'bg-purple-100', typeText: 'text-purple-700' },
-                        { test: 'Physics Challenge', type: 'Time Trial', score: 72, feedback: 'Needs Practice', typeBg: 'bg-yellow-100', typeText: 'text-yellow-700' },
-                        { test: 'Chemistry Mastery', type: 'Concept', score: 91, feedback: 'Excellent', typeBg: 'bg-blue-100', typeText: 'text-blue-700' },
-                        { test: 'Speed Math', type: 'Buzzer', score: 65, feedback: 'Focus Area', typeBg: 'bg-red-100', typeText: 'text-red-700' },
-                      ].map((row) => (
-                        <tr key={row.test} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                          <td className="py-3 text-sm text-gray-900 font-medium">{row.test}</td>
-                          <td className="py-3">
-                            <span className={`px-2 py-1 rounded text-xs font-semibold ${row.typeBg} ${row.typeText}`}>
-                              {row.type}
-                            </span>
-                          </td>
-                          <td className="py-3">
-                            <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                              row.score >= 80 ? 'bg-green-100 text-green-700' : row.score >= 70 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                            }`}>
-                              {row.score}%
-                            </span>
-                          </td>
-                          <td className="py-3">
-                            <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                              row.feedback === 'Excellent' || row.feedback === 'Good Progress'
-                                ? 'bg-green-100 text-green-700'
-                                : row.feedback === 'Needs Practice'
-                                ? 'bg-yellow-100 text-yellow-700'
-                                : 'bg-red-100 text-red-700'
-                            }`}>
-                              {row.feedback}
-                            </span>
-                          </td>
-                          <td className="py-3">
-                            <button className="text-sm text-purple-600 hover:underline font-medium">Review</button>
-                          </td>
+                {loading ? (
+                  <div className="text-center py-8">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                    <p className="text-gray-600 mt-2">Loading attempts...</p>
+                  </div>
+                ) : stats && stats.recentAttempts.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-2 text-sm font-semibold text-gray-900">Quiz</th>
+                          <th className="text-left py-2 text-sm font-semibold text-gray-900">Score</th>
+                          <th className="text-left py-2 text-sm font-semibold text-gray-900">Marks</th>
+                          <th className="text-left py-2 text-sm font-semibold text-gray-900">Result</th>
+                          <th className="text-left py-2 text-sm font-semibold text-gray-900">Date</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {stats.recentAttempts.map((attempt) => {
+                          const feedback = attempt.percentage >= 80 ? 'Excellent' : 
+                                         attempt.percentage >= 70 ? 'Good Progress' : 
+                                         attempt.percentage >= 50 ? 'Needs Practice' : 'Focus Area';
+                          return (
+                            <tr key={attempt._id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                              <td className="py-3 text-sm text-gray-900 font-medium">{attempt.quizTitle}</td>
+                              <td className="py-3">
+                                <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                                  attempt.percentage >= 80 ? 'bg-green-100 text-green-700' : 
+                                  attempt.percentage >= 70 ? 'bg-yellow-100 text-yellow-700' : 
+                                  'bg-red-100 text-red-700'
+                                }`}>
+                                  {attempt.percentage.toFixed(1)}%
+                                </span>
+                              </td>
+                              <td className="py-3 text-sm text-gray-700">
+                                {attempt.marksObtained} / {attempt.totalMarks}
+                              </td>
+                              <td className="py-3">
+                                <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                                  attempt.result === 'pass' 
+                                    ? 'bg-green-100 text-green-700' 
+                                    : 'bg-red-100 text-red-700'
+                                }`}>
+                                  {attempt.result.toUpperCase()}
+                                </span>
+                              </td>
+                              <td className="py-3 text-sm text-gray-600">
+                                {new Date(attempt.submittedAt).toLocaleDateString()}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600 mb-4">No quiz attempts yet</p>
+                    <button
+                      onClick={() => router.push('/dashboard/quizzes')}
+                      className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors font-medium"
+                    >
+                      Start Your First Quiz
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -669,10 +905,3 @@ function DashboardContent() {
   );
 }
 
-export default function DashboardPage() {
-  return (
-    <ProtectedRoute>
-      <DashboardContent />
-    </ProtectedRoute>
-  );
-}
