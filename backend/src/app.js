@@ -26,9 +26,12 @@ const corsOptions = {
     // Allow requests with no origin (like mobile apps, Postman, or curl)
     if (!origin) return callback(null, true);
     
+    // Normalize origin (remove trailing slash)
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    
     // Get allowed origins from environment
     const allowedOrigins = process.env.CORS_ORIGIN 
-      ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+      ? process.env.CORS_ORIGIN.split(',').map(o => o.trim().replace(/\/$/, ''))
       : [
           'http://localhost:3000',
           'http://localhost:3001',
@@ -37,8 +40,8 @@ const corsOptions = {
           'https://career-master-ai.onrender.com'
         ];
     
-    // Check if origin is allowed
-    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+    // Check if origin is allowed (compare normalized versions)
+    if (allowedOrigins.includes(normalizedOrigin) || allowedOrigins.includes('*')) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
