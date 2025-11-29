@@ -17,8 +17,20 @@ const batchBaseSchema = z.object({
     .max(500, 'Description cannot exceed 500 characters')
     .trim()
     .optional(),
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
+  startDate: z
+    .union([
+      z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be in YYYY-MM-DD format'),
+      z.literal('')
+    ])
+    .optional()
+    .transform((val) => val === '' ? undefined : val),
+  endDate: z
+    .union([
+      z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be in YYYY-MM-DD format'),
+      z.literal('')
+    ])
+    .optional()
+    .transform((val) => val === '' ? undefined : val),
   isActive: z.boolean().optional()
 });
 

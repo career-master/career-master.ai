@@ -1,9 +1,11 @@
 const express = require('express');
 const multer = require('multer');
 const QuizController = require('./quiz.controller');
+const QuizAttemptController = require('./quiz_attempts.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 const { requireRole } = require('../middleware/rbac.middleware');
 const { createQuizSchema, updateQuizSchema, quizIdParamSchema, validate } = require('./quiz.validation');
+const { submitAttemptSchema, getUserQuizzesSchema, validate: validateAttempt } = require('./quiz_attempts.validation');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -29,6 +31,15 @@ router.get('/', userMiddleware, QuizController.getQuizzes);
 
 // Authenticated users: Get quiz by ID (for taking quiz)
 router.get('/:id', userMiddleware, validate(quizIdParamSchema), QuizController.getQuizById);
+
+// Authenticated users: Submit quiz attempt
+router.post('/:id/attempt', userMiddleware, validateAttempt(submitAttemptSchema), QuizAttemptController.submitAttempt);
+
+// Authenticated users: Get user attempts for a quiz
+router.get('/:id/attempts', userMiddleware, validate(quizIdParamSchema), QuizAttemptController.getUserQuizAttempts);
+
+// Public: Get available quizzes for a user (by email)
+router.get('/user/email/:email', validateAttempt(getUserQuizzesSchema), QuizAttemptController.getAvailableQuizzes);
 
 // Admin: Update quiz
 router.put('/:id', adminMiddleware, validate(updateQuizSchema), QuizController.updateQuiz);

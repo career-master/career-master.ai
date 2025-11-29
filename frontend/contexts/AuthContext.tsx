@@ -25,14 +25,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     initializeAuth();
+
+    // Set up periodic token refresh (check every 5 minutes)
+    const refreshInterval = setInterval(async () => {
+      const token = authUtils.getAccessToken();
+      const refreshToken = authUtils.getRefreshToken();
+      
+      // If token is expired or will expire in the next 2 minutes, refresh it
+      if (token && refreshToken) {
+        const expiry = localStorage.getItem('tokenExpiry');
+        if (expiry) {
+          const timeUntilExpiry = parseInt(expiry) - Date.now();
+          // Refresh if expired or will expire in next 2 minutes
+          if (timeUntilExpiry < 2 * 60 * 1000) {
+            try {
+              const response = await apiService.refreshToken(refreshToken);
+              if (response.success && response.data?.tokens) {
+                authUtils.saveTokens(response.data.tokens);
+              }
+            } catch (error) {
+              // Refresh failed, clear auth
+              authUtils.clearAuth();
+              setUser(null);
+            }
+          }
+        }
+      }
+    }, 5 * 60 * 1000); // Check every 5 minutes
+
+    return () => clearInterval(refreshInterval);
   }, []);
 
   const initializeAuth = async () => {
     try {
       const savedUser = authUtils.getUser();
       const token = authUtils.getAccessToken();
+      const refreshToken = authUtils.getRefreshToken();
 
-      if (token && !authUtils.isTokenExpired() && savedUser) {
+      // If we have a refresh token but access token is expired, try to refresh
+      if (refreshToken && authUtils.isTokenExpired() && token) {
+        try {
+          const response = await apiService.refreshToken(refreshToken);
+          if (response.success && response.data?.tokens) {
+            authUtils.saveTokens(response.data.tokens);
+            // Continue with initialization
+          } else {
+            throw new Error('Token refresh failed');
+          }
+        } catch (error) {
+          // Refresh failed, clear auth
+          authUtils.clearAuth();
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+      }
+
+      const currentToken = authUtils.getAccessToken();
+      if (currentToken && !authUtils.isTokenExpired() && savedUser) {
         setUser(savedUser);
         // Optionally refresh user data from server
         try {
@@ -42,11 +92,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             authUtils.saveUser(response.data.user);
           }
         } catch (error) {
-          // If token is invalid, clear auth
-          authUtils.clearAuth();
-          setUser(null);
+          // If token is invalid, try to refresh once more
+          if (refreshToken) {
+            try {
+              const refreshResponse = await apiService.refreshToken(refreshToken);
+              if (refreshResponse.success && refreshResponse.data?.tokens) {
+                authUtils.saveTokens(refreshResponse.data.tokens);
+                // Retry getting user
+                const retryResponse = await apiService.getCurrentUser();
+                if (retryResponse.success && retryResponse.data?.user) {
+                  setUser(retryResponse.data.user);
+                  authUtils.saveUser(retryResponse.data.user);
+                }
+              }
+            } catch (refreshError) {
+              authUtils.clearAuth();
+              setUser(null);
+            }
+          } else {
+            authUtils.clearAuth();
+            setUser(null);
+          }
         }
-      } else {
+      } else if (!currentToken || authUtils.isTokenExpired()) {
         authUtils.clearAuth();
         setUser(null);
       }

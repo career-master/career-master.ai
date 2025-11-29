@@ -34,7 +34,7 @@ export default function AdminLayout({
       router.push('/dashboard');
       return;
     }
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, router, pathname, loading]);
 
   const handleLogout = () => {
     logout();
@@ -48,14 +48,33 @@ export default function AdminLayout({
     return <>{children}</>;
   }
 
-  // While auth is loading, or if user is not allowed, don't render layout yet
-  if (loading || !isAuthenticated || !user?.roles?.includes('super_admin')) {
-    return null;
+  // While auth is loading, show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated or not admin, redirect (but show content briefly to avoid blank page)
+  if (!isAuthenticated || !user?.roles?.includes('super_admin')) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Redirecting...</p>
+        </div>
+      </div>
+    );
   }
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'tachometer', href: '/admin/dashboard' },
     { id: 'users', label: 'User Management', icon: 'users', href: '/admin/users' },
+    { id: 'batches', label: 'Batches', icon: 'users', href: '/admin/batches' },
     { id: 'institutions', label: 'Institutions', icon: 'university', href: '/admin/institutions' },
     { id: 'questions', label: 'Questions Bank', icon: 'database', href: '/admin/quizzes' },
     { id: 'tests', label: 'Test Engine', icon: 'file', href: '/admin/tests' },

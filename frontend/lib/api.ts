@@ -3,7 +3,9 @@
  * Handles all backend API calls
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+import { authUtils } from './auth';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -38,6 +40,8 @@ export interface User {
 
 class ApiService {
   private baseURL: string;
+  private isRefreshing: boolean = false;
+  private refreshPromise: Promise<void> | null = null;
 
   constructor() {
     this.baseURL = API_BASE_URL;
@@ -47,16 +51,67 @@ class ApiService {
    * Get auth token from localStorage
    */
   private getToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('accessToken');
+    return authUtils.getAccessToken();
   }
 
   /**
-   * Make API request
+   * Refresh access token using refresh token
+   */
+  private async refreshAccessToken(): Promise<void> {
+    if (this.isRefreshing && this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.isRefreshing = true;
+    this.refreshPromise = (async () => {
+      try {
+        const refreshToken = authUtils.getRefreshToken();
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+
+        const response = await fetch(`${this.baseURL}/auth/refresh`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ refreshToken }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.error?.message || data.message || 'Token refresh failed');
+        }
+
+        // Save new tokens
+        if (data.data?.tokens) {
+          authUtils.saveTokens(data.data.tokens);
+        }
+      } catch (error) {
+        // If refresh fails, clear auth
+        authUtils.clearAuth();
+        // Redirect to login if we're in the browser
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
+        throw error;
+      } finally {
+        this.isRefreshing = false;
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
+  }
+
+  /**
+   * Make API request with automatic token refresh
    */
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    retryCount = 0
   ): Promise<ApiResponse<T>> {
     const token = this.getToken();
     const url = `${this.baseURL}${endpoint}`;
@@ -81,6 +136,18 @@ class ApiService {
       });
 
       const data = await response.json();
+
+      // If 401 and we haven't retried yet, try to refresh token
+      if (response.status === 401 && retryCount === 0 && !endpoint.includes('/auth/')) {
+        try {
+          await this.refreshAccessToken();
+          // Retry the request with new token
+          return this.request<T>(endpoint, options, retryCount + 1);
+        } catch (refreshError) {
+          // Refresh failed, throw original error
+          throw new Error(data.error?.message || data.message || 'Authentication failed');
+        }
+      }
 
       if (!response.ok) {
         throw new Error(data.error?.message || data.message || 'Request failed');
@@ -128,6 +195,11 @@ class ApiService {
     title: string;
     description?: string;
     durationMinutes: number;
+    availableFrom?: string;
+    availableTo?: string;
+    batches?: string[];
+    availableToEveryone?: boolean;
+    isActive?: boolean;
     questions: {
       questionText: string;
       options: string[];
@@ -153,6 +225,67 @@ class ApiService {
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     return this.request(`/quizzes?${params.toString()}`, {
       method: 'GET',
+    });
+  }
+
+  // Get available quizzes for a user (by email)
+  async getAvailableQuizzesForUser(email: string): Promise<ApiResponse> {
+    return this.request(`/quizzes/user/email/${email}`, {
+      method: 'GET',
+    });
+  }
+
+  // Submit quiz attempt
+  async submitQuizAttempt(quizId: string, payload: {
+    email: string;
+    answers: Record<string, number>;
+    timeSpentInSeconds?: number;
+  }): Promise<ApiResponse> {
+    return this.request(`/quizzes/${quizId}/attempt`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // Get user attempts for a quiz
+  async getUserQuizAttempts(quizId: string): Promise<ApiResponse> {
+    return this.request(`/quizzes/${quizId}/attempts`, {
+      method: 'GET',
+    });
+  }
+
+  // Get user dashboard statistics
+  async getUserDashboardStats(): Promise<ApiResponse> {
+    return this.request('/dashboard/user/stats', {
+      method: 'GET',
+    });
+  }
+
+  async updateQuiz(id: string, payload: {
+    title?: string;
+    description?: string;
+    durationMinutes?: number;
+    availableFrom?: string;
+    availableTo?: string;
+    batches?: string[];
+    questions?: {
+      questionText: string;
+      options: string[];
+      correctOptionIndex: number;
+      marks?: number;
+      negativeMarks?: number;
+    }[];
+    isActive?: boolean;
+  }): Promise<ApiResponse> {
+    return this.request(`/quizzes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteQuiz(id: string): Promise<ApiResponse> {
+    return this.request(`/quizzes/${id}`, {
+      method: 'DELETE',
     });
   }
 
@@ -199,7 +332,64 @@ class ApiService {
     });
   }
 
+  async updateBatch(id: string, payload: {
+    name?: string;
+    code?: string;
+    description?: string;
+    startDate?: string;
+    endDate?: string;
+    isActive?: boolean;
+  }): Promise<ApiResponse> {
+    return this.request(`/batches/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteBatch(id: string): Promise<ApiResponse> {
+    return this.request(`/batches/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getBatchById(id: string): Promise<ApiResponse> {
+    return this.request(`/batches/${id}`, {
+      method: 'GET',
+    });
+  }
+
+  async addStudentsToBatch(batchCode: string, userIds: string[]): Promise<ApiResponse> {
+    return this.request(`/batches/${batchCode}/students`, {
+      method: 'POST',
+      body: JSON.stringify({ userIds }),
+    });
+  }
+
+  async removeStudentsFromBatch(batchCode: string, userIds: string[]): Promise<ApiResponse> {
+    return this.request(`/batches/${batchCode}/students`, {
+      method: 'DELETE',
+      body: JSON.stringify({ userIds }),
+    });
+  }
+
+  async getBatchStudents(batchCode: string, page = 1, limit = 10): Promise<ApiResponse> {
+    const params = new URLSearchParams({
+      batchCode,
+      page: String(page),
+      limit: String(limit),
+    });
+    return this.request(`/batches/students/paginated?${params.toString()}`, {
+      method: 'GET',
+    });
+  }
+
   // Users admin endpoints
+  async getUserById(id: string): Promise<ApiResponse> {
+    return this.request(`/users/${id}`, {
+      method: 'GET',
+    });
+  }
+
   async getUsers(params: {
     page?: number;
     limit?: number;
@@ -230,6 +420,26 @@ class ApiService {
     return this.request('/users', {
       method: 'POST',
       body: JSON.stringify(payload),
+    });
+  }
+
+  async updateUser(id: string, payload: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    roles?: string[];
+    batches?: string[];
+    status?: 'active' | 'banned';
+  }): Promise<ApiResponse> {
+    return this.request(`/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteUser(id: string): Promise<ApiResponse> {
+    return this.request(`/users/${id}`, {
+      method: 'DELETE',
     });
   }
 
@@ -284,6 +494,13 @@ class ApiService {
 
   async getCurrentUser(): Promise<ApiResponse<{ user: User }>> {
     return this.request('/auth/me');
+  }
+
+  // Dashboard endpoints
+  async getDashboardStatistics(): Promise<ApiResponse> {
+    return this.request('/dashboard/statistics', {
+      method: 'GET',
+    });
   }
 }
 

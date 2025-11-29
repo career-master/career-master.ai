@@ -3,6 +3,19 @@ const CryptoUtil = require('../utils/crypto');
 const { ErrorHandler } = require('../middleware/errorHandler');
 
 class UsersRepository {
+  static async getUserById(id) {
+    try {
+      const user = await User.findById(id);
+      if (!user) {
+        throw new ErrorHandler(404, 'User not found');
+      }
+      return user;
+    } catch (error) {
+      if (error instanceof ErrorHandler) throw error;
+      throw new ErrorHandler(500, `Error fetching user: ${error.message}`);
+    }
+  }
+
   static async getUsersPaginated({ page = 1, limit = 10, search = '', role, batch }) {
     try {
       const filter = {};
@@ -78,6 +91,19 @@ class UsersRepository {
     } catch (error) {
       if (error instanceof ErrorHandler) throw error;
       throw new ErrorHandler(500, `Error updating user: ${error.message}`);
+    }
+  }
+
+  static async deleteUser(id) {
+    try {
+      const user = await User.findByIdAndDelete(id);
+      if (!user) {
+        throw new ErrorHandler(404, 'User not found');
+      }
+      return user;
+    } catch (error) {
+      if (error instanceof ErrorHandler) throw error;
+      throw new ErrorHandler(500, `Error deleting user: ${error.message}`);
     }
   }
 }

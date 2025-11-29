@@ -89,19 +89,48 @@ export default function AdminQuizzesPage() {
                         {quiz.description}
                       </p>
                     )}
-                    <div className="flex items-center justify-between mt-1">
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          quiz.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-                        }`}
-                      >
-                        {quiz.isActive ? 'ACTIVE' : 'INACTIVE'}
-                      </span>
-                      {quiz.batches && quiz.batches.length > 0 && (
-                        <span className="text-[10px] text-gray-500">
-                          Batches: {quiz.batches.join(', ')}
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            quiz.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          {quiz.isActive ? 'ACTIVE' : 'INACTIVE'}
                         </span>
-                      )}
+                        {quiz.batches && quiz.batches.length > 0 && (
+                          <span className="text-[10px] text-gray-500">
+                            Batches: {quiz.batches.join(', ')}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/admin/quizzes/new?id=${quiz._id}`)}
+                          className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (confirm(`Are you sure you want to delete "${quiz.title}"?`)) {
+                              try {
+                                const res = await apiService.deleteQuiz(quiz._id);
+                                if (res.success) {
+                                  await loadQuizzes(page);
+                                }
+                              } catch (err: any) {
+                                alert(err.message || 'Failed to delete quiz');
+                              }
+                            }
+                          }}
+                          className="text-red-600 hover:text-red-800 text-xs font-medium"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}

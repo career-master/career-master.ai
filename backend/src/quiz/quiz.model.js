@@ -74,6 +74,16 @@ const quizSchema = new mongoose.Schema(
       type: [String],
       default: []
     },
+    availableToEveryone: {
+      type: Boolean,
+      default: false
+    },
+    maxAttempts: {
+      type: Number,
+      default: 999, // Unlimited by default (999 means unlimited)
+      min: [1, 'Max attempts must be at least 1'],
+      max: [999, 'Max attempts cannot exceed 999']
+    },
     questions: {
       type: [questionSchema],
       default: []

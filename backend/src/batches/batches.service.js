@@ -7,18 +7,38 @@ class BatchesService {
     const data = {
       name,
       code,
-      description,
+      description: description || undefined,
       isActive: isActive !== undefined ? isActive : true
     };
-    if (startDate) data.startDate = new Date(startDate);
-    if (endDate) data.endDate = new Date(endDate);
+    // Only set dates if they are provided and not empty
+    if (startDate && startDate.trim() !== '') {
+      data.startDate = new Date(startDate);
+    }
+    if (endDate && endDate.trim() !== '') {
+      data.endDate = new Date(endDate);
+    }
     return BatchesRepository.createBatch(data);
   }
 
   static async updateBatch(id, payload) {
     const updates = { ...payload };
-    if (updates.startDate) updates.startDate = new Date(updates.startDate);
-    if (updates.endDate) updates.endDate = new Date(updates.endDate);
+    // Handle date updates - convert to Date if provided, set to null to unset if empty
+    if ('startDate' in updates) {
+      if (updates.startDate && updates.startDate.trim() !== '') {
+        updates.startDate = new Date(updates.startDate);
+      } else {
+        // Set to null to indicate we want to unset this field
+        updates.startDate = null;
+      }
+    }
+    if ('endDate' in updates) {
+      if (updates.endDate && updates.endDate.trim() !== '') {
+        updates.endDate = new Date(updates.endDate);
+      } else {
+        // Set to null to indicate we want to unset this field
+        updates.endDate = null;
+      }
+    }
     const batch = await BatchesRepository.updateBatch(id, updates);
     if (!batch) {
       throw new ErrorHandler(404, 'Batch not found');

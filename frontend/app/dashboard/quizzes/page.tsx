@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 
-function DashboardQuizzesContent() {
+export default function DashboardQuizzesPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [quizzes, setQuizzes] = useState<any[]>([]);
@@ -15,11 +14,16 @@ function DashboardQuizzesContent() {
 
   useEffect(() => {
     const load = async () => {
+      if (!user?.email) return;
       try {
         setLoading(true);
         setError('');
-        const res = await apiService.getQuizzes(1, 20);
-        if (res.success && res.data) {
+        const res = await apiService.getAvailableQuizzesForUser(user.email);
+        const resData: any = res;
+        if (res.success && resData.presentQuizzes) {
+          setQuizzes(Array.isArray(resData.presentQuizzes) ? resData.presentQuizzes : []);
+        } else if (res.success && res.data) {
+          // Fallback to old format
           const payload: any = res.data;
           setQuizzes(Array.isArray(payload.items) ? payload.items : []);
         }
@@ -30,7 +34,7 @@ function DashboardQuizzesContent() {
       }
     };
     load();
-  }, []);
+  }, [user?.email]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -57,8 +61,8 @@ function DashboardQuizzesContent() {
                 className="bg-white rounded-xl shadow-md p-4 border border-gray-200 flex flex-col justify-between"
               >
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900 mb-1">{quiz.title}</h2>
-                  {quiz.description && (
+                  <h2 className="text-lg font-semibold text-gray-900 mb-1">{quiz.name || quiz.title}</h2>
+                  {(quiz.description || quiz.description) && (
                     <p className="text-sm text-gray-600 mb-2 line-clamp-3">{quiz.description}</p>
                   )}
                   <p className="text-xs text-gray-500">
@@ -69,22 +73,32 @@ function DashboardQuizzesContent() {
                     {' • '}
                     Questions:{' '}
                     <span className="font-semibold">
-                      {quiz.questions?.length || 0}
+                      {quiz.questionCount || quiz.questions?.length || 0}
+                    </span>
+                    {' • '}
+                    Total Marks:{' '}
+                    <span className="font-semibold">
+                      {quiz.totalMarks || 0}
                     </span>
                   </p>
+                  {quiz.attemptsMade !== undefined && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Attempts: {quiz.attemptsMade} / {quiz.maxAttempts || '∞'}
+                    </p>
+                  )}
                 </div>
                 <div className="mt-4 flex justify-between items-center">
-                  {quiz.batches && quiz.batches.length > 0 && (
-                    <span className="text-[10px] text-gray-500">
-                      Batches: {quiz.batches.join(', ')}
-                    </span>
-                  )}
                   <button
                     type="button"
-                    onClick={() => router.push(`/dashboard/quizzes/${quiz._id}`)}
-                    className="ml-auto rounded-lg bg-purple-600 px-4 py-2 text-xs font-semibold text-white hover:bg-purple-700 transition-colors"
+                    onClick={() => router.push(`/dashboard/quizzes/${quiz._id}/instructions`)}
+                    disabled={!quiz.canAttempt}
+                    className={`ml-auto rounded-lg px-4 py-2 text-xs font-semibold transition-colors ${
+                      quiz.canAttempt
+                        ? 'bg-purple-600 text-white hover:bg-purple-700'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
                   >
-                    Start Quiz
+                    {quiz.canAttempt ? 'Start Quiz' : 'Quiz Completed'}
                   </button>
                 </div>
               </div>
@@ -96,12 +110,5 @@ function DashboardQuizzesContent() {
   );
 }
 
-export default function DashboardQuizzesPage() {
-  return (
-    <ProtectedRoute>
-      <DashboardQuizzesContent />
-    </ProtectedRoute>
-  );
-}
 
 
