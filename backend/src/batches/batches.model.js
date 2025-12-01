@@ -16,7 +16,6 @@ const batchSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Batch code is required'],
       trim: true,
-      unique: true,
       maxlength: [50, 'Batch code cannot exceed 50 characters']
     },
     description: {

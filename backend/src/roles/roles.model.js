@@ -15,7 +15,6 @@ const roleSchema = new mongoose.Schema(
     name: {
       type: String,
       required: [true, 'Role name is required'],
-      unique: true,
       trim: true,
       lowercase: true,
       minlength: [2, 'Role name must be at least 2 characters'],

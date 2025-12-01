@@ -10,14 +10,12 @@ const sessionsSchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: [true, 'User ID is required'],
-      index: true
+      required: [true, 'User ID is required']
     },
     refreshToken: {
       type: String,
       required: [true, 'Refresh token is required'],
-      unique: true,
-      index: true
+      unique: true
     },
     userAgent: {
       type: String,
@@ -31,8 +29,7 @@ const sessionsSchema = new mongoose.Schema(
     },
     expiresAt: {
       type: Date,
-      required: [true, 'Expiry date is required'],
-      index: { expireAfterSeconds: 0 } // TTL index for automatic deletion
+      required: [true, 'Expiry date is required']
     }
   },
   {
@@ -44,7 +41,7 @@ const sessionsSchema = new mongoose.Schema(
 // Indexes for performance and cleanup
 sessionsSchema.index({ userId: 1, createdAt: -1 }); // Find user sessions
 sessionsSchema.index({ refreshToken: 1 }, { unique: true }); // Lookup by token
-sessionsSchema.index({ expiresAt: 1 }); // TTL index for automatic cleanup
+sessionsSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index for automatic cleanup
 sessionsSchema.index({ userId: 1, expiresAt: 1 }); // Composite index for user session queries
 
 // Instance method to check if session is expired
