@@ -9,19 +9,16 @@ const quizAttemptSchema = new mongoose.Schema(
     quizId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Quiz',
-      required: [true, 'Quiz ID is required'],
-      index: true
+      required: [true, 'Quiz ID is required']
     },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: [true, 'User ID is required'],
-      index: true
+      required: [true, 'User ID is required']
     },
     userEmail: {
       type: String,
-      required: [true, 'User email is required'],
-      index: true
+      required: [true, 'User email is required']
     },
     answers: {
       type: Map,

@@ -1,329 +1,493 @@
 'use client';
 
 import Link from 'next/link';
-import Navbar from '@/components/Navbar';
-import AnimatedStats from '@/components/AnimatedStats';
-import CertificateSection from '@/components/CertificateSection';
-import CareerRoadmap from '@/components/CareerRoadmap';
-import TypewriterText from '@/components/TypewriterText';
+import Menubar from '@/components/Menubar';
+import Footer from '@/components/Footer';
+import ScrollToTop from '@/components/ScrollToTop';
+import { useState, useEffect } from 'react';
 
 export default function Home() {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [counterStats, setCounterStats] = useState({
+    students: 0,
+    quizzes: 0,
+    success: 0,
+    awards: 0,
+  });
+
+  // Slider images (placeholder - replace with actual images)
+  const sliderImages = [
+    { src: '/api/placeholder/1920/600', alt: 'Learning Platform' },
+    { src: '/api/placeholder/1920/600', alt: 'Quiz System' },
+    { src: '/api/placeholder/1920/600', alt: 'Success Stories' },
+  ];
+
+  // Auto-slide functionality
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % sliderImages.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Counter animation
+  useEffect(() => {
+    const targets = { students: 10000, quizzes: 5000, success: 95, awards: 200 };
+    const duration = 2000;
+    const steps = 60;
+    const increment = duration / steps;
+
+    let step = 0;
+    const timer = setInterval(() => {
+      step++;
+      const progress = Math.min(step / steps, 1);
+      setCounterStats({
+        students: Math.floor(targets.students * progress),
+        quizzes: Math.floor(targets.quizzes * progress),
+        success: Math.floor(targets.success * progress),
+        awards: Math.floor(targets.awards * progress),
+      });
+      if (step >= steps) clearInterval(timer);
+    }, increment);
+  }, []);
+
+  // Latest competitive exams (scrolling)
+  const latestExams = [
+    'UPSC Civil Services 2025',
+    'SSC CGL 2025',
+    'JEE Main 2025',
+    'NEET 2025',
+    'GATE 2025',
+    'CAT 2025',
+    'Banking PO 2025',
+    'Railway NTPC 2025',
+  ];
+
+  // New features (scrolling)
+  const newFeatures = [
+    'AI-Powered Quiz Recommendations',
+    'Real-time Performance Analytics',
+    'Personalized Learning Paths',
+    'Interactive Video Lessons',
+    'Mobile App Launch',
+    'Advanced Progress Tracking',
+  ];
+
   return (
-    <div className="min-h-screen">
-      <Navbar />
-      
-      {/* Hero Section Container with Gradient */}
-      <div className="relative min-h-screen bg-gradient-to-b from-[#010626] to-[#0a1854] pt-[4.5rem]">
-        <main className="container mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Hero Section Content */}
-          <div className="flex flex-col items-center justify-center min-h-[60vh] py-12 relative">
-            {/* Background Elements */}
-            <div className="absolute top-20 left-10 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl"></div>
-            <div className="absolute bottom-20 right-10 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl"></div>
+    <div className="min-h-screen bg-white dark:bg-gray-900">
+      <Menubar />
 
-            {/* Content */}
-            <div className="relative z-10 max-w-4xl mx-auto text-center pt-20">
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-white leading-tight">
-                <TypewriterText
-                  text="Career Master AI Platform"
-                  speed={100}
-                  className="text-4xl md:text-5xl lg:text-6xl font-bold text-white"
-                />
-              </h1>
-
-              <p className="text-lg md:text-xl mb-8 max-w-2xl mx-auto text-white/80 leading-relaxed">
-                <TypewriterText
-                  text="Get started with your immersive learning journey now! Access cutting-edge training solutions and personalized learning experiences powered by AI."
-                  speed={30}
-                  className="text-lg md:text-xl text-white/80"
-                />
-              </p>
-
-              <div className="flex justify-center gap-4">
-                <Link
-                  href="/signup"
-                  className="bg-gradient-to-r from-[#667eea] to-[#764ba2] hover:from-[#5568d3] hover:to-[#6a3d8f] text-white font-bold py-3 px-8 rounded-md transition duration-300 shadow-lg shadow-[#667eea]/20 text-center min-w-[180px]"
-                >
-                  Get Started
-                </Link>
-                <Link
-                  href="/login"
-                  className="bg-transparent border-2 border-white/30 hover:border-white/50 text-white font-bold py-3 px-8 rounded-md transition duration-300 text-center min-w-[180px]"
-                >
-                  Sign In
-                </Link>
-              </div>
-
-              {/* Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-16 text-white">
-                <AnimatedStats />
+      {/* Slider Section */}
+      <section className="relative h-[500px] md:h-[600px] overflow-hidden">
+        {sliderImages.map((image, index) => (
+          <div
+            key={index}
+            className={`absolute inset-0 transition-opacity duration-1000 ${
+              index === currentSlide ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            <div className="w-full h-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
+              <div className="text-center text-white px-4">
+                <h2 className="text-4xl md:text-6xl font-bold mb-4">{image.alt}</h2>
+                <p className="text-xl md:text-2xl">Your journey to success starts here</p>
               </div>
             </div>
           </div>
-        </main>
-      </div>
+        ))}
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+          {sliderImages.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentSlide(index)}
+              className={`w-3 h-3 rounded-full transition-all ${
+                index === currentSlide ? 'bg-white' : 'bg-white/50'
+              }`}
+            />
+          ))}
+        </div>
+      </section>
 
-      {/* Target Audience Section */}
-      <section id="target-audience" className="py-20 bg-white -mt-[100px] pt-32 relative z-0">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      {/* About Us Section */}
+      <section id="about" className="py-20 bg-gray-50 dark:bg-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: '#060e37' }}>
-              Who Can Use This Portal?
+            <h2 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">About Us</h2>
+            <div className="w-24 h-1 bg-orange-500 mx-auto"></div>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Vision */}
+            <div id="vision" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg">
+              <h3 className="text-2xl font-bold mb-4 text-orange-600 dark:text-orange-400">Vision</h3>
+              <p className="text-gray-700 dark:text-gray-300">
+                To become the leading platform for comprehensive education and career development, empowering learners
+                at every stage of their journey.
+              </p>
+            </div>
+
+            {/* Mission */}
+            <div id="mission" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg">
+              <h3 className="text-2xl font-bold mb-4 text-orange-600 dark:text-orange-400">Mission</h3>
+              <p className="text-gray-700 dark:text-gray-300">
+                To provide accessible, high-quality educational resources and assessments that help students achieve
+                their academic and career goals.
+              </p>
+            </div>
+
+            {/* Why We? */}
+            <div id="why-we" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg">
+              <h3 className="text-2xl font-bold mb-4 text-orange-600 dark:text-orange-400">Why We?</h3>
+              <p className="text-gray-700 dark:text-gray-300">
+                We combine cutting-edge technology with expert-curated content to deliver personalized learning
+                experiences that drive real results.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Counter Section */}
+      <section className="py-16 bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <div>
+              <div className="text-4xl md:text-5xl font-bold mb-2">{counterStats.students.toLocaleString()}+</div>
+              <div className="text-lg">Active Students</div>
+            </div>
+            <div>
+              <div className="text-4xl md:text-5xl font-bold mb-2">{counterStats.quizzes.toLocaleString()}+</div>
+              <div className="text-lg">Quizzes Available</div>
+            </div>
+            <div>
+              <div className="text-4xl md:text-5xl font-bold mb-2">{counterStats.success}%</div>
+              <div className="text-lg">Success Rate</div>
+            </div>
+            <div>
+              <div className="text-4xl md:text-5xl font-bold mb-2">{counterStats.awards}+</div>
+              <div className="text-lg">Awards Won</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Why Choose CareerMaster.AI? */}
+      <section id="why-choose" className="py-20 bg-white dark:bg-gray-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">Why Choose CareerMaster.AI?</h2>
+            <div className="w-24 h-1 bg-orange-500 mx-auto"></div>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                title: 'Comprehensive Content',
+                description: 'Access thousands of quizzes covering all subjects and competitive exams.',
+                icon: '📚',
+              },
+              {
+                title: 'AI-Powered Learning',
+                description: 'Personalized recommendations and adaptive learning paths.',
+                icon: '🤖',
+              },
+              {
+                title: 'Real-time Analytics',
+                description: 'Track your progress with detailed performance insights.',
+                icon: '📊',
+              },
+              {
+                title: 'Expert Guidance',
+                description: 'Learn from industry experts and experienced educators.',
+                icon: '👨‍🏫',
+              },
+              {
+                title: 'Flexible Learning',
+                description: 'Study at your own pace, anytime, anywhere.',
+                icon: '⏰',
+              },
+              {
+                title: 'Certification',
+                description: 'Earn certificates upon completion of courses.',
+                icon: '🏆',
+              },
+            ].map((feature, index) => (
+              <div key={index} className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+                <div className="text-4xl mb-4">{feature.icon}</div>
+                <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">{feature.title}</h3>
+                <p className="text-gray-700 dark:text-gray-300">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Who Can Use This Portal? */}
+      <section id="who-can-use" className="py-20 bg-gray-50 dark:bg-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">Who Can Use This Portal?</h2>
+            <div className="w-24 h-1 bg-orange-500 mx-auto"></div>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              'Class 3-10 Students',
+              '10+2 / Intermediate',
+              'Degree Students',
+              'Post Graduate',
+              'Ph.D Scholars',
+              'Competitive Exam Aspirants',
+              'Working Professionals',
+              'Career Changers',
+            ].map((category, index) => (
+              <div key={index} className="bg-white dark:bg-gray-700 p-4 rounded-lg shadow-md text-center">
+                <div className="text-3xl mb-2">🎓</div>
+                <h3 className="font-bold text-gray-900 dark:text-white">{category}</h3>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Comprehensive Quiz Topics & Learning Domains */}
+      <section id="quiz-topics" className="py-20 bg-white dark:bg-gray-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">
+              Comprehensive Quiz Topics & Learning Domains
             </h2>
-            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-              Career Master AI is designed for learners at every stage of their academic and professional journey. 
-              From school students to research scholars, we provide comprehensive learning solutions tailored to your needs.
+            <div className="w-24 h-1 bg-orange-500 mx-auto"></div>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              'Subject-Based Academics',
+              'Olympiads (SOF, IMO, NSO, Cyber, NTSE)',
+              'Aptitude (Quantitative, Logical, DI)',
+              'Reasoning (Analytical, Verbal & Non-Verbal)',
+              'Soft Skills (Vocabulary, Communication, Grammar)',
+              'Competitive Exams (GATE, CAT, EAMCET, UPSC, SSC, NEET, JEE)',
+              'Computer & Technology',
+              'General Knowledge & Current Affairs',
+              'Career Skills',
+              'Cultural, Arts, Heritage, Festivals',
+              'Interview & Placement Preparation',
+            ].map((topic, index) => (
+              <div
+                key={index}
+                className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border-l-4 border-orange-500 hover:shadow-lg transition-shadow"
+              >
+                <p className="text-gray-900 dark:text-white font-medium">{topic}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Certification Section */}
+      <section id="certification" className="py-20 bg-gray-50 dark:bg-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">Get Certified</h2>
+            <div className="w-24 h-1 bg-orange-500 mx-auto"></div>
+            <p className="text-lg text-gray-700 dark:text-gray-300 mt-4">
+              Earn recognized certificates upon completion of courses and assessments
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {[
-              { 
-                title: 'Class 3 to 10', 
-                subtitle: 'K-12 School Students',
-                icon: (
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                ),
-                description: 'Build strong foundations with age-appropriate content and interactive learning.'
-              },
-              { 
-                title: 'Intermediate / Higher Secondary', 
-                subtitle: '10+2 Students',
-                icon: (
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                ),
-                description: 'Prepare for board exams and competitive entrance tests with comprehensive resources.'
-              },
-              { 
-                title: 'Degree Students', 
-                subtitle: 'UG – Arts, Science, Commerce',
-                icon: (
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                ),
-                description: 'Enhance your subject knowledge and develop skills for career readiness.'
-              },
-              { 
-                title: 'Engineering', 
-                subtitle: 'All Branches',
-                icon: (
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                  </svg>
-                ),
-                description: 'Master technical concepts, programming, and engineering fundamentals across all disciplines.'
-              },
-              { 
-                title: 'Medicine', 
-                subtitle: 'MBBS & Paramedical',
-                icon: (
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
-                ),
-                description: 'Comprehensive medical education resources and exam preparation materials.'
-              },
-              { 
-                title: 'Post Graduate', 
-                subtitle: 'M.Tech, MBA, MSc, MA, etc.',
-                icon: (
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                ),
-                description: 'Advanced learning modules for specialized postgraduate programs and research.'
-              },
-              { 
-                title: 'PhD & Research Scholars', 
-                subtitle: 'Advanced Research',
-                icon: (
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                  </svg>
-                ),
-                description: 'Specialized resources for research methodology, academic writing, and scholarly work.'
-              },
-            ].map((category, idx) => (
-              <div
-                key={idx}
-                className="bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 hover:border-[#667eea]"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-lg flex items-center justify-center text-white">
-                    {category.icon}
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold mb-1" style={{ color: '#060e37' }}>
-                      {category.title}
-                    </h3>
-                    <p className="text-sm text-gray-500 mb-2">{category.subtitle}</p>
-                    <p className="text-sm text-gray-600">{category.description}</p>
-                  </div>
-                </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[1, 2, 3].map((cert, index) => (
+              <div key={index} className="bg-white dark:bg-gray-700 p-8 rounded-lg shadow-lg text-center">
+                <div className="text-6xl mb-4">🏆</div>
+                <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">Certificate {cert}</h3>
+                <p className="text-gray-700 dark:text-gray-300">
+                  Complete the course and assessments to earn your certificate
+                </p>
               </div>
             ))}
           </div>
+        </div>
+      </section>
 
-          {/* Quiz Topics Section */}
-          <div className="mt-16 pt-16 border-t border-gray-200">
-            <div className="text-center mb-12">
-              <h3 className="text-2xl md:text-3xl font-bold mb-4" style={{ color: '#060e37' }}>
-                Comprehensive Quiz Topics & Learning Domains
-              </h3>
-              <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-                Explore a wide range of quiz topics covering academic subjects, competitive exams, and professional skills.
-              </p>
-            </div>
+      {/* Pricing Table */}
+      <section id="pricing" className="py-20 bg-white dark:bg-gray-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">Pricing Plans</h2>
+            <div className="w-24 h-1 bg-orange-500 mx-auto"></div>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[
-                'Subject-Based Academics (Maths, Science, Social, Languages, etc.)',
-                'Olympiads (SOF, IMO, NSO, Cyber, NTSE, etc.)',
-                'Aptitude (Quantitative, Logical, DI)',
-                'Reasoning (Analytical, Verbal & Non-Verbal)',
-                'Soft Skills (Vocabulary, Communication, Grammar)',
-                'Competitive Exams (GATE, CAT, EAMCET, UPSC, SSC, NEET, JEE, GRE, IELTS, etc.)',
-                'Computer & Technology (Programming, AI, ML, DBMS, Cloud, Testing, Cyber Security, etc.)',
-                'General Knowledge & Current Affairs',
-                'Career Skills (Resume, Interview, Etiquette, Corporate Skills)',
-                'Cultural, Arts, Heritage, Festivals & Traditions',
-                'Interview & Placement Preparation',
-              ].map((topic, idx) => (
-                <div
-                  key={idx}
-                  className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-[#667eea] transition-all duration-300"
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                name: 'Basic',
+                price: 'Free',
+                features: ['Limited Quizzes', 'Basic Analytics', 'Community Support'],
+              },
+              {
+                name: 'Premium',
+                price: '₹999',
+                period: '/month',
+                features: ['Unlimited Quizzes', 'Advanced Analytics', 'Priority Support', 'Certificates'],
+                popular: true,
+              },
+              {
+                name: 'Enterprise',
+                price: 'Custom',
+                features: ['Everything in Premium', 'Custom Content', 'Dedicated Support', 'API Access'],
+              },
+            ].map((plan, index) => (
+              <div
+                key={index}
+                className={`bg-gray-50 dark:bg-gray-800 p-8 rounded-lg shadow-lg ${
+                  plan.popular ? 'border-4 border-orange-500 transform scale-105' : ''
+                }`}
+              >
+                {plan.popular && (
+                  <div className="bg-orange-500 text-white text-center py-1 rounded-t-lg -mt-8 -mx-8 mb-4">
+                    Most Popular
+                  </div>
+                )}
+                <h3 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">{plan.name}</h3>
+                <div className="mb-6">
+                  <span className="text-4xl font-bold text-orange-600 dark:text-orange-400">{plan.price}</span>
+                  {plan.period && <span className="text-gray-600 dark:text-gray-400">{plan.period}</span>}
+                </div>
+                <ul className="space-y-3 mb-6">
+                  {plan.features.map((feature, idx) => (
+                    <li key={idx} className="flex items-center text-gray-700 dark:text-gray-300">
+                      <svg className="w-5 h-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  className={`w-full py-3 rounded-lg font-bold transition-colors ${
+                    plan.popular
+                      ? 'bg-orange-500 hover:bg-orange-600 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
+                  }`}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-2 h-2 bg-[#667eea] rounded-full mt-2"></div>
-                    <p className="text-sm text-gray-700 font-medium">{topic}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section id="features" className="py-20 bg-gray-50 relative z-0">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-12" style={{ color: '#060e37' }}>
-            Boost Your Career With Our Unique Advantages
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Feature 1 */}
-            <div className="bg-white border border-gray-100 rounded-2xl shadow-md p-8 flex flex-col items-center text-center hover:shadow-xl transition-shadow">
-              <div className="w-24 h-24 bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-full flex items-center justify-center mb-6">
-                <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold mb-2" style={{ color: '#060e37' }}>
-                Dynamic Learning Experiences
-              </h3>
-              <p className="text-gray-600">Participate in hands-on sessions that make concepts come alive.</p>
-            </div>
-            {/* Feature 2 */}
-            <div className="bg-white border border-gray-100 rounded-2xl shadow-md p-8 flex flex-col items-center text-center hover:shadow-xl transition-shadow">
-              <div className="w-24 h-24 bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-full flex items-center justify-center mb-6">
-                <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold mb-2" style={{ color: '#060e37' }}>
-                Detailed Progress Checks
-              </h3>
-              <p className="text-gray-600">Regular, focused assessments to ensure deep understanding.</p>
-            </div>
-            {/* Feature 3 */}
-            <div className="bg-white border border-gray-100 rounded-2xl shadow-md p-8 flex flex-col items-center text-center hover:shadow-xl transition-shadow">
-              <div className="w-24 h-24 bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-full flex items-center justify-center mb-6">
-                <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold mb-2" style={{ color: '#060e37' }}>
-                Mindset for Success
-              </h3>
-              <p className="text-gray-600">Develop resilience and adaptability with proven strategies.</p>
-            </div>
-            {/* Feature 4 */}
-            <div className="bg-white border border-gray-100 rounded-2xl shadow-md p-8 flex flex-col items-center text-center hover:shadow-xl transition-shadow">
-              <div className="w-24 h-24 bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-full flex items-center justify-center mb-6">
-                <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold mb-2" style={{ color: '#060e37' }}>
-                Showcase Your Skills
-              </h3>
-              <p className="text-gray-600">Build a portfolio and share your achievements on top platforms.</p>
-            </div>
-            {/* Feature 5 */}
-            <div className="bg-white border border-gray-100 rounded-2xl shadow-md p-8 flex flex-col items-center text-center hover:shadow-xl transition-shadow">
-              <div className="w-24 h-24 bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-full flex items-center justify-center mb-6">
-                <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold mb-2" style={{ color: '#060e37' }}>
-                Elite Tech Community
-              </h3>
-              <p className="text-gray-600">Join a network of passionate learners and industry leaders.</p>
-            </div>
-            {/* Feature 6 */}
-            <div className="bg-white border border-gray-100 rounded-2xl shadow-md p-8 flex flex-col items-center text-center hover:shadow-xl transition-shadow">
-              <div className="w-24 h-24 bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-full flex items-center justify-center mb-6">
-                <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold mb-2" style={{ color: '#060e37' }}>
-                Industry-Aligned Curriculum
-              </h3>
-              <p className="text-gray-600">Learn with content designed in collaboration with top companies.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Projects Section */}
-      <section id="projects" className="py-20 bg-gray-50">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-12" style={{ color: '#060e37' }}>
-            Showcase Your Skills with Real Projects
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Project cards - simplified version */}
-            {[
-              { title: 'E-Learning Platform', desc: 'Develop a full-stack online learning portal' },
-              { title: 'AI Chatbot', desc: 'Build a smart chatbot for student support' },
-              { title: 'Quiz Application', desc: 'Create a dynamic quiz system with analytics' },
-            ].map((project, idx) => (
-              <div
-                key={idx}
-                className="bg-white border border-gray-200 rounded-2xl shadow-lg p-6 group hover:shadow-2xl hover:scale-105 transition-all duration-500"
-              >
-                <h3 className="text-lg sm:text-xl font-bold mb-2 transition-all duration-500 group-hover:text-[#667eea]">
-                  {project.title}
-                </h3>
-                <p className="text-gray-600 text-sm sm:text-base">{project.desc}</p>
+                  Get Started
+                </button>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Career Roadmap Section */}
-      <CareerRoadmap />
+      {/* Clients Section */}
+      <section id="clients" className="py-20 bg-gray-50 dark:bg-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">Our Clients</h2>
+            <div className="w-24 h-1 bg-orange-500 mx-auto"></div>
+          </div>
 
-      {/* Certificate Section */}
-      <CertificateSection />
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8">
+            {[1, 2, 3, 4, 5, 6].map((client, index) => (
+              <div
+                key={index}
+                className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md flex items-center justify-center h-24"
+              >
+                <div className="text-2xl font-bold text-gray-400">Client {client}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Site Tour Video */}
+      <section id="site-tour" className="py-20 bg-white dark:bg-gray-900">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">Site Tour Video</h2>
+            <div className="w-24 h-1 bg-orange-500 mx-auto"></div>
+          </div>
+
+          <div className="aspect-video bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+            <div className="text-center">
+              <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+              <p className="text-gray-600 dark:text-gray-400">Video Placeholder</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Latest Competitive Exams (Scrolling) */}
+      <section className="py-8 bg-orange-500 text-white overflow-hidden">
+        <div className="flex space-x-8 animate-scroll">
+          <div className="flex space-x-8 whitespace-nowrap">
+            {[...latestExams, ...latestExams].map((exam, index) => (
+              <div key={index} className="flex items-center space-x-2">
+                <span className="text-lg font-medium">{exam}</span>
+                <span className="text-orange-300">•</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* New Features Added (Scrolling) */}
+      <section className="py-8 bg-blue-600 text-white overflow-hidden">
+        <div className="flex space-x-8 animate-scroll-reverse">
+          <div className="flex space-x-8 whitespace-nowrap">
+            {[...newFeatures, ...newFeatures].map((feature, index) => (
+              <div key={index} className="flex items-center space-x-2">
+                <span className="text-lg font-medium">✨ {feature}</span>
+                <span className="text-blue-300">•</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Success Stories */}
+      <section id="success-stories" className="py-20 bg-gray-50 dark:bg-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">Success Stories</h2>
+            <div className="w-24 h-1 bg-orange-500 mx-auto"></div>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                name: 'Rajesh Kumar',
+                role: 'UPSC Aspirant',
+                story: 'CareerMaster.AI helped me clear UPSC prelims with comprehensive mock tests and analytics.',
+                image: '👨‍💼',
+              },
+              {
+                name: 'Priya Sharma',
+                role: 'JEE Student',
+                story: 'The AI-powered recommendations helped me focus on weak areas and improve my score significantly.',
+                image: '👩‍🎓',
+              },
+              {
+                name: 'Amit Patel',
+                role: 'GATE Aspirant',
+                story: 'Excellent platform for GATE preparation with detailed explanations and performance tracking.',
+                image: '👨‍🔬',
+              },
+            ].map((story, index) => (
+              <div key={index} className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg">
+                <div className="text-5xl mb-4 text-center">{story.image}</div>
+                <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">{story.name}</h3>
+                <p className="text-orange-600 dark:text-orange-400 mb-3">{story.role}</p>
+                <p className="text-gray-700 dark:text-gray-300">{story.story}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <Footer />
+      <ScrollToTop />
     </div>
   );
 }

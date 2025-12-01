@@ -5,7 +5,7 @@
 
 import { authUtils } from './auth';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://career-master-ai.onrender.com/api';
 
 export interface ApiResponse<T = any> {
   success: boolean;

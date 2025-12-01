@@ -20,7 +20,7 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/auth/login`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://career-master-ai.onrender.com/api'}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
