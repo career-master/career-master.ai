@@ -81,7 +81,14 @@ export default function AdminQuizzesPage() {
                     <div className="flex items-center justify-between mb-1">
                       <h3 className="text-sm font-semibold text-gray-900">{quiz.title}</h3>
                       <span className="text-xs text-gray-500">
-                        {quiz.durationMinutes} min • {quiz.questions?.length || 0} questions
+                        {quiz.durationMinutes} min • {
+                          quiz.useSections && quiz.sections
+                            ? quiz.sections.reduce((total: number, section: any) => total + (section.questions?.length || 0), 0)
+                            : quiz.questions?.length || 0
+                        } questions
+                        {quiz.useSections && quiz.sections && (
+                          <span className="ml-1 text-purple-600">({quiz.sections.length} sections)</span>
+                        )}
                       </span>
                     </div>
                     {quiz.description && (

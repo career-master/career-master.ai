@@ -14,20 +14,103 @@ class QuizService {
    * @param {string} userId
    */
   static async createQuiz(payload, userId) {
-    const { title, description, durationMinutes, questions, availableFrom, availableTo, batches, availableToEveryone } = payload;
+    try {
+      const { 
+        title, 
+        description, 
+        durationMinutes, 
+        questions, 
+        sections,
+        useSections,
+        availableFrom, 
+        availableTo, 
+        batches, 
+        availableToEveryone,
+        maxAttempts
+      } = payload;
 
-    if (!questions || !Array.isArray(questions) || questions.length === 0) {
-      throw new ErrorHandler(400, 'At least one question is required');
+      const quizData = {
+        title,
+        description,
+        durationMinutes,
+        createdBy: userId,
+        availableToEveryone: availableToEveryone || false,
+        maxAttempts: maxAttempts || 999,
+        isActive: payload.isActive !== undefined ? payload.isActive : true
+      };
+
+      // Handle sections or flat questions
+      if (useSections && sections && Array.isArray(sections) && sections.length > 0) {
+        // Filter out empty questions from sections and validate required fields
+        const validSections = sections.map(section => ({
+          ...section,
+          questions: (section.questions || [])
+            .filter(q => {
+              // Must have question text
+              if (!q.questionText || q.questionText.trim().length === 0) return false;
+              
+              // For MCQ Multiple, must have at least one correct answer selected
+              if (q.questionType === 'multiple_choice_multiple') {
+                if (!q.correctOptionIndices || !Array.isArray(q.correctOptionIndices) || q.correctOptionIndices.length === 0) {
+                  return false;
+                }
+              }
+              
+              // For MCQ Single/True-False, must have correctOptionIndex
+              if (['multiple_choice_single', 'multiple_choice', 'true_false'].includes(q.questionType)) {
+                if (q.correctOptionIndex === undefined || q.correctOptionIndex === null) {
+                  return false;
+                }
+              }
+              
+              return true;
+            })
+            .map(q => {
+              // Clean up: Remove correctOptionIndices for non-MCQ-Multiple questions
+              // This prevents Mongoose validation errors
+              const cleanedQ = { ...q };
+              if (cleanedQ.questionType !== 'multiple_choice_multiple') {
+                delete cleanedQ.correctOptionIndices;
+              }
+              // Also remove other type-incompatible fields
+              if (cleanedQ.questionType !== 'fill_in_blank') {
+                delete cleanedQ.correctAnswers;
+              }
+              if (cleanedQ.questionType !== 'match') {
+                delete cleanedQ.matchPairs;
+              }
+              if (!['reorder', 'drag_drop'].includes(cleanedQ.questionType)) {
+                delete cleanedQ.correctOrder;
+              }
+              if (!['multiple_choice_single', 'multiple_choice_multiple', 'dropdown', 'true_false'].includes(cleanedQ.questionType)) {
+                delete cleanedQ.options;
+                delete cleanedQ.correctOptionIndex;
+              }
+              return cleanedQ;
+            })
+        })).filter(section => section.questions.length > 0);
+
+      if (validSections.length === 0) {
+        throw new ErrorHandler(400, 'At least one complete question is required in sections. Please ensure all questions have question text and correct answers selected.');
+      }
+
+      quizData.useSections = true;
+      quizData.sections = validSections;
+    } else {
+      // Legacy flat questions
+      if (!questions || !Array.isArray(questions) || questions.length === 0) {
+        throw new ErrorHandler(400, 'At least one question is required');
+      }
+
+      // Filter out empty questions
+      const validQuestions = questions.filter(q => q.questionText && q.questionText.trim().length > 0);
+      if (validQuestions.length === 0) {
+        throw new ErrorHandler(400, 'At least one question is required');
+      }
+
+      quizData.useSections = false;
+      quizData.questions = validQuestions;
     }
-
-    const quizData = {
-      title,
-      description,
-      durationMinutes,
-      questions,
-      createdBy: userId,
-      availableToEveryone: availableToEveryone || false
-    };
 
     // Only set dates if they are provided and not empty
     if (availableFrom && availableFrom.trim() !== '') {
@@ -44,9 +127,14 @@ class QuizService {
       quizData.batches = batches.map((b) => String(b).trim()).filter(Boolean);
     }
 
-    const quiz = await QuizRepository.createQuiz(quizData);
+      const quiz = await QuizRepository.createQuiz(quizData);
 
-    return quiz;
+      return quiz;
+    } catch (error) {
+      console.error('Error in QuizService.createQuiz:', error);
+      console.error('Payload received:', JSON.stringify(payload, null, 2));
+      throw error;
+    }
   }
 
   /**
@@ -72,6 +160,18 @@ class QuizService {
     // If available to everyone, clear batches
     if (updates.availableToEveryone) {
       updates.batches = [];
+    }
+
+    // Handle sections or questions updates
+    if (updates.useSections && updates.sections) {
+      // Filter out empty questions from sections
+      updates.sections = updates.sections.map(section => ({
+        ...section,
+        questions: (section.questions || []).filter(q => q.questionText && q.questionText.trim().length > 0)
+      })).filter(section => section.questions.length > 0);
+    } else if (updates.questions) {
+      // Filter out empty questions
+      updates.questions = updates.questions.filter(q => q.questionText && q.questionText.trim().length > 0);
     }
     
     const quiz = await QuizRepository.updateQuiz(quizId, updates);
@@ -138,34 +238,95 @@ class QuizService {
 
     for (const row of rows) {
       const questionText = row.question || row.Question || row.QUESTION;
-      const optionA = row.optionA || row.OptionA || row.A;
-      const optionB = row.optionB || row.OptionB || row.B;
-      const optionC = row.optionC || row.OptionC || row.C;
-      const optionD = row.optionD || row.OptionD || row.D;
-      const correctOption = (row.correctOption || row.Correct || '').toString().trim().toUpperCase();
-      const marks = Number(row.marks || 1);
-      const negativeMarks = Number(row.negativeMarks || 0);
+      const optionA = row.optionA || row.OptionA || row.A || '';
+      const optionB = row.optionB || row.OptionB || row.B || '';
+      const optionC = row.optionC || row.OptionC || row.C || '';
+      const optionD = row.optionD || row.OptionD || row.D || '';
+      const correctOption = (row.correctOption || row.Correct || row.correct || '').toString().trim().toUpperCase();
+      const questionType = (row.type || row.Type || row.TYPE || 'multiple_choice_single').toString().trim().toLowerCase();
+      const marks = Number(row.marks || row.Marks || 1);
+      const negativeMarks = Number(row.negativeMarks || row.NegativeMarks || 0);
 
-      if (!questionText || !optionA || !optionB || !['A', 'B'].includes(correctOption[0] || '')) {
-        // Skip invalid rows but continue processing others
-        // At minimum, need question, two options, and a valid correct option
+      // Skip if no question text
+      if (!questionText) {
         continue;
+      }
+
+      // Determine question type
+      let finalQuestionType = 'multiple_choice_single';
+      if (questionType.includes('multiple') || questionType.includes('multi')) {
+        finalQuestionType = 'multiple_choice_multiple';
+      } else if (questionType.includes('true') || questionType.includes('false') || questionType === 'tf') {
+        finalQuestionType = 'true_false';
+      } else if (questionType.includes('single') || questionType.includes('mcq')) {
+        finalQuestionType = 'multiple_choice_single';
+      }
+
+      // Handle True/False
+      if (finalQuestionType === 'true_false') {
+        const options = ['True', 'False'];
+        const correctIndex = correctOption.includes('TRUE') || correctOption.includes('T') ? 0 : 1;
+        
+        questions.push({
+          questionType: 'true_false',
+          questionText,
+          options,
+          correctOptionIndex: correctIndex,
+          marks: Number.isNaN(marks) ? 1 : marks,
+          negativeMarks: Number.isNaN(negativeMarks) ? 0 : negativeMarks
+        });
+        continue;
+      }
+
+      // Handle Multiple Choice (Single or Multiple)
+      if (!optionA || !optionB) {
+        continue; // Need at least 2 options
       }
 
       const options = [optionA, optionB];
       if (optionC) options.push(optionC);
       if (optionD) options.push(optionD);
 
-      const correctIndexMap = { A: 0, B: 1, C: 2, D: 3 };
-      const correctOptionIndex = correctIndexMap[correctOption[0]];
+      // Check if multiple correct answers (comma-separated like "A,C,D")
+      const correctOptions = correctOption.split(',').map(opt => opt.trim()).filter(Boolean);
+      
+      if (finalQuestionType === 'multiple_choice_multiple' || correctOptions.length > 1) {
+        // Multiple correct answers
+        const correctIndexMap = { A: 0, B: 1, C: 2, D: 3, E: 4, F: 5 };
+        const correctIndices = correctOptions
+          .map(opt => correctIndexMap[opt[0]])
+          .filter(idx => idx !== undefined);
 
-      questions.push({
-        questionText,
-        options,
-        correctOptionIndex,
-        marks: Number.isNaN(marks) ? 1 : marks,
-        negativeMarks: Number.isNaN(negativeMarks) ? 0 : negativeMarks
-      });
+        if (correctIndices.length === 0) {
+          continue; // Invalid correct answers
+        }
+
+        questions.push({
+          questionType: 'multiple_choice_multiple',
+          questionText,
+          options,
+          correctOptionIndices: correctIndices,
+          marks: Number.isNaN(marks) ? 1 : marks,
+          negativeMarks: Number.isNaN(negativeMarks) ? 0 : negativeMarks
+        });
+      } else {
+        // Single correct answer
+        const correctIndexMap = { A: 0, B: 1, C: 2, D: 3, E: 4, F: 5 };
+        const correctOptionIndex = correctIndexMap[correctOption[0]];
+
+        if (correctOptionIndex === undefined) {
+          continue; // Invalid correct option
+        }
+
+        questions.push({
+          questionType: 'multiple_choice_single',
+          questionText,
+          options,
+          correctOptionIndex,
+          marks: Number.isNaN(marks) ? 1 : marks,
+          negativeMarks: Number.isNaN(negativeMarks) ? 0 : negativeMarks
+        });
+      }
     }
 
     if (questions.length === 0) {

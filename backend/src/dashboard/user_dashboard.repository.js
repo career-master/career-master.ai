@@ -83,17 +83,48 @@ class UserDashboardRepository {
       }
 
       // Get recent attempts (last 5)
-      const recentAttemptsList = allAttempts.slice(0, 5).map(attempt => ({
-        _id: attempt._id,
-        quizTitle: attempt.quizId?.title || 'Unknown Quiz',
-        marksObtained: attempt.marksObtained,
-        totalMarks: attempt.totalMarks,
-        percentage: attempt.percentage,
-        result: attempt.result,
-        submittedAt: attempt.submittedAt,
-        correctAnswers: attempt.correctAnswers,
-        incorrectAnswers: attempt.incorrectAnswers
-      }));
+      // First, collect any quiz IDs that need to be fetched
+      const quizIdsToFetch = [];
+      const recentAttemptsSlice = allAttempts.slice(0, 5);
+      
+      recentAttemptsSlice.forEach(attempt => {
+        if (attempt.quizId && typeof attempt.quizId === 'string') {
+          quizIdsToFetch.push(attempt.quizId);
+        }
+      });
+      
+      // Fetch quiz titles for non-populated quizIds
+      let quizTitlesMap = {};
+      if (quizIdsToFetch.length > 0) {
+        const quizzes = await Quiz.find({ _id: { $in: quizIdsToFetch } }).select('_id title').lean();
+        quizzes.forEach(quiz => {
+          quizTitlesMap[quiz._id.toString()] = quiz.title;
+        });
+      }
+      
+      const recentAttemptsList = recentAttemptsSlice.map(attempt => {
+        // Handle both populated and non-populated quizId
+        let quizTitle = 'Unknown Quiz';
+        if (attempt.quizId) {
+          if (typeof attempt.quizId === 'object' && attempt.quizId.title) {
+            quizTitle = attempt.quizId.title;
+          } else if (typeof attempt.quizId === 'string') {
+            quizTitle = quizTitlesMap[attempt.quizId] || 'Unknown Quiz';
+          }
+        }
+        
+        return {
+          _id: attempt._id,
+          quizTitle: quizTitle,
+          marksObtained: attempt.marksObtained || 0,
+          totalMarks: attempt.totalMarks || 0,
+          percentage: attempt.percentage || 0,
+          result: attempt.result || 'fail',
+          submittedAt: attempt.submittedAt || attempt.createdAt,
+          correctAnswers: attempt.correctAnswers || 0,
+          incorrectAnswers: attempt.incorrectAnswers || 0
+        };
+      });
 
       // Get available quizzes count
       const user = await User.findById(userId).lean();

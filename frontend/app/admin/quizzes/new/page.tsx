@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
+import QuizSectionEditor from '@/components/QuizSectionEditor';
+import QuestionTypeSelector from '@/components/QuestionTypeSelector';
+import QuestionFormRouter from '@/components/question-forms/QuestionFormRouter';
 
 interface QuizQuestionForm {
   questionText: string;
@@ -36,6 +39,10 @@ export default function AdminCreateQuizPage() {
   const [selectedBatches, setSelectedBatches] = useState<string[]>([]);
   const [batches, setBatches] = useState<any[]>([]);
   const [isActive, setIsActive] = useState(true);
+  const [useSections, setUseSections] = useState(false);
+  const [sections, setSections] = useState<any[]>([]);
+  const [showQuestionForm, setShowQuestionForm] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<{ sectionIndex: number; questionIndex: number } | null>(null);
 
   const [questions, setQuestions] = useState<QuizQuestionForm[]>([
     {
@@ -108,24 +115,52 @@ export default function AdminCreateQuizPage() {
         setSelectedBatches(Array.isArray(quiz.batches) ? quiz.batches : []);
         setIsActive(quiz.isActive !== undefined ? quiz.isActive : true);
         
-        // Load questions
-        if (Array.isArray(quiz.questions) && quiz.questions.length > 0) {
-          const formattedQuestions = quiz.questions.map((q: any) => {
-            const options = q.options || [];
-            const correctIndex = q.correctOptionIndex || 0;
-            const correctOptionMap: Record<number, 'A' | 'B' | 'C' | 'D'> = { 0: 'A', 1: 'B', 2: 'C', 3: 'D' };
-            return {
+        // Load sections or questions based on quiz structure
+        if (quiz.useSections && Array.isArray(quiz.sections) && quiz.sections.length > 0) {
+          // Load sections
+          setUseSections(true);
+          const loadedSections = quiz.sections.map((section: any, idx: number) => ({
+            sectionTitle: section.sectionTitle || `Section ${idx + 1}`,
+            sectionDescription: section.sectionDescription || '',
+            questionType: section.questionType || undefined,
+            questions: (section.questions || []).map((q: any) => ({
+              questionType: q.questionType || 'multiple_choice_single',
               questionText: q.questionText || '',
-              optionA: options[0] || '',
-              optionB: options[1] || '',
-              optionC: options[2] || '',
-              optionD: options[3] || '',
-              correctOption: correctOptionMap[correctIndex] || 'A',
+              options: q.options || [],
+              correctOptionIndex: q.correctOptionIndex,
+              correctOptionIndices: q.correctOptionIndices,
+              correctAnswers: q.correctAnswers,
+              matchPairs: q.matchPairs,
+              correctOrder: q.correctOrder,
+              imageUrl: q.imageUrl,
+              passageText: q.passageText,
               marks: q.marks || 1,
-              negativeMarks: q.negativeMarks || 0,
-            };
-          });
-          setQuestions(formattedQuestions);
+              negativeMarks: q.negativeMarks || 0
+            })),
+            order: section.order !== undefined ? section.order : idx
+          }));
+          setSections(loadedSections);
+        } else {
+          // Load flat questions (legacy)
+          setUseSections(false);
+          if (Array.isArray(quiz.questions) && quiz.questions.length > 0) {
+            const formattedQuestions = quiz.questions.map((q: any) => {
+              const options = q.options || [];
+              const correctIndex = q.correctOptionIndex || 0;
+              const correctOptionMap: Record<number, 'A' | 'B' | 'C' | 'D'> = { 0: 'A', 1: 'B', 2: 'C', 3: 'D' };
+              return {
+                questionText: q.questionText || '',
+                optionA: options[0] || '',
+                optionB: options[1] || '',
+                optionC: options[2] || '',
+                optionD: options[3] || '',
+                correctOption: correctOptionMap[correctIndex] || 'A',
+                marks: q.marks || 1,
+                negativeMarks: q.negativeMarks || 0,
+              };
+            });
+            setQuestions(formattedQuestions);
+          }
         }
       } else {
         throw new Error('Failed to load quiz');
@@ -206,20 +241,272 @@ export default function AdminCreateQuizPage() {
         payload.batches = selectedBatches;
       }
 
-      payload.questions = questions.map((q) => {
-        const options = [q.optionA, q.optionB, q.optionC, q.optionD].filter(
-          (opt) => opt && opt.trim().length > 0
-        );
-        const correctIndexMap: Record<string, number> = { A: 0, B: 1, C: 2, D: 3 };
-        const correctIndex = correctIndexMap[q.correctOption] ?? 0;
-        return {
-          questionText: q.questionText,
-          options,
-          correctOptionIndex: correctIndex,
-          marks: q.marks,
-          negativeMarks: q.negativeMarks,
-        };
-      });
+      // Handle sections or flat questions
+      if (useSections && sections && sections.length > 0) {
+        // Filter out sections with no valid questions
+        const validSections = sections
+          .map((section, idx) => ({
+            sectionTitle: section.sectionTitle,
+            sectionDescription: section.sectionDescription || '',
+            questionType: section.questionType || undefined,
+            questions: (section.questions || [])
+              .filter((q: any) => {
+                // Must have question text
+                if (!q.questionText || q.questionText.trim().length === 0) return false;
+                
+                const questionType = q.questionType || 'multiple_choice_single';
+                
+                // For MCQ Multiple, must have at least one correct answer selected
+                if (questionType === 'multiple_choice_multiple') {
+                  // Check if correctOptionIndices exists, is an array, and has at least one valid index
+                  if (!q.correctOptionIndices || !Array.isArray(q.correctOptionIndices) || q.correctOptionIndices.length === 0) {
+                    console.warn('Filtering out MCQ Multiple question without correctOptionIndices:', q);
+                    return false; // Filter out incomplete MCQ Multiple questions
+                  }
+                  // Also check that options exist
+                  if (!q.options || !Array.isArray(q.options) || q.options.length < 2) {
+                    console.warn('Filtering out MCQ Multiple question without enough options:', q);
+                    return false;
+                  }
+                  // Validate that all indices are valid
+                  const validIndices = q.correctOptionIndices.filter((idx: number) => 
+                    typeof idx === 'number' && idx >= 0 && idx < q.options.length
+                  );
+                  if (validIndices.length === 0) {
+                    console.warn('Filtering out MCQ Multiple question with invalid indices:', q);
+                    return false;
+                  }
+                }
+                
+                // For MCQ Single/True-False, must have correctOptionIndex
+                if (['multiple_choice_single', 'multiple_choice', 'true_false'].includes(questionType)) {
+                  if (q.correctOptionIndex === undefined || q.correctOptionIndex === null) {
+                    return false; // Filter out incomplete questions
+                  }
+                }
+                
+                // For Reorder questions, must have correctOrder
+                if (questionType === 'reorder') {
+                  if (!q.correctOrder || !Array.isArray(q.correctOrder) || q.correctOrder.length === 0) {
+                    return false; // Filter out incomplete reorder questions
+                  }
+                  // Check that all items have text
+                  const validItems = q.correctOrder.filter((item: string) => item && item.trim().length > 0);
+                  if (validItems.length === 0) {
+                    return false;
+                  }
+                }
+                
+                // For Match questions, must have matchPairs
+                if (questionType === 'match') {
+                  if (!q.matchPairs || !Array.isArray(q.matchPairs) || q.matchPairs.length === 0) {
+                    console.warn('Filtering out Match question without matchPairs:', q);
+                    return false; // Filter out incomplete match questions
+                  }
+                  // Check that all pairs have both left and right values
+                  const validPairs = q.matchPairs.filter((pair: any) => 
+                    pair && 
+                    typeof pair === 'object' &&
+                    pair.left && pair.left.trim().length > 0 &&
+                    pair.right && pair.right.trim().length > 0
+                  );
+                  if (validPairs.length === 0) {
+                    console.warn('Filtering out Match question without valid pairs:', q);
+                    return false;
+                  }
+                }
+                
+                return true;
+              })
+              .map((q: any) => {
+              // Ensure questionType is set - use the actual question type, don't default
+              const questionType = q.questionType || 'multiple_choice_single';
+              
+              // Clean question data - only include fields relevant to this question type
+              const questionData: any = {
+                questionType: questionType,
+                questionText: q.questionText?.trim() || '',
+                marks: q.marks || 1,
+                negativeMarks: q.negativeMarks || 0
+              };
+              
+              // Explicitly exclude incorrect fields based on question type
+              // This prevents leftover fields from type changes from causing validation errors
+
+              // Add type-specific fields ONLY for the correct question type
+              // MCQ types (single, multiple, true/false, dropdown)
+              if (['multiple_choice_single', 'multiple_choice_multiple', 'dropdown', 'true_false'].includes(questionType)) {
+                // For True/False, always set options to ['True', 'False']
+                if (questionType === 'true_false') {
+                  questionData.options = ['True', 'False'];
+                } else if (q.options && Array.isArray(q.options) && q.options.length > 0) {
+                  questionData.options = q.options.filter((opt: string) => opt && opt.trim().length > 0);
+                }
+                if (questionType === 'multiple_choice_multiple') {
+                  // For MCQ Multiple, ALWAYS include correctOptionIndices
+                  // The frontend filter should have already ensured this exists and has valid values
+                  if (q.correctOptionIndices && Array.isArray(q.correctOptionIndices) && q.correctOptionIndices.length > 0) {
+                    // Validate and filter indices to ensure they're within bounds
+                    const validIndices = q.correctOptionIndices.filter((idx: number) => 
+                      typeof idx === 'number' && idx >= 0 && idx < (q.options?.length || 0)
+                    );
+                    // Always include it - if empty, backend validation will catch it
+                    questionData.correctOptionIndices = validIndices.length > 0 ? validIndices : [];
+                  } else {
+                    // If somehow missing, include empty array - backend validation will catch it
+                    // This shouldn't happen if filter worked correctly
+                    console.warn('MCQ Multiple question missing or empty correctOptionIndices, including empty array:', q);
+                    questionData.correctOptionIndices = [];
+                  }
+                } else {
+                  // For single choice, only include correctOptionIndex
+                  if (q.correctOptionIndex !== undefined && q.correctOptionIndex !== null) {
+                    questionData.correctOptionIndex = q.correctOptionIndex;
+                  }
+                }
+              }
+              
+              // Fill in blank
+              if (questionType === 'fill_in_blank') {
+                if (q.correctAnswers && Array.isArray(q.correctAnswers) && q.correctAnswers.length > 0) {
+                  questionData.correctAnswers = q.correctAnswers.filter((ans: string) => ans && ans.trim().length > 0);
+                }
+              }
+              
+              // Match
+              if (questionType === 'match') {
+                if (q.matchPairs && Array.isArray(q.matchPairs) && q.matchPairs.length > 0) {
+                  // Filter out empty pairs and ensure both left and right have values
+                  const validPairs = q.matchPairs
+                    .filter((pair: any) => 
+                      pair && 
+                      typeof pair === 'object' &&
+                      pair.left && pair.left.trim().length > 0 &&
+                      pair.right && pair.right.trim().length > 0
+                    )
+                    .map((pair: any) => ({
+                      left: pair.left.trim(),
+                      right: pair.right.trim()
+                    }));
+                  if (validPairs.length > 0) {
+                    questionData.matchPairs = validPairs;
+                  }
+                }
+              }
+              
+              // Reorder
+              if (questionType === 'reorder') {
+                if (q.correctOrder && Array.isArray(q.correctOrder) && q.correctOrder.length > 0) {
+                  questionData.correctOrder = q.correctOrder.filter((item: string) => item && item.trim().length > 0);
+                }
+              }
+              
+              // Image based
+              if (['image_based', 'hotspot', 'labeling', 'draw'].includes(questionType)) {
+                if (q.imageUrl && q.imageUrl.trim().length > 0) {
+                  questionData.imageUrl = q.imageUrl.trim();
+                }
+                // Image based also has options
+                if (questionType === 'image_based') {
+                  if (q.options && Array.isArray(q.options) && q.options.length > 0) {
+                    questionData.options = q.options.filter((opt: string) => opt && opt.trim().length > 0);
+                  }
+                  if (q.correctOptionIndex !== undefined && q.correctOptionIndex !== null) {
+                    questionData.correctOptionIndex = q.correctOptionIndex;
+                  }
+                }
+              }
+              
+              // Passage
+              if (questionType === 'passage') {
+                if (q.passageText && q.passageText.trim().length > 0) {
+                  questionData.passageText = q.passageText.trim();
+                }
+                if (q.options && Array.isArray(q.options) && q.options.length > 0) {
+                  questionData.options = q.options.filter((opt: string) => opt && opt.trim().length > 0);
+                }
+                if (q.correctOptionIndex !== undefined && q.correctOptionIndex !== null) {
+                  questionData.correctOptionIndex = q.correctOptionIndex;
+                }
+              }
+              
+              // IMPORTANT: Explicitly remove fields that shouldn't be present for this question type
+              // This prevents validation errors from leftover fields when question types are changed
+              if (questionType !== 'multiple_choice_multiple') {
+                delete questionData.correctOptionIndices; // Remove for all non-MCQ-Multiple questions
+              }
+              if (!['multiple_choice_single', 'multiple_choice_multiple', 'dropdown', 'true_false', 'passage', 'image_based'].includes(questionType)) {
+                delete questionData.options; // Remove options for non-option-based questions
+                delete questionData.correctOptionIndex; // Remove correctOptionIndex for non-option-based questions
+              }
+              if (questionType !== 'fill_in_blank') {
+                delete questionData.correctAnswers; // Remove for non-fill-in-blank questions
+              }
+              if (questionType !== 'match') {
+                delete questionData.matchPairs; // Remove for non-match questions
+              }
+              if (questionType !== 'reorder') {
+                delete questionData.correctOrder; // Remove for non-reorder questions
+              }
+              if (!['image_based', 'hotspot', 'labeling', 'draw'].includes(questionType)) {
+                delete questionData.imageUrl; // Remove for non-image questions
+              }
+              if (questionType !== 'passage') {
+                delete questionData.passageText; // Remove for non-passage questions
+              }
+
+              return questionData;
+            }),
+          order: idx
+          }))
+          .map(section => ({
+            ...section,
+            // Final validation pass: filter out any MCQ Multiple questions without valid correctOptionIndices
+            questions: section.questions.filter((q: any) => {
+              if (q.questionType === 'multiple_choice_multiple') {
+                if (!q.correctOptionIndices || !Array.isArray(q.correctOptionIndices) || q.correctOptionIndices.length === 0) {
+                  console.warn('Final filter: Removing MCQ Multiple question without valid correctOptionIndices:', q);
+                  return false;
+                }
+              }
+              return true;
+            })
+          }))
+          .filter(section => section.questions.length > 0); // Only keep sections with questions
+
+        if (validSections.length === 0) {
+          setError('At least one complete question is required. Please ensure all questions have question text and correct answers selected. For MCQ (Multiple Correct) questions, at least one option must be marked as correct.');
+          setSaving(false);
+          return;
+        }
+        
+        // Check if any sections were filtered out due to incomplete questions
+        const totalQuestionsBefore = sections.reduce((sum, s) => sum + (s.questions?.length || 0), 0);
+        const totalQuestionsAfter = validSections.reduce((sum, s) => sum + s.questions.length, 0);
+        if (totalQuestionsBefore > totalQuestionsAfter) {
+          setError(`Warning: ${totalQuestionsBefore - totalQuestionsAfter} incomplete question(s) were removed. Please ensure all questions have question text and correct answers selected before saving.`);
+        }
+
+        payload.useSections = true;
+        payload.sections = validSections;
+      } else {
+        payload.useSections = false;
+        payload.questions = questions.map((q) => {
+          const options = [q.optionA, q.optionB, q.optionC, q.optionD].filter(
+            (opt) => opt && opt.trim().length > 0
+          );
+          const correctIndexMap: Record<string, number> = { A: 0, B: 1, C: 2, D: 3 };
+          const correctIndex = correctIndexMap[q.correctOption] ?? 0;
+          return {
+            questionType: 'multiple_choice_single',
+            questionText: q.questionText,
+            options,
+            correctOptionIndex: correctIndex,
+            marks: q.marks,
+            negativeMarks: q.negativeMarks,
+          };
+        });
+      }
 
       let res;
       if (quizId) {
@@ -610,16 +897,42 @@ export default function AdminCreateQuizPage() {
             </div>
 
             <div className="mt-4">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-bold text-gray-900">Questions</h3>
-                <button
-                  type="button"
-                  onClick={addQuestion}
-                  className="rounded-lg bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-100"
-                >
-                  + Add Question
-                </button>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={useSections}
+                    onChange={(e) => {
+                      setUseSections(e.target.checked);
+                      if (e.target.checked && sections.length === 0) {
+                        setSections([{
+                          sectionTitle: 'Section 1',
+                          sectionDescription: '',
+                          questions: [],
+                          order: 0
+                        }]);
+                      }
+                    }}
+                    className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                  />
+                  <span className="text-sm font-semibold text-gray-700">Use Sections</span>
+                </label>
               </div>
+
+              {useSections ? (
+                <QuizSectionEditor sections={sections} onChange={setSections} />
+              ) : (
+                <>
+                  <div className="flex items-center justify-end mb-2">
+                    <button
+                      type="button"
+                      onClick={addQuestion}
+                      className="rounded-lg bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-100"
+                    >
+                      + Add Question
+                    </button>
+                  </div>
 
               <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1">
                 {questions.map((q, index) => (
@@ -703,8 +1016,10 @@ export default function AdminCreateQuizPage() {
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="pt-4">

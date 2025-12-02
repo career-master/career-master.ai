@@ -59,6 +59,14 @@ const errorHandler = (err, req, res, next) => {
     // Zod validation error
     statusCode = 400;
     message = err.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+  } else if (err.message && (err.message.includes('ENOTFOUND') || err.message.includes('getaddrinfo') || err.message.includes('MongoNetworkError'))) {
+    // MongoDB connection errors
+    statusCode = 503;
+    message = 'Database connection failed. Please check MongoDB connection string and network access.';
+  } else if (err.message && err.message.includes('Database connection')) {
+    // Database connection errors from repository
+    statusCode = err.statusCode || 503;
+    message = err.message;
   }
 
   // Log error details

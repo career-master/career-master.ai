@@ -24,7 +24,9 @@ export default function DashboardLayout({
 
   useEffect(() => {
     // Set active item based on current path
-    if (pathname?.includes('/quizzes')) {
+    if (pathname?.includes('/reports')) {
+      setActiveItem('reports');
+    } else if (pathname?.includes('/quizzes')) {
       setActiveItem('quizzes');
     } else if (pathname?.includes('/dashboard')) {
       setActiveItem('dashboard');
@@ -52,6 +54,16 @@ export default function DashboardLayout({
       ), 
       href: '/dashboard/quizzes' 
     },
+    { 
+      id: 'reports', 
+      label: 'Quiz Reports', 
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      ), 
+      href: '/dashboard/reports' 
+    },
   ];
 
   if (loading) {
@@ -69,9 +81,13 @@ export default function DashboardLayout({
     return null;
   }
 
+  // Hide sidebar on quiz attempt pages
+  const isQuizAttemptPage = pathname?.includes('/quizzes/') && pathname?.match(/\/quizzes\/[^/]+\/?$/);
+  
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
+      {/* Sidebar - Hidden on quiz attempt pages */}
+      {!isQuizAttemptPage && (
       <div className={`${collapsed ? 'w-16' : 'w-64'} bg-gray-900 text-white transition-all duration-300 flex flex-col fixed h-screen z-40`}>
         {/* Logo */}
         <div className="p-4 border-b border-gray-700">
@@ -147,9 +163,10 @@ export default function DashboardLayout({
           )}
         </div>
       </div>
+      )}
 
       {/* Main Content */}
-      <div className={`flex-1 transition-all duration-300 ${collapsed ? 'ml-16' : 'ml-64'}`}>
+      <div className={`flex-1 transition-all duration-300 ${isQuizAttemptPage ? 'ml-0' : (collapsed ? 'ml-16' : 'ml-64')}`}>
         {children}
       </div>
     </div>
