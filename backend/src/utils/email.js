@@ -80,7 +80,19 @@ class EmailUtil {
   async sendOTPEmail(email, otp, purpose = 'signup') {
     try {
       if (!this.resend) {
-        throw new Error('Resend API is not initialized. Please check RESEND_API_KEY configuration.');
+        // Provide detailed error message for debugging
+        const errorDetails = [];
+        if (!env.RESEND_API_KEY) {
+          errorDetails.push('RESEND_API_KEY is not set in environment variables');
+        } else if (!env.RESEND_API_KEY.startsWith('re_')) {
+          errorDetails.push(`RESEND_API_KEY format is invalid (should start with 're_', got: ${env.RESEND_API_KEY.substring(0, 10)}...)`);
+        } else {
+          errorDetails.push('Resend API initialization failed (check server logs)');
+        }
+        
+        const errorMsg = `Email service is not configured. ${errorDetails.join('. ')}. Please set RESEND_API_KEY in Render environment variables.`;
+        console.error('❌ Email service error:', errorMsg);
+        throw new Error(errorMsg);
       }
 
       const subjectMap = {
