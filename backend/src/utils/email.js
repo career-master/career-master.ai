@@ -21,30 +21,78 @@ class EmailUtil {
    */
   initializeTransporter() {
     try {
+      // Check if SMTP credentials are provided
+      if (!env.SMTP_USER || !env.SMTP_PASS) {
+        console.warn('⚠️  SMTP credentials not configured. Email functionality will be disabled.');
+        console.warn('   SMTP_USER:', env.SMTP_USER ? 'Set' : 'NOT SET');
+        console.warn('   SMTP_PASS:', env.SMTP_PASS ? 'Set' : 'NOT SET');
+        this.transporter = null;
+        return;
+      }
+
+      // Parse SMTP_SECURE correctly (handle string "true"/"false" from env vars)
+      const smtpSecure = env.SMTP_SECURE === true || env.SMTP_SECURE === 'true';
+      const smtpPort = parseInt(env.SMTP_PORT, 10) || 587;
+
+      // Log SMTP configuration (without password)
+      console.log('📧 Initializing SMTP transporter...');
+      console.log(`   Host: ${env.SMTP_HOST}`);
+      console.log(`   Port: ${smtpPort}`);
+      console.log(`   Secure: ${smtpSecure}`);
+      console.log(`   User: ${env.SMTP_USER}`);
+      console.log(`   From: ${env.EMAIL_FROM}`);
+
       this.transporter = nodemailer.createTransport({
         host: env.SMTP_HOST,
-        port: env.SMTP_PORT,
-        secure: env.SMTP_SECURE, // true for 465, false for other ports
+        port: smtpPort,
+        secure: smtpSecure, // true for 465, false for other ports
         auth: {
           user: env.SMTP_USER,
           pass: env.SMTP_PASS
         },
+        // Connection timeout settings (increased for Render)
+        connectionTimeout: 30000, // 30 seconds for Render
+        greetingTimeout: 30000,
+        socketTimeout: 30000,
         // For Gmail and similar services
         tls: {
-          rejectUnauthorized: false
-        }
+          rejectUnauthorized: false,
+          ciphers: 'SSLv3'
+        },
+        // Additional options for better compatibility
+        pool: true,
+        maxConnections: 1,
+        maxMessages: 3
       });
 
-      // Verify connection configuration
-      this.transporter.verify((error) => {
-        if (error) {
-          console.error('❌ SMTP configuration error:', error);
-        } else {
-          console.log('✅ SMTP server is ready to send emails');
+      // Verify connection configuration asynchronously (non-blocking)
+      // Don't block server startup if SMTP is slow/unavailable
+      setTimeout(() => {
+        if (this.transporter) {
+          console.log('🔄 Verifying SMTP connection...');
+          this.transporter.verify((error) => {
+            if (error) {
+              console.error('❌ SMTP verification failed:', error.message);
+              console.error('   Code:', error.code);
+              console.error('   Command:', error.command);
+              if (error.code === 'ETIMEDOUT') {
+                console.error('   ⚠️  Connection timeout - Check:');
+                console.error('      - SMTP_HOST is correct');
+                console.error('      - SMTP_PORT is correct');
+                console.error('      - Firewall allows outbound connections');
+                console.error('      - SMTP server is accessible from Render network');
+              }
+              console.warn('   ⚠️  Server will continue, but emails may not work');
+            } else {
+              console.log('✅ SMTP server is ready to send emails');
+            }
+          });
         }
-      });
+      }, 3000); // Wait 3 seconds before verifying (give Render time to initialize)
     } catch (error) {
       console.error('❌ Error initializing email transporter:', error);
+      console.error('   Stack:', error.stack);
+      console.warn('⚠️  Email functionality will be disabled. Server will continue running.');
       this.transporter = null;
     }
   }
@@ -59,7 +107,8 @@ class EmailUtil {
   async sendOTPEmail(email, otp, purpose = 'signup') {
     try {
       if (!this.transporter) {
-        throw new Error('Email transporter not initialized');
+        console.warn('⚠️  Email transporter not initialized. SMTP credentials may be missing.');
+        throw new Error('Email service is not configured. Please contact support.');
       }
 
       const subjectMap = {
@@ -80,14 +129,21 @@ class EmailUtil {
         text: textContent
       };
 
+      console.log(`📧 Sending OTP email to: ${email}`);
       const info = await this.transporter.sendMail(mailOptions);
+      console.log(`✅ OTP email sent successfully. Message ID: ${info.messageId}`);
       return {
         success: true,
         messageId: info.messageId,
         response: info.response
       };
     } catch (error) {
-      console.error('❌ Error sending OTP email:', error);
+      console.error('❌ Error sending OTP email:', error.message);
+      console.error('   Error code:', error.code);
+      console.error('   Error command:', error.command);
+      if (error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED') {
+        throw new Error(`SMTP connection failed. Please check SMTP configuration in Render environment variables.`);
+      }
       throw new Error(`Failed to send email: ${error.message}`);
     }
   }
