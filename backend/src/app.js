@@ -99,13 +99,15 @@ app.get('/health', (req, res) => {
   });
 });
 
-// SMTP test endpoint (for debugging)
-app.get('/api/test-smtp', async (req, res) => {
+// Email test endpoint (for debugging)
+app.get('/api/test-email', async (req, res) => {
   try {
     const emailUtil = require('./utils/email');
     const env = require('./config/env');
     
-    const smtpConfig = {
+    const emailConfig = {
+      provider: emailUtil.emailProvider || 'none',
+      resendApiKey: env.RESEND_API_KEY ? 'Set (hidden)' : 'NOT SET',
       smtpConfigured: !!emailUtil.transporter,
       smtpHost: env.SMTP_HOST,
       smtpPort: env.SMTP_PORT,
@@ -116,33 +118,31 @@ app.get('/api/test-smtp', async (req, res) => {
       emailFromName: env.EMAIL_FROM_NAME
     };
 
-    let smtpWorking = false;
-    let smtpError = null;
+    let emailWorking = false;
+    let emailError = null;
 
-    if (emailUtil.transporter) {
-      try {
-        smtpWorking = await emailUtil.testEmailConfig();
-      } catch (error) {
-        smtpError = {
-          message: error.message,
-          code: error.code,
-          command: error.command
-        };
-      }
+    try {
+      emailWorking = await emailUtil.testEmailConfig();
+    } catch (error) {
+      emailError = {
+        message: error.message,
+        code: error.code,
+        command: error.command
+      };
     }
 
     res.status(200).json({
       success: true,
-      smtp: {
-        ...smtpConfig,
-        smtpWorking,
-        smtpError
+      email: {
+        ...emailConfig,
+        emailWorking,
+        emailError
       },
-      message: smtpWorking 
-        ? 'SMTP is configured and working' 
-        : smtpConfig.smtpConfigured 
-          ? 'SMTP is configured but connection failed' 
-          : 'SMTP is not configured'
+      message: emailWorking 
+        ? `Email service (${emailConfig.provider}) is configured and working` 
+        : emailConfig.provider !== 'none'
+          ? `Email service (${emailConfig.provider}) is configured but connection failed` 
+          : 'Email service is not configured. Set RESEND_API_KEY or SMTP credentials.'
     });
   } catch (error) {
     res.status(500).json({

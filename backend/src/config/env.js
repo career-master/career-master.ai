@@ -18,7 +18,10 @@ const env = {
   JWT_ACCESS_EXPIRY: process.env.JWT_ACCESS_EXPIRY || '15m',
   JWT_REFRESH_EXPIRY: process.env.JWT_REFRESH_EXPIRY || '7d',
 
-  // Email Configuration (SMTP)
+  // Email Configuration
+  // Resend API (preferred - more reliable)
+  RESEND_API_KEY: process.env.RESEND_API_KEY || '',
+  // SMTP Configuration (fallback)
   SMTP_HOST: process.env.SMTP_HOST || 'smtp.gmail.com',
   SMTP_PORT: process.env.SMTP_PORT || '587',
   SMTP_SECURE: process.env.SMTP_SECURE === 'true' || process.env.SMTP_SECURE === true, // true for 465, false for other ports
@@ -46,10 +49,14 @@ if (env.NODE_ENV === 'production') {
   const required = [
     'MONGODB_URI',
     'JWT_ACCESS_SECRET',
-    'JWT_REFRESH_SECRET',
-    'SMTP_USER',
-    'SMTP_PASS'
+    'JWT_REFRESH_SECRET'
   ];
+
+  // Email is required - either Resend API key OR SMTP credentials
+  const hasEmailConfig = env.RESEND_API_KEY || (env.SMTP_USER && env.SMTP_PASS);
+  if (!hasEmailConfig) {
+    required.push('RESEND_API_KEY or (SMTP_USER and SMTP_PASS)');
+  }
 
   const missing = required.filter(key => !process.env[key]);
 
