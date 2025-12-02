@@ -99,6 +99,62 @@ app.get('/health', (req, res) => {
   });
 });
 
+// SMTP test endpoint (for debugging)
+app.get('/api/test-smtp', async (req, res) => {
+  try {
+    const emailUtil = require('./utils/email');
+    const env = require('./config/env');
+    
+    const smtpConfig = {
+      smtpConfigured: !!emailUtil.transporter,
+      smtpHost: env.SMTP_HOST,
+      smtpPort: env.SMTP_PORT,
+      smtpSecure: env.SMTP_SECURE,
+      smtpUser: env.SMTP_USER ? 'Set (hidden)' : 'NOT SET',
+      smtpPass: env.SMTP_PASS ? 'Set (hidden)' : 'NOT SET',
+      emailFrom: env.EMAIL_FROM,
+      emailFromName: env.EMAIL_FROM_NAME
+    };
+
+    let smtpWorking = false;
+    let smtpError = null;
+
+    if (emailUtil.transporter) {
+      try {
+        smtpWorking = await emailUtil.testEmailConfig();
+      } catch (error) {
+        smtpError = {
+          message: error.message,
+          code: error.code,
+          command: error.command
+        };
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      smtp: {
+        ...smtpConfig,
+        smtpWorking,
+        smtpError
+      },
+      message: smtpWorking 
+        ? 'SMTP is configured and working' 
+        : smtpConfig.smtpConfigured 
+          ? 'SMTP is configured but connection failed' 
+          : 'SMTP is not configured'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: {
+        message: error.message,
+        stack: env.NODE_ENV === 'development' ? error.stack : undefined
+      }
+    });
+  }
+});
+
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/roles', rolesRoutes);
