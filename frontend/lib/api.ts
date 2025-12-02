@@ -135,7 +135,27 @@ class ApiService {
         headers: finalHeaders,
       });
 
-      const data = await response.json();
+      // Try to parse JSON, but handle cases where response is not JSON
+      let data: any = null;
+      const contentType = response.headers.get('content-type');
+      const isJson = contentType && contentType.includes('application/json');
+      
+      try {
+        const text = await response.text();
+        if (text) {
+          data = isJson ? JSON.parse(text) : { message: text };
+        } else {
+          data = { message: 'Empty response' };
+        }
+      } catch (parseError) {
+        // If JSON parsing fails, create a basic error object
+        data = {
+          error: {
+            message: `Server error (${response.status}): ${response.statusText}`
+          },
+          message: `Server error (${response.status}): ${response.statusText}`
+        };
+      }
 
       // If 401 and we haven't retried yet, try to refresh token
       if (response.status === 401 && retryCount === 0 && !endpoint.includes('/auth/')) {
@@ -145,12 +165,13 @@ class ApiService {
           return this.request<T>(endpoint, options, retryCount + 1);
         } catch (refreshError) {
           // Refresh failed, throw original error
-          throw new Error(data.error?.message || data.message || 'Authentication failed');
+          throw new Error(data?.error?.message || data?.message || 'Authentication failed');
         }
       }
 
       if (!response.ok) {
-        throw new Error(data.error?.message || data.message || 'Request failed');
+        const errorMessage = data?.error?.message || data?.message || `Request failed with status ${response.status}`;
+        throw new Error(errorMessage);
       }
 
       return data;
@@ -247,8 +268,8 @@ class ApiService {
     });
   }
 
-  // Get user attempts for a quiz
-  async getUserQuizAttempts(quizId: string): Promise<ApiResponse> {
+  // Get user attempts for a specific quiz
+  async getUserQuizAttemptsForQuiz(quizId: string): Promise<ApiResponse> {
     return this.request(`/quizzes/${quizId}/attempts`, {
       method: 'GET',
     });
@@ -257,6 +278,120 @@ class ApiService {
   // Get user dashboard statistics
   async getUserDashboardStats(): Promise<ApiResponse> {
     return this.request('/dashboard/user/stats', {
+      method: 'GET',
+    });
+  }
+
+  // Reports & Leaderboard
+  async getTopPerformers(options?: {
+    limit?: number;
+    quizId?: string;
+    batchId?: string;
+    sortBy?: 'averageScore' | 'totalMarks' | 'totalAttempts' | 'bestScore';
+  }): Promise<ApiResponse> {
+    const params = new URLSearchParams();
+    if (options?.limit) params.append('limit', String(options.limit));
+    if (options?.quizId) params.append('quizId', options.quizId);
+    if (options?.batchId) params.append('batchId', options.batchId);
+    if (options?.sortBy) params.append('sortBy', options.sortBy);
+    
+    const query = params.toString();
+    return this.request(`/reports/top-performers${query ? `?${query}` : ''}`, {
+      method: 'GET',
+    });
+  }
+
+  async getUserRankAndComparison(userId: string, options?: {
+    quizId?: string;
+    batchId?: string;
+  }): Promise<ApiResponse> {
+    const params = new URLSearchParams();
+    if (options?.quizId) params.append('quizId', options.quizId);
+    if (options?.batchId) params.append('batchId', options.batchId);
+    
+    const query = params.toString();
+    return this.request(`/reports/user-rank/${userId}${query ? `?${query}` : ''}`, {
+      method: 'GET',
+    });
+  }
+
+  async getQuizLeaderboard(quizId: string, limit?: number): Promise<ApiResponse> {
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', String(limit));
+    
+    const query = params.toString();
+    return this.request(`/reports/quiz-leaderboard/${quizId}${query ? `?${query}` : ''}`, {
+      method: 'GET',
+    });
+  }
+
+  // Quiz Report Generation
+  async getQuizAttemptReport(attemptId: string): Promise<ApiResponse> {
+    return this.request(`/reports/quiz-attempt/${attemptId}`, {
+      method: 'GET',
+    });
+  }
+
+  async downloadPDFReport(attemptId: string): Promise<Blob> {
+    const token = this.getToken();
+    const url = `${this.baseURL}/reports/quiz-attempt/${attemptId}/pdf`;
+    
+    console.log('Downloading PDF from:', url);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('PDF download failed:', response.status, errorText);
+      throw new Error(`Failed to download PDF report: ${response.status} ${response.statusText}`);
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (contentType && !contentType.includes('application/pdf')) {
+      const errorText = await response.text();
+      console.error('Invalid content type:', contentType, errorText);
+      throw new Error('Invalid response: expected PDF file');
+    }
+
+    const blob = await response.blob();
+    
+    if (blob.size === 0) {
+      throw new Error('Empty PDF file received');
+    }
+
+    return blob;
+  }
+
+  async downloadExcelReport(attemptId: string): Promise<Blob> {
+    const token = this.getToken();
+    const url = `${this.baseURL}/reports/quiz-attempt/${attemptId}/excel`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to download Excel report');
+    }
+
+    return response.blob();
+  }
+
+  // Get all user quiz attempts (for reports)
+  async getUserQuizAttempts(quizId?: string): Promise<ApiResponse> {
+    const params = new URLSearchParams();
+    if (quizId) params.append('quizId', quizId);
+    
+    const query = params.toString();
+    return this.request(`/reports/user-quiz-attempts${query ? `?${query}` : ''}`, {
       method: 'GET',
     });
   }
@@ -308,6 +443,43 @@ class ApiService {
     }
 
     return data;
+  }
+
+  // Image Upload
+  async uploadImage(file: File, folder?: string): Promise<ApiResponse> {
+    const token = this.getToken();
+    const formData = new FormData();
+    formData.append('image', file);
+    if (folder) {
+      formData.append('folder', folder);
+    }
+
+    const url = `${this.baseURL}/upload/image`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error?.message || data.message || 'Failed to upload image');
+    }
+
+    return data;
+  }
+
+  async uploadImageBase64(base64String: string, folder?: string): Promise<ApiResponse> {
+    return this.request('/upload/image-base64', {
+      method: 'POST',
+      body: JSON.stringify({
+        image: base64String,
+        folder: folder || 'career-master/quiz-images'
+      }),
+    });
   }
 
   // Batches admin endpoints

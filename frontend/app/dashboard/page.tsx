@@ -5,6 +5,8 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { apiService } from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import LeaderboardCard from '@/components/LeaderboardCard';
+import ComparisonView from '@/components/ComparisonView';
 
 interface DashboardStats {
   overview: {
@@ -240,12 +242,13 @@ export default function DashboardPage() {
               { id: 'mentor', label: 'AI Mentor', icon: 'robot' },
               { id: 'tests', label: 'Adaptive Tests', icon: 'file' },
               { id: 'analytics', label: 'Performance Analytics', icon: 'chart' },
+              { id: 'reports', label: 'Quiz Reports', icon: 'report', link: '/dashboard/reports' },
               { id: 'library', label: 'Smart Library', icon: 'book' },
               { id: 'achievements', label: 'Achievements', icon: 'trophy' },
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => tab.link ? router.push(tab.link) : setActiveTab(tab.id)}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
                   activeTab === tab.id
                     ? 'bg-gradient-to-r from-[#6f42c1] to-[#e83e8c] text-white'
@@ -270,6 +273,9 @@ export default function DashboardPage() {
                   )}
                   {tab.icon === 'trophy' && (
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                  )}
+                  {tab.icon === 'report' && (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   )}
                 </svg>
                 {tab.label}
@@ -387,7 +393,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-md p-5">
+            <div className="bg-white rounded-xl shadow-md p-5 mb-4">
               <h6 className="font-bold mb-3">Quick Actions</h6>
               <div className="grid grid-cols-2 gap-2">
                 {[
@@ -395,9 +401,11 @@ export default function DashboardPage() {
                   { icon: 'brain', label: 'Adaptive Test' },
                   { icon: 'bolt', label: 'Quick Quiz' },
                   { icon: 'chart', label: 'Progress' },
+                  { icon: 'report', label: 'Reports', link: '/dashboard/reports' },
                 ].map((action) => (
                   <button
                     key={action.label}
+                    onClick={() => action.link && router.push(action.link)}
                     className="bg-white border border-gray-200 rounded-lg p-3 text-center hover:bg-purple-600 hover:text-white hover:border-purple-600 transition-all"
                   >
                     <svg className="w-6 h-6 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -419,6 +427,12 @@ export default function DashboardPage() {
                 ))}
               </div>
             </div>
+
+            {/* Leaderboard Card */}
+            <LeaderboardCard />
+
+            {/* Comparison View */}
+            <ComparisonView />
           </div>
 
           {/* Main Content Area */}
@@ -816,12 +830,20 @@ export default function DashboardPage() {
               <div className="md:col-span-2 bg-white rounded-xl shadow-md p-5">
                 <div className="flex justify-between items-center mb-3">
                   <h5 className="font-bold text-gray-900">Recent Quiz Attempts</h5>
-                  <button 
-                    onClick={() => router.push('/dashboard/quizzes')}
-                    className="text-sm text-purple-600 hover:underline font-medium"
-                  >
-                    View All
-                  </button>
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => router.push('/dashboard/reports')}
+                      className="text-sm text-blue-600 hover:underline font-medium"
+                    >
+                      View Reports
+                    </button>
+                    <button 
+                      onClick={() => router.push('/dashboard/quizzes')}
+                      className="text-sm text-purple-600 hover:underline font-medium"
+                    >
+                      View All
+                    </button>
+                  </div>
                 </div>
                 {loading ? (
                   <div className="text-center py-8">

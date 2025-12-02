@@ -9,6 +9,8 @@ const quizRoutes = require('./quiz/quiz.routes');
 const batchesRoutes = require('./batches/batches.routes');
 const usersRoutes = require('./user/users.routes');
 const dashboardRoutes = require('./dashboard/dashboard.routes');
+const reportsRoutes = require('./reports/reports.routes');
+const uploadRoutes = require('./upload/upload.routes');
 const env = require('./config/env');
 
 /**
@@ -73,10 +75,10 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Trust proxy (for rate limiting and IP detection)
 app.set('trust proxy', 1);
 
-// Rate limiting middleware
+// Rate limiting middleware - more lenient in development
 const limiter = rateLimit({
-  windowMs: env.RATE_LIMIT_WINDOW_MS, // 15 minutes
-  max: env.RATE_LIMIT_MAX_REQUESTS, // Limit each IP to 100 requests per windowMs
+  windowMs: env.NODE_ENV === 'development' ? 60000 : env.RATE_LIMIT_WINDOW_MS, // 1 minute in dev, 15 minutes in prod
+  max: env.NODE_ENV === 'development' ? 1000 : env.RATE_LIMIT_MAX_REQUESTS, // Much higher limit in development
   message: {
     success: false,
     error: {
@@ -85,9 +87,20 @@ const limiter = rateLimit({
   },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  skip: (req) => {
+    // Skip rate limiting for health check
+    if (req.path === '/health' || req.path === '/api/health') {
+      return true;
+    }
+    // In development, be more lenient
+    if (env.NODE_ENV === 'development') {
+      return false; // Still apply rate limiting but with higher limits
+    }
+    return false;
+  }
 });
 
-// Apply rate limiting to all requests
+// Apply rate limiting to all API requests
 app.use('/api/', limiter);
 
 // Health check endpoint
@@ -162,6 +175,8 @@ app.use('/api/quizzes', quizRoutes);
 app.use('/api/batches', batchesRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -169,7 +184,7 @@ app.get('/', (req, res) => {
     success: true,
     message: 'Career Master API',
     version: '1.0.0',
-    endpoints: {
+      endpoints: {
       health: '/health',
       auth: '/api/auth',
       roles: '/api/roles',
@@ -177,6 +192,8 @@ app.get('/', (req, res) => {
       batches: '/api/batches',
       users: '/api/users',
       dashboard: '/api/dashboard',
+      reports: '/api/reports',
+      upload: '/api/upload',
       testEmail: '/api/test-email'
     }
   });
@@ -188,7 +205,7 @@ app.get('/api', (req, res) => {
     success: true,
     message: 'Career Master API',
     version: '1.0.0',
-    endpoints: {
+      endpoints: {
       health: '/health',
       auth: '/api/auth',
       roles: '/api/roles',
@@ -196,6 +213,8 @@ app.get('/api', (req, res) => {
       batches: '/api/batches',
       users: '/api/users',
       dashboard: '/api/dashboard',
+      reports: '/api/reports',
+      upload: '/api/upload',
       testEmail: '/api/test-email'
     }
   });

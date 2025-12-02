@@ -41,7 +41,17 @@ const env = {
   RATE_LIMIT_MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10),
 
   // CORS Configuration
-  CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:3000,http://localhost:3001'
+  CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:3000,http://localhost:3001',
+
+  // Cloudinary Configuration
+  // Get credentials from: https://cloudinary.com/console
+  // Example format:
+  // CLOUDINARY_CLOUD_NAME=dxyz12345 (alphanumeric, 8-15 chars)
+  // CLOUDINARY_API_KEY=123456789012345 (numeric, 15-20 digits)
+  // CLOUDINARY_API_SECRET=abcdefghijklmnopqrstuvwxyz123456 (alphanumeric, 30-40 chars)
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || ''
 };
 
 // Validate required environment variables in production

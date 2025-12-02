@@ -22,7 +22,7 @@ const quizAttemptSchema = new mongoose.Schema(
     },
     answers: {
       type: Map,
-      of: Number, // Maps question index to selected option index
+      of: mongoose.Schema.Types.Mixed, // Accepts Number (single choice), Array (multiple/match/reorder), String (fill in blank)
       default: {}
     },
     timeSpentInSeconds: {

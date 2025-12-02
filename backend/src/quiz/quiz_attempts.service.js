@@ -50,6 +50,18 @@ class QuizAttemptService {
         }
       }
 
+      // Flatten questions from sections or use flat questions
+      let allQuestions = [];
+      if (quiz.useSections && quiz.sections && Array.isArray(quiz.sections)) {
+        allQuestions = quiz.sections.flatMap((section) => section.questions || []);
+      } else if (quiz.questions && Array.isArray(quiz.questions)) {
+        allQuestions = quiz.questions;
+      }
+
+      if (allQuestions.length === 0) {
+        throw new ErrorHandler(400, 'Quiz has no questions');
+      }
+
       // Calculate results
       let marksObtained = 0;
       let correctAnswers = 0;
@@ -57,7 +69,7 @@ class QuizAttemptService {
       let unattemptedAnswers = 0;
       let totalMarks = 0;
 
-      quiz.questions.forEach((question, questionIndex) => {
+      allQuestions.forEach((question, questionIndex) => {
         const marks = question.marks || 1;
         const negativeMarks = question.negativeMarks || 0;
         totalMarks += marks;
@@ -69,7 +81,60 @@ class QuizAttemptService {
           return;
         }
 
-        if (userAnswer === question.correctOptionIndex) {
+        // Grade based on question type
+        let isCorrect = false;
+        const questionType = question.questionType || 'multiple_choice_single';
+
+        switch (questionType) {
+          case 'multiple_choice_single':
+          case 'true_false':
+            isCorrect = userAnswer === question.correctOptionIndex;
+            break;
+
+          case 'multiple_choice_multiple':
+            if (Array.isArray(userAnswer) && Array.isArray(question.correctOptionIndices)) {
+              const userSet = new Set(userAnswer.sort());
+              const correctSet = new Set(question.correctOptionIndices.sort());
+              isCorrect = userSet.size === correctSet.size && 
+                         [...userSet].every(val => correctSet.has(val));
+            }
+            break;
+
+          case 'fill_in_blank':
+            if (typeof userAnswer === 'string' && Array.isArray(question.correctAnswers)) {
+              const normalizedUserAnswer = userAnswer.trim().toLowerCase();
+              isCorrect = question.correctAnswers.some(correct => 
+                correct.trim().toLowerCase() === normalizedUserAnswer
+              );
+            }
+            break;
+
+          case 'match':
+            if (Array.isArray(userAnswer) && Array.isArray(question.matchPairs)) {
+              // Check if all match pairs are correct
+              isCorrect = question.matchPairs.every((pair, index) => {
+                const userMatch = userAnswer[index];
+                return userMatch && userMatch.trim().toLowerCase() === pair.right.trim().toLowerCase();
+              });
+            }
+            break;
+
+          case 'reorder':
+            if (Array.isArray(userAnswer) && Array.isArray(question.correctOrder)) {
+              // Check if order matches exactly
+              isCorrect = userAnswer.length === question.correctOrder.length &&
+                         userAnswer.every((item, index) => 
+                           item.trim().toLowerCase() === question.correctOrder[index].trim().toLowerCase()
+                         );
+            }
+            break;
+
+          default:
+            // Fallback to single choice logic
+            isCorrect = userAnswer === question.correctOptionIndex;
+        }
+
+        if (isCorrect) {
           marksObtained += marks;
           correctAnswers++;
         } else {
@@ -87,10 +152,15 @@ class QuizAttemptService {
       // Determine pass/fail (50% passing criteria)
       const result = percentage >= 50 ? 'pass' : 'fail';
 
-      // Convert answers object to Map format
-      const answersMap = new Map();
+      // Convert answers object to Map format (Mongoose Map requires string keys)
+      // Keep answers as-is, Mongoose will handle the Map conversion
+      const answersForStorage = {};
       Object.keys(answers).forEach((key) => {
-        answersMap.set(parseInt(key), answers[key]);
+        const answerValue = answers[key];
+        // Store the answer value as-is (can be number, string, or array)
+        if (answerValue !== null && answerValue !== undefined) {
+          answersForStorage[key] = answerValue;
+        }
       });
 
       // Create attempt
@@ -98,7 +168,7 @@ class QuizAttemptService {
         quizId,
         userId,
         userEmail,
-        answers: Object.fromEntries(answersMap),
+        answers: answersForStorage, // Mongoose will convert this to a Map
         timeSpentInSeconds,
         marksObtained,
         totalMarks,
@@ -165,11 +235,27 @@ class QuizAttemptService {
             quiz._id.toString()
           );
 
-          // Calculate total marks
-          const totalMarks = quiz.questions.reduce(
-            (sum, q) => sum + (q.marks || 1),
-            0
-          );
+          // Calculate total marks and question count - handle both sectioned and flat quizzes
+          let totalMarks = 0;
+          let questionCount = 0;
+          
+          if (quiz.useSections && quiz.sections && Array.isArray(quiz.sections)) {
+            // Sectioned quiz - calculate from sections
+            quiz.sections.forEach((section) => {
+              if (section.questions && Array.isArray(section.questions)) {
+                section.questions.forEach((q) => {
+                  totalMarks += q.marks || 1;
+                  questionCount++;
+                });
+              }
+            });
+          } else if (quiz.questions && Array.isArray(quiz.questions)) {
+            // Flat quiz - calculate from questions array
+            quiz.questions.forEach((q) => {
+              totalMarks += q.marks || 1;
+              questionCount++;
+            });
+          }
 
           const maxAttempts = quiz.maxAttempts || 999; // Default to unlimited (999)
           const attemptsMade = attempts.length;
@@ -183,7 +269,7 @@ class QuizAttemptService {
             description: quiz.description,
             durationMinutes: quiz.durationMinutes,
             totalMarks,
-            questionCount: quiz.questions.length,
+            questionCount,
             attemptsMade,
             maxAttempts,
             attemptsLeft,

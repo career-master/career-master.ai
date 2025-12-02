@@ -166,8 +166,21 @@ const validate = (schema) => {
       if (error instanceof z.ZodError) {
         const errors = error.errors.map((err) => ({
           field: err.path.join('.'),
-          message: err.message
+          message: err.message,
+          code: err.code
         }));
+
+        // Log validation errors in development
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Validation error:', {
+            errors: error.errors,
+            receivedData: {
+              body: req.body,
+              params: req.params,
+              query: req.query
+            }
+          });
+        }
 
         return res.status(400).json({
           success: false,

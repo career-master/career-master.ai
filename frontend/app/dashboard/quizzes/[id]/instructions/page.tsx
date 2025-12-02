@@ -58,7 +58,7 @@ export default function QuizInstructionsPage() {
 
         // Load user attempts
         try {
-          const attemptsRes = await apiService.getUserQuizAttempts(quizId);
+          const attemptsRes = await apiService.getUserQuizAttemptsForQuiz(quizId);
           if (attemptsRes.success && attemptsRes.data) {
             setAttempts(Array.isArray(attemptsRes.data) ? attemptsRes.data : []);
           }

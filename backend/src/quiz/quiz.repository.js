@@ -13,9 +13,18 @@ class QuizRepository {
    */
   static async createQuiz(quizData) {
     try {
+      console.log('Creating quiz with data:', JSON.stringify(quizData, null, 2));
       const quiz = new Quiz(quizData);
-      return await quiz.save();
+      const savedQuiz = await quiz.save();
+      console.log('Quiz created successfully:', savedQuiz._id);
+      return savedQuiz;
     } catch (error) {
+      console.error('Error in QuizRepository.createQuiz:', error);
+      console.error('Quiz data that failed:', JSON.stringify(quizData, null, 2));
+      if (error.name === 'ValidationError') {
+        const validationErrors = Object.values(error.errors).map(e => e.message).join(', ');
+        throw new ErrorHandler(400, `Quiz validation failed: ${validationErrors}`);
+      }
       throw new ErrorHandler(500, `Error creating quiz: ${error.message}`);
     }
   }
@@ -94,6 +103,12 @@ class QuizRepository {
    */
   static async getQuizzesPaginated({ activeOnly = false, page = 1, limit = 10 }) {
     try {
+      // Check MongoDB connection
+      const mongoose = require('mongoose');
+      if (mongoose.connection.readyState !== 1) {
+        throw new ErrorHandler(503, 'Database connection not available. Please check MongoDB connection.');
+      }
+
       const filter = activeOnly ? { isActive: true } : {};
       const skip = (page - 1) * limit;
 
@@ -115,6 +130,14 @@ class QuizRepository {
         totalPages
       };
     } catch (error) {
+      // If it's already an ErrorHandler, re-throw it
+      if (error instanceof ErrorHandler) {
+        throw error;
+      }
+      // Check for MongoDB connection errors
+      if (error.message && (error.message.includes('ENOTFOUND') || error.message.includes('getaddrinfo'))) {
+        throw new ErrorHandler(503, 'Database connection failed. Please check MongoDB connection string and network access.');
+      }
       throw new ErrorHandler(500, `Error fetching quizzes: ${error.message}`);
     }
   }
