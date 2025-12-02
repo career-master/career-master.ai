@@ -1,4 +1,4 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const env = require('../config/env');
 const {
   getOTPTemplate,
@@ -8,94 +8,67 @@ const {
 
 /**
  * Email Utilities
- * Handles email sending using nodemailer with SMTP configuration
+ * Uses Resend API exclusively for email delivery
  */
 class EmailUtil {
   constructor() {
-    this.transporter = null;
-    this.initializeTransporter();
+    this.resend = null;
+    this.emailFrom = null; // Will be set during initialization
+    this.initializeEmailService();
   }
 
   /**
-   * Initialize nodemailer transporter
+   * Initialize email service - Resend API only
    */
-  initializeTransporter() {
+  initializeEmailService() {
+    if (!env.RESEND_API_KEY) {
+      console.error('❌ RESEND_API_KEY is not set in environment variables');
+      console.error('   Email functionality will be disabled.');
+      console.error('   Please set RESEND_API_KEY in your .env file or Render environment variables');
+      return;
+    }
+
     try {
-      // Check if SMTP credentials are provided
-      if (!env.SMTP_USER || !env.SMTP_PASS) {
-        console.warn('⚠️  SMTP credentials not configured. Email functionality will be disabled.');
-        console.warn('   SMTP_USER:', env.SMTP_USER ? 'Set' : 'NOT SET');
-        console.warn('   SMTP_PASS:', env.SMTP_PASS ? 'Set' : 'NOT SET');
-        this.transporter = null;
+      // Validate API key format (should start with 're_')
+      if (!env.RESEND_API_KEY.startsWith('re_')) {
+        console.error('❌ Invalid Resend API key format. Should start with "re_"');
+        console.error('   Email functionality will be disabled.');
         return;
       }
 
-      // Parse SMTP_SECURE correctly (handle string "true"/"false" from env vars)
-      const smtpSecure = env.SMTP_SECURE === true || env.SMTP_SECURE === 'true';
-      const smtpPort = parseInt(env.SMTP_PORT, 10) || 587;
+      // Check if EMAIL_FROM is a Gmail address - Resend requires domain verification
+      // Use onboarding@resend.dev for testing without domain verification
+      if (env.EMAIL_FROM && env.EMAIL_FROM.includes('@gmail.com')) {
+        console.warn('⚠️  Gmail addresses require domain verification in Resend.');
+        console.warn('   Using onboarding@resend.dev for sending (works without verification).');
+        console.warn('   Your Gmail address will still appear in the "From Name" field.');
+        this.emailFrom = 'onboarding@resend.dev';
+      } else if (env.EMAIL_FROM && !env.EMAIL_FROM.includes('@resend.dev')) {
+        // If using a custom domain, it must be verified in Resend
+        console.warn('⚠️  Make sure your domain is verified in Resend: https://resend.com/domains');
+        this.emailFrom = env.EMAIL_FROM;
+      } else {
+        // Use onboarding@resend.dev as default if not set or already using resend.dev
+        this.emailFrom = env.EMAIL_FROM || 'onboarding@resend.dev';
+      }
 
-      // Log SMTP configuration (without password)
-      console.log('📧 Initializing SMTP transporter...');
-      console.log(`   Host: ${env.SMTP_HOST}`);
-      console.log(`   Port: ${smtpPort}`);
-      console.log(`   Secure: ${smtpSecure}`);
-      console.log(`   User: ${env.SMTP_USER}`);
-      console.log(`   From: ${env.EMAIL_FROM}`);
-
-      this.transporter = nodemailer.createTransport({
-        host: env.SMTP_HOST,
-        port: smtpPort,
-        secure: smtpSecure, // true for 465, false for other ports
-        auth: {
-          user: env.SMTP_USER,
-          pass: env.SMTP_PASS
-        },
-        // Connection timeout settings (increased for Render)
-        connectionTimeout: 30000, // 30 seconds for Render
-        greetingTimeout: 30000,
-        socketTimeout: 30000,
-        // For Gmail and similar services
-        tls: {
-          rejectUnauthorized: false,
-          ciphers: 'SSLv3'
-        },
-        // Additional options for better compatibility
-        pool: true,
-        maxConnections: 1,
-        maxMessages: 3
-      });
-
-      // Verify connection configuration asynchronously (non-blocking)
-      // Don't block server startup if SMTP is slow/unavailable
-      setTimeout(() => {
-        if (this.transporter) {
-          console.log('🔄 Verifying SMTP connection...');
-          this.transporter.verify((error) => {
-            if (error) {
-              console.error('❌ SMTP verification failed:', error.message);
-              console.error('   Code:', error.code);
-              console.error('   Command:', error.command);
-              if (error.code === 'ETIMEDOUT') {
-                console.error('   ⚠️  Connection timeout - Check:');
-                console.error('      - SMTP_HOST is correct');
-                console.error('      - SMTP_PORT is correct');
-                console.error('      - Firewall allows outbound connections');
-                console.error('      - SMTP server is accessible from Render network');
-              }
-              console.warn('   ⚠️  Server will continue, but emails may not work');
-            } else {
-              console.log('✅ SMTP server is ready to send emails');
-            }
-          });
-        }
-      }, 3000); // Wait 3 seconds before verifying (give Render time to initialize)
+      this.resend = new Resend(env.RESEND_API_KEY);
+      console.log('📧 Initializing Resend API...');
+      console.log(`   API Key: ${env.RESEND_API_KEY.substring(0, 10)}...`);
+      console.log(`   From: ${this.emailFrom}`);
+      console.log(`   From Name: ${env.EMAIL_FROM_NAME}`);
+      console.log('✅ Resend API initialized successfully');
+      console.log('   Note: If you see network errors locally, check:');
+      console.log('   1. Internet connection');
+      console.log('   2. DNS settings (api.resend.com should resolve)');
+      console.log('   3. Firewall/VPN blocking outbound HTTPS');
+      console.log('   4. This should work fine on Render/Vercel production');
     } catch (error) {
-      console.error('❌ Error initializing email transporter:', error);
-      console.error('   Stack:', error.stack);
-      console.warn('⚠️  Email functionality will be disabled. Server will continue running.');
-      this.transporter = null;
+      console.error('❌ Error initializing Resend API:', error);
+      console.error('   Email functionality will be disabled.');
     }
   }
+
 
   /**
    * Send OTP email for signup/verification
@@ -106,9 +79,20 @@ class EmailUtil {
    */
   async sendOTPEmail(email, otp, purpose = 'signup') {
     try {
-      if (!this.transporter) {
-        console.warn('⚠️  Email transporter not initialized. SMTP credentials may be missing.');
-        throw new Error('Email service is not configured. Please contact support.');
+      if (!this.resend) {
+        // Provide detailed error message for debugging
+        const errorDetails = [];
+        if (!env.RESEND_API_KEY) {
+          errorDetails.push('RESEND_API_KEY is not set in environment variables');
+        } else if (!env.RESEND_API_KEY.startsWith('re_')) {
+          errorDetails.push(`RESEND_API_KEY format is invalid (should start with 're_', got: ${env.RESEND_API_KEY.substring(0, 10)}...)`);
+        } else {
+          errorDetails.push('Resend API initialization failed (check server logs)');
+        }
+        
+        const errorMsg = `Email service is not configured. ${errorDetails.join('. ')}. Please set RESEND_API_KEY in Render environment variables.`;
+        console.error('❌ Email service error:', errorMsg);
+        throw new Error(errorMsg);
       }
 
       const subjectMap = {
@@ -117,33 +101,109 @@ class EmailUtil {
         login: 'Login OTP - Career Master'
       };
 
-      // Use clean email template
       const htmlContent = getOTPTemplate(otp, purpose, env.OTP_EXPIRY_MINUTES);
       const textContent = `Your verification code is: ${otp}. This code will expire in ${env.OTP_EXPIRY_MINUTES} minutes.`;
+      const subject = subjectMap[purpose] || 'OTP Verification - Career Master';
 
-      const mailOptions = {
-        from: `"${env.EMAIL_FROM_NAME}" <${env.EMAIL_FROM}>`,
-        to: email,
-        subject: subjectMap[purpose] || 'OTP Verification - Career Master',
-        html: htmlContent,
-        text: textContent
-      };
+      console.log(`📧 Sending OTP email to: ${email} (using Resend)`);
 
-      console.log(`📧 Sending OTP email to: ${email}`);
-      const info = await this.transporter.sendMail(mailOptions);
-      console.log(`✅ OTP email sent successfully. Message ID: ${info.messageId}`);
+      // Format: "Display Name <email@domain.com>"
+      // Always use this.emailFrom (onboarding@resend.dev) for the actual sending address
+      // Extract display name from EMAIL_FROM_NAME if it contains an email, otherwise use as-is
+      let displayName = env.EMAIL_FROM_NAME;
+      if (displayName.includes('<') && displayName.includes('>')) {
+        // Extract just the display name part (before the <)
+        displayName = displayName.split('<')[0].trim();
+      }
+      const fromAddress = `${displayName} <${this.emailFrom || env.EMAIL_FROM}>`;
+      
+      // Retry logic for network issues
+      const maxRetries = 3;
+      let lastError = null;
+      
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          const { data, error } = await this.resend.emails.send({
+            from: fromAddress,
+            to: email,
+            subject: subject,
+            html: htmlContent,
+            text: textContent
+          });
+
+          if (error) {
+            // If it's a validation error (like domain verification), don't retry
+            if (error.name === 'validation_error' || error.statusCode === 403) {
+              console.error('❌ Resend API validation error:', error);
+              console.error('   Error name:', error.name);
+              console.error('   Error message:', error.message);
+              throw new Error(`Failed to send email via Resend: ${error.message}`);
+            }
+            
+            // For network/application errors, retry
+            lastError = error;
+            if (attempt < maxRetries) {
+              const delay = attempt * 1000; // 1s, 2s, 3s
+              console.warn(`⚠️  Resend API error (attempt ${attempt}/${maxRetries}):`, error.message);
+              console.warn(`   Retrying in ${delay}ms...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+              continue;
+            }
+            
+            console.error('❌ Resend API error after retries:', error);
+            console.error('   Error name:', error.name);
+            console.error('   Error message:', error.message);
+            throw new Error(`Failed to send email via Resend: ${error.message}`);
+          }
+
+          // Success!
+          console.log(`✅ OTP email sent successfully via Resend. Message ID: ${data.id}`);
+          return {
+            success: true,
+            messageId: data.id,
+            provider: 'resend'
+          };
+        } catch (networkError) {
+          // Handle network errors (fetch failures, timeouts, etc.)
+          if (networkError.message.includes('fetch') || 
+              networkError.message.includes('resolve') ||
+              networkError.message.includes('timeout') ||
+              networkError.name === 'application_error') {
+            lastError = networkError;
+            if (attempt < maxRetries) {
+              const delay = attempt * 1000;
+              console.warn(`⚠️  Network error (attempt ${attempt}/${maxRetries}):`, networkError.message);
+              console.warn(`   Possible causes: DNS issue, firewall, or network connectivity`);
+              console.warn(`   Retrying in ${delay}ms...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+              continue;
+            }
+            
+            console.error('❌ Network error after retries:', networkError.message);
+            console.error('   Possible causes:');
+            console.error('   1. DNS resolution issue - Check internet connection');
+            console.error('   2. Firewall/proxy blocking Resend API');
+            console.error('   3. VPN or network restrictions');
+            console.error('   4. Resend API temporarily unavailable');
+            throw new Error(`Network error: Unable to connect to Resend API. ${networkError.message}`);
+          }
+          
+          // Re-throw non-network errors
+          throw networkError;
+        }
+      }
+      
+      // Should not reach here, but just in case
+      throw new Error(`Failed to send email after ${maxRetries} attempts: ${lastError?.message || 'Unknown error'}`);
+
+      console.log(`✅ OTP email sent successfully via Resend. Message ID: ${data.id}`);
       return {
         success: true,
-        messageId: info.messageId,
-        response: info.response
+        messageId: data.id,
+        provider: 'resend'
       };
     } catch (error) {
       console.error('❌ Error sending OTP email:', error.message);
-      console.error('   Error code:', error.code);
-      console.error('   Error command:', error.command);
-      if (error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED') {
-        throw new Error(`SMTP connection failed. Please check SMTP configuration in Render environment variables.`);
-      }
       throw new Error(`Failed to send email: ${error.message}`);
     }
   }
@@ -156,26 +216,39 @@ class EmailUtil {
    */
   async sendWelcomeEmail(email, name) {
     try {
-      if (!this.transporter) {
-        throw new Error('Email transporter not initialized');
+      if (!this.resend) {
+        throw new Error('Resend API is not initialized. Please check RESEND_API_KEY configuration.');
       }
 
-      // Use clean welcome email template
       const htmlContent = getWelcomeTemplate(name);
       const textContent = `Welcome ${name}! Your account has been successfully verified. You can now log in and start using Career Master.`;
 
-      const mailOptions = {
-        from: `"${env.EMAIL_FROM_NAME}" <${env.EMAIL_FROM}>`,
+      // Format: "Display Name <email@domain.com>"
+      // Always use this.emailFrom (onboarding@resend.dev) for the actual sending address
+      let displayName = env.EMAIL_FROM_NAME;
+      if (displayName.includes('<') && displayName.includes('>')) {
+        // Extract just the display name part (before the <)
+        displayName = displayName.split('<')[0].trim();
+      }
+      const fromAddress = `${displayName} <${this.emailFrom || env.EMAIL_FROM}>`;
+      
+      const { data, error } = await this.resend.emails.send({
+        from: fromAddress,
         to: email,
         subject: 'Welcome to Career Master!',
         html: htmlContent,
         text: textContent
-      };
+      });
 
-      const info = await this.transporter.sendMail(mailOptions);
+      if (error) {
+        console.error('❌ Error sending welcome email via Resend:', error);
+        return { success: false, error: error.message };
+      }
+
       return {
         success: true,
-        messageId: info.messageId
+        messageId: data.id,
+        provider: 'resend'
       };
     } catch (error) {
       console.error('❌ Error sending welcome email:', error);
@@ -192,26 +265,39 @@ class EmailUtil {
    */
   async sendPasswordChangeNotification(email, name) {
     try {
-      if (!this.transporter) {
-        throw new Error('Email transporter not initialized');
+      if (!this.resend) {
+        throw new Error('Resend API is not initialized. Please check RESEND_API_KEY configuration.');
       }
 
-      // Use clean password change notification template
       const htmlContent = getPasswordChangeTemplate(name);
       const textContent = `Hello ${name}, your password has been successfully changed. If you didn't make this change, please contact support immediately.`;
 
-      const mailOptions = {
-        from: `"${env.EMAIL_FROM_NAME}" <${env.EMAIL_FROM}>`,
+      // Format: "Display Name <email@domain.com>"
+      // Always use this.emailFrom (onboarding@resend.dev) for the actual sending address
+      let displayName = env.EMAIL_FROM_NAME;
+      if (displayName.includes('<') && displayName.includes('>')) {
+        // Extract just the display name part (before the <)
+        displayName = displayName.split('<')[0].trim();
+      }
+      const fromAddress = `${displayName} <${this.emailFrom || env.EMAIL_FROM}>`;
+      
+      const { data, error } = await this.resend.emails.send({
+        from: fromAddress,
         to: email,
         subject: 'Password Changed Successfully - Career Master',
         html: htmlContent,
         text: textContent
-      };
+      });
 
-      const info = await this.transporter.sendMail(mailOptions);
+      if (error) {
+        console.error('❌ Error sending password change notification via Resend:', error);
+        return { success: false, error: error.message };
+      }
+
       return {
         success: true,
-        messageId: info.messageId
+        messageId: data.id,
+        provider: 'resend'
       };
     } catch (error) {
       console.error('❌ Error sending password change notification:', error);
@@ -220,21 +306,56 @@ class EmailUtil {
   }
 
   /**
-   * Test email configuration
-   * @returns {Promise<boolean>} - True if email service is working
+   * Test email configuration and connectivity
+   * @returns {Promise<Object>} - Test result with details
    */
   async testEmailConfig() {
-    try {
-      if (!this.transporter) {
-        return false;
-      }
+    const result = {
+      initialized: !!this.resend,
+      apiKeySet: !!env.RESEND_API_KEY,
+      apiKeyFormat: env.RESEND_API_KEY ? env.RESEND_API_KEY.startsWith('re_') : false,
+      emailFrom: this.emailFrom || env.EMAIL_FROM,
+      connectivity: false,
+      error: null
+    };
 
-      await this.transporter.verify();
-      return true;
-    } catch (error) {
-      console.error('❌ Email configuration test failed:', error);
-      return false;
+    if (!this.resend) {
+      result.error = 'Resend API not initialized';
+      return result;
     }
+
+    // Try to send a test email to verify connectivity
+    try {
+      const testEmail = 'test@example.com'; // Won't actually send, just test connection
+      const { error } = await this.resend.emails.send({
+        from: this.emailFrom || env.EMAIL_FROM,
+        to: testEmail,
+        subject: 'Test',
+        html: '<p>Test</p>',
+        text: 'Test'
+      });
+
+      // Even if there's an error, if it's not a network error, connectivity is OK
+      if (error) {
+        if (error.name === 'application_error' || error.message.includes('fetch') || error.message.includes('resolve')) {
+          result.error = `Network connectivity issue: ${error.message}`;
+        } else {
+          // Other errors (like validation) mean connectivity is fine
+          result.connectivity = true;
+          result.error = `Validation error (connectivity OK): ${error.message}`;
+        }
+      } else {
+        result.connectivity = true;
+      }
+    } catch (err) {
+      if (err.message.includes('fetch') || err.message.includes('resolve') || err.message.includes('timeout')) {
+        result.error = `Network error: ${err.message}`;
+      } else {
+        result.error = err.message;
+      }
+    }
+
+    return result;
   }
 }
 

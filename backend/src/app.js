@@ -99,50 +99,50 @@ app.get('/health', (req, res) => {
   });
 });
 
-// SMTP test endpoint (for debugging)
-app.get('/api/test-smtp', async (req, res) => {
+// Email test endpoint (for debugging)
+app.get('/api/test-email', async (req, res) => {
   try {
     const emailUtil = require('./utils/email');
     const env = require('./config/env');
     
-    const smtpConfig = {
-      smtpConfigured: !!emailUtil.transporter,
-      smtpHost: env.SMTP_HOST,
-      smtpPort: env.SMTP_PORT,
-      smtpSecure: env.SMTP_SECURE,
-      smtpUser: env.SMTP_USER ? 'Set (hidden)' : 'NOT SET',
-      smtpPass: env.SMTP_PASS ? 'Set (hidden)' : 'NOT SET',
-      emailFrom: env.EMAIL_FROM,
+    const emailConfig = {
+      provider: emailUtil.resend ? 'resend' : 'none',
+      resendInitialized: !!emailUtil.resend,
+      resendApiKey: env.RESEND_API_KEY ? `Set (${env.RESEND_API_KEY.substring(0, 10)}...)` : 'NOT SET',
+      resendApiKeyFormat: env.RESEND_API_KEY ? (env.RESEND_API_KEY.startsWith('re_') ? 'Valid' : 'Invalid (should start with re_)') : 'N/A',
+      emailFrom: emailUtil.emailFrom || env.EMAIL_FROM,
       emailFromName: env.EMAIL_FROM_NAME
     };
 
-    let smtpWorking = false;
-    let smtpError = null;
+    let emailWorking = false;
+    let emailError = null;
 
-    if (emailUtil.transporter) {
-      try {
-        smtpWorking = await emailUtil.testEmailConfig();
-      } catch (error) {
-        smtpError = {
-          message: error.message,
-          code: error.code,
-          command: error.command
-        };
-      }
+    try {
+      emailWorking = await emailUtil.testEmailConfig();
+    } catch (error) {
+      emailError = {
+        message: error.message,
+        code: error.code,
+        command: error.command
+      };
     }
 
     res.status(200).json({
       success: true,
-      smtp: {
-        ...smtpConfig,
-        smtpWorking,
-        smtpError
+      email: {
+        ...emailConfig,
+        emailWorking,
+        emailError
       },
-      message: smtpWorking 
-        ? 'SMTP is configured and working' 
-        : smtpConfig.smtpConfigured 
-          ? 'SMTP is configured but connection failed' 
-          : 'SMTP is not configured'
+      message: emailWorking 
+        ? `Email service (${emailConfig.provider}) is configured and working` 
+        : emailConfig.resendInitialized
+          ? `Email service (${emailConfig.provider}) is configured but connection failed. Check network or API key.` 
+          : emailConfig.resendApiKey === 'NOT SET'
+            ? 'Email service is not configured. RESEND_API_KEY is not set in Render environment variables. See RENDER_RESEND_SETUP.md'
+            : emailConfig.resendApiKeyFormat === 'Invalid (should start with re_)'
+              ? 'Email service is not configured. RESEND_API_KEY format is invalid (should start with "re_").'
+              : 'Email service is not configured. Check server logs for details.'
     });
   } catch (error) {
     res.status(500).json({
@@ -176,7 +176,8 @@ app.get('/', (req, res) => {
       quizzes: '/api/quizzes',
       batches: '/api/batches',
       users: '/api/users',
-      dashboard: '/api/dashboard'
+      dashboard: '/api/dashboard',
+      testEmail: '/api/test-email'
     }
   });
 });
@@ -194,7 +195,8 @@ app.get('/api', (req, res) => {
       quizzes: '/api/quizzes',
       batches: '/api/batches',
       users: '/api/users',
-      dashboard: '/api/dashboard'
+      dashboard: '/api/dashboard',
+      testEmail: '/api/test-email'
     }
   });
 });
