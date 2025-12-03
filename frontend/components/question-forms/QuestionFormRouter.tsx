@@ -7,6 +7,7 @@ import QuestionFormFillBlank from './QuestionFormFillBlank';
 import QuestionFormMatch from './QuestionFormMatch';
 import QuestionFormReorder from './QuestionFormReorder';
 import QuestionFormImageBased from './QuestionFormImageBased';
+import QuestionFormHotspot from './QuestionFormHotspot';
 import { QUESTION_TYPES } from '../QuestionTypeSelector';
 
 interface QuestionFormRouterProps {
@@ -38,6 +39,9 @@ export default function QuestionFormRouter({ questionType, question, onChange }:
     
     case QUESTION_TYPES.IMAGE_BASED:
       return <QuestionFormImageBased question={question} onChange={onChange} />;
+    
+    case QUESTION_TYPES.HOTSPOT:
+      return <QuestionFormHotspot question={question} onChange={onChange} />;
     
     default:
       return (

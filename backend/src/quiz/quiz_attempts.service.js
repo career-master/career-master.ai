@@ -129,6 +129,39 @@ class QuizAttemptService {
             }
             break;
 
+          case 'hotspot':
+            // For hotspot questions, userAnswer should be an array of { x, y } coordinates
+            // User must click on ALL hotspots to get it correct
+            if (Array.isArray(userAnswer) && userAnswer.length > 0 &&
+                Array.isArray(question.hotspotRegions) && question.hotspotRegions.length > 0) {
+              
+              // Check if user clicked on all required hotspots
+              if (userAnswer.length !== question.hotspotRegions.length) {
+                isCorrect = false;
+              } else {
+                // Check if each hotspot region has at least one click within it
+                const allRegionsClicked = question.hotspotRegions.every(region => {
+                  const regionLeft = region.x;
+                  const regionRight = region.x + region.width;
+                  const regionTop = region.y;
+                  const regionBottom = region.y + region.height;
+                  
+                  // Check if at least one click point is within this region
+                  return userAnswer.some(click => {
+                    if (click && typeof click === 'object' && 
+                        typeof click.x === 'number' && typeof click.y === 'number') {
+                      return click.x >= regionLeft && click.x <= regionRight &&
+                             click.y >= regionTop && click.y <= regionBottom;
+                    }
+                    return false;
+                  });
+                });
+                
+                isCorrect = allRegionsClicked;
+              }
+            }
+            break;
+
           default:
             // Fallback to single choice logic
             isCorrect = userAnswer === question.correctOptionIndex;

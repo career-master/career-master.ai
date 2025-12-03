@@ -85,10 +85,10 @@ export default function DashboardLayout({
   const isQuizAttemptPage = pathname?.includes('/quizzes/') && pathname?.match(/\/quizzes\/[^/]+\/?$/);
   
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar - Hidden on quiz attempt pages */}
+    <div className="min-h-screen bg-gray-50 flex print:bg-white">
+      {/* Sidebar - Hidden on quiz attempt pages and in print */}
       {!isQuizAttemptPage && (
-      <div className={`${collapsed ? 'w-16' : 'w-64'} bg-gray-900 text-white transition-all duration-300 flex flex-col fixed h-screen z-40`}>
+      <div className={`${collapsed ? 'w-16' : 'w-64'} bg-gray-900 text-white transition-all duration-300 flex flex-col fixed h-screen z-40 print:hidden`}>
         {/* Logo */}
         <div className="p-4 border-b border-gray-700">
           <div className="flex items-center justify-between">
@@ -166,7 +166,7 @@ export default function DashboardLayout({
       )}
 
       {/* Main Content */}
-      <div className={`flex-1 transition-all duration-300 ${isQuizAttemptPage ? 'ml-0' : (collapsed ? 'ml-16' : 'ml-64')}`}>
+      <div className={`flex-1 transition-all duration-300 ${isQuizAttemptPage ? 'ml-0' : (collapsed ? 'ml-16' : 'ml-64')} print:ml-0`}>
         {children}
       </div>
     </div>

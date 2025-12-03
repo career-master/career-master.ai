@@ -28,6 +28,8 @@ interface QuestionReport {
   marksObtained: number;
   marks: number;
   negativeMarks: number;
+  imageUrl?: string;
+  hotspotRegions?: Array<{ x: number; y: number; width: number; height: number; label?: string }>;
 }
 
 interface QuizReport {
@@ -91,25 +93,10 @@ export default function QuizReportPage() {
   }, [user, attemptId]);
 
   const handleDownloadPDF = async () => {
-    try {
-      console.log('Downloading PDF for attempt:', attemptId);
-      const blob = await apiService.downloadPDFReport(attemptId);
-      
-      if (!blob || blob.size === 0) {
-        throw new Error('Empty PDF file received');
-      }
-
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `quiz-report-${attemptId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error: any) {
-      console.error('Failed to download PDF:', error);
-      alert(`Failed to download PDF report: ${error?.message || 'Unknown error'}`);
+    // Use browser's print dialog so the user can "Save as PDF" and get EXACT UI rendering.
+    // This avoids html2canvas limitations with modern CSS color functions (lab/oklch).
+    if (typeof window !== 'undefined') {
+      window.print();
     }
   };
 
@@ -165,7 +152,7 @@ export default function QuizReportPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 print:bg-white">
       {/* Header */}
       <header className="bg-gradient-to-r from-[#6f42c1] to-[#e83e8c] text-white py-4 shadow-lg sticky top-0 z-40">
         <div className="container mx-auto px-4">
@@ -441,6 +428,201 @@ export default function QuizReportPage() {
                         <p className="text-lg text-green-700 font-bold">{q.correctAnswer}</p>
                       </div>
                     )}
+                  </div>
+                ) : q.questionType === 'hotspot' ? (
+                  <div className="space-y-3 mb-4">
+                    {q.imageUrl && (() => {
+                      // Helper function to check if a click is within a hotspot region
+                      const isClickInHotspot = (click: any, hotspot: any): boolean => {
+                        if (!click || !hotspot || typeof click.x !== 'number' || typeof click.y !== 'number') {
+                          return false;
+                        }
+                        const regionLeft = hotspot.x;
+                        const regionRight = hotspot.x + hotspot.width;
+                        const regionTop = hotspot.y;
+                        const regionBottom = hotspot.y + hotspot.height;
+                        return click.x >= regionLeft && click.x <= regionRight &&
+                               click.y >= regionTop && click.y <= regionBottom;
+                      };
+
+                      // Check which clicks are correct and which are wrong
+                      const clickedPoints = Array.isArray(q.userAnswerRaw) ? q.userAnswerRaw : [];
+                      const hotspotRegions = q.hotspotRegions || [];
+                      
+                      // For each click, check if it's in any hotspot
+                      const clickStatus = clickedPoints.map((click: any) => {
+                        if (click && typeof click === 'object' && 'x' in click && 'y' in click) {
+                          const isCorrect = hotspotRegions.some((hotspot: any) => isClickInHotspot(click, hotspot));
+                          return { click, isCorrect };
+                        }
+                        return { click, isCorrect: false };
+                      });
+
+                      // For each hotspot, check if it was found
+                      const hotspotStatus = hotspotRegions.map((hotspot: any, index: number) => {
+                        const wasFound = clickedPoints.some((click: any) => isClickInHotspot(click, hotspot));
+                        return { hotspot, wasFound, index };
+                      });
+
+                      const correctClicks = clickStatus.filter(cs => cs.isCorrect).length;
+                      const wrongClicks = clickStatus.filter(cs => !cs.isCorrect).length;
+                      const foundHotspots = hotspotStatus.filter(hs => hs.wasFound).length;
+                      const missedHotspots = hotspotStatus.filter(hs => !hs.wasFound).length;
+
+                      return (
+                        <div className="relative inline-block mb-4">
+                          <img 
+                            src={q.imageUrl} 
+                            alt="Question image" 
+                            className="max-w-full h-auto rounded-lg border-2 border-gray-300 shadow-sm"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
+                          />
+                          
+                          {/* Show hotspot regions with status - visually prominent */}
+                          {hotspotStatus.map((hs) => (
+                            <div
+                              key={hs.index}
+                              className={`absolute border-3 pointer-events-none z-0 ${
+                                hs.wasFound 
+                                  ? 'border-green-600 bg-green-400 bg-opacity-50 shadow-lg' 
+                                  : 'border-red-500 bg-red-300 bg-opacity-40 border-dashed shadow-md'
+                              }`}
+                              style={{
+                                left: `${hs.hotspot.x}%`,
+                                top: `${hs.hotspot.y}%`,
+                                width: `${hs.hotspot.width}%`,
+                                height: `${hs.hotspot.height}%`,
+                              }}
+                              title={hs.hotspot.label || `Hotspot ${hs.index + 1} - ${hs.wasFound ? 'Found ✓' : 'Missed ✗'}`}
+                            >
+                              {/* Status label on hotspot */}
+                              <div className={`absolute -top-8 left-0 text-white text-xs font-bold px-2 py-1 rounded shadow-lg whitespace-nowrap z-20 ${
+                                hs.wasFound ? 'bg-green-600' : 'bg-red-600'
+                              }`}>
+                                {hs.wasFound ? '✓ Found' : '✗ Missed'}
+                              </div>
+                              {/* Hotspot number in center */}
+                              <div className={`absolute inset-0 flex items-center justify-center text-white font-bold text-lg z-10 ${
+                                hs.wasFound ? 'text-green-800' : 'text-red-800'
+                              }`}>
+                                {hs.index + 1}
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* Show user's clicked points - correct (green) and wrong (red) - visually prominent */}
+                          {clickStatus.map((cs, clickIndex: number) => {
+                            if (cs.click && typeof cs.click === 'object' && 'x' in cs.click && 'y' in cs.click) {
+                              return (
+                                <div
+                                  key={clickIndex}
+                                  className={`absolute w-8 h-8 border-3 border-white rounded-full shadow-xl pointer-events-none z-20 flex items-center justify-center ${
+                                    cs.isCorrect ? 'bg-green-600 ring-2 ring-green-400' : 'bg-red-600 ring-2 ring-red-400'
+                                  }`}
+                                  style={{
+                                    left: `${cs.click.x}%`,
+                                    top: `${cs.click.y}%`,
+                                    transform: 'translate(-50%, -50%)'
+                                  }}
+                                  title={`Click ${clickIndex + 1}: (${cs.click.x.toFixed(1)}%, ${cs.click.y.toFixed(1)}%) - ${cs.isCorrect ? 'Correct ✓' : 'Wrong ✗'}`}
+                                >
+                                  <span className="text-white text-sm font-bold">{clickIndex + 1}</span>
+                                  {/* Status icon */}
+                                  <span className={`absolute -top-2 -right-2 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold shadow-lg ${
+                                    cs.isCorrect ? 'bg-green-700' : 'bg-red-700'
+                                  }`}>
+                                    {cs.isCorrect ? '✓' : '✗'}
+                                  </span>
+                                  {/* Status label */}
+                                  <div className={`absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-white text-xs font-bold px-2 py-1 rounded shadow-lg whitespace-nowrap z-30 ${
+                                    cs.isCorrect ? 'bg-green-600' : 'bg-red-600'
+                                  }`}>
+                                    {cs.isCorrect ? 'Correct' : 'Wrong'}
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })}
+                        </div>
+                      );
+                    })()}
+                    <div className={`p-4 rounded-lg border-2 ${
+                      q.isCorrect ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300'
+                    }`}>
+                      <p className="text-sm font-semibold text-gray-700 mb-2">Your Answer:</p>
+                      {Array.isArray(q.userAnswerRaw) && q.userAnswerRaw.length > 0 ? (() => {
+                        const clickedPoints = q.userAnswerRaw;
+                        const hotspotRegions = q.hotspotRegions || [];
+                        
+                        const isClickInHotspot = (click: any, hotspot: any): boolean => {
+                          if (!click || !hotspot || typeof click.x !== 'number' || typeof click.y !== 'number') {
+                            return false;
+                          }
+                          const regionLeft = hotspot.x;
+                          const regionRight = hotspot.x + hotspot.width;
+                          const regionTop = hotspot.y;
+                          const regionBottom = hotspot.y + hotspot.height;
+                          return click.x >= regionLeft && click.x <= regionRight &&
+                                 click.y >= regionTop && click.y <= regionBottom;
+                        };
+
+                        const clickStatus = clickedPoints.map((click: any) => {
+                          if (click && typeof click === 'object' && 'x' in click && 'y' in click) {
+                            const isCorrect = hotspotRegions.some((hotspot: any) => isClickInHotspot(click, hotspot));
+                            return { click, isCorrect };
+                          }
+                          return { click, isCorrect: false };
+                        });
+
+                        const hotspotStatus = hotspotRegions.map((hotspot: any, index: number) => {
+                          const wasFound = clickedPoints.some((click: any) => isClickInHotspot(click, hotspot));
+                          return { hotspot, wasFound, index };
+                        });
+
+                        const correctClicks = clickStatus.filter(cs => cs.isCorrect).length;
+                        const wrongClicks = clickStatus.filter(cs => !cs.isCorrect).length;
+                        const foundHotspots = hotspotStatus.filter(hs => hs.wasFound).length;
+                        const missedHotspots = hotspotStatus.filter(hs => !hs.wasFound).length;
+
+                        return (
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-4 mb-3">
+                              <div className="p-3 bg-green-50 border-2 border-green-300 rounded-lg">
+                                <p className="text-xs font-semibold text-green-700 mb-1">Correct Clicks</p>
+                                <p className="text-lg font-bold text-green-700">{correctClicks}</p>
+                                <p className="text-xs text-green-600">Found {foundHotspots} of {hotspotRegions.length} hotspots</p>
+                              </div>
+                              <div className="p-3 bg-red-50 border-2 border-red-300 rounded-lg">
+                                <p className="text-xs font-semibold text-red-700 mb-1">Wrong Clicks</p>
+                                <p className="text-lg font-bold text-red-700">{wrongClicks}</p>
+                                <p className="text-xs text-red-600">Missed {missedHotspots} hotspot{missedHotspots !== 1 ? 's' : ''}</p>
+                              </div>
+                            </div>
+                            
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <p className="text-xs text-gray-600 italic">
+                                <strong>Note:</strong> Green highlighted areas on the image above indicate hotspots you found correctly. 
+                                Red dashed areas indicate hotspots you missed. Green numbered markers show your correct clicks, 
+                                red numbered markers show your wrong clicks.
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })() : (
+                        <p className="text-gray-600">No answer provided</p>
+                      )}
+                      {q.isCorrect ? (
+                        <p className="text-sm text-green-700 mt-2 font-semibold">✓ Correct! You clicked on all {q.hotspotRegions?.length || 0} hotspot regions.</p>
+                      ) : (
+                        <p className="text-sm text-red-700 mt-2 font-semibold">
+                          ✗ Incorrect. You need to click on all {q.hotspotRegions?.length || 0} hotspot regions.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ) : q.questionType === 'multiple_choice_multiple' ? (
                   <div className="space-y-2 mb-4">

@@ -17,6 +17,7 @@ interface QuizQuestion {
   matchPairs?: Array<{ left: string; right: string }>;
   correctOrder?: string[];
   imageUrl?: string;
+  hotspotRegions?: Array<{ x: number; y: number; width: number; height: number; label?: string }>;
   marks?: number;
   negativeMarks?: number;
 }
@@ -63,6 +64,23 @@ function QuizAttemptContent() {
   const getAnsweredQuestionsKey = (userEmail: string, quizId: string) => `quiz_answered_${userEmail}_${quizId}`;
   const getSkippedQuestionsKey = (userEmail: string, quizId: string) => `quiz_skipped_${userEmail}_${quizId}`;
 
+  const hasActiveAttempt = (): boolean => {
+    if (!user?.email) return false;
+    
+    const timerKey = getTimerKey(user.email, quizId);
+    const endTimeKey = getEndTimeKey(user.email, quizId);
+    const storedTime = localStorage.getItem(timerKey);
+    
+    if (storedTime) {
+      const now = Date.now();
+      const endTime = parseInt(localStorage.getItem(endTimeKey) || '0');
+      if (endTime && now < endTime) {
+        return true; // Active attempt exists
+      }
+    }
+    return false; // No active attempt
+  };
+
   const getStoredTimer = (quizTimeLimit: number): number => {
     if (!user?.email) return quizTimeLimit * 60;
     
@@ -75,6 +93,10 @@ function QuizAttemptContent() {
       const endTime = parseInt(localStorage.getItem(endTimeKey) || '0');
       if (endTime && now < endTime) {
         return Math.floor((endTime - now) / 1000);
+      } else {
+        // Timer expired, clear all stored data for this quiz
+        clearStoredAnswers();
+        clearStoredTimer();
       }
     }
     return quizTimeLimit * 60;
@@ -215,11 +237,25 @@ function QuizAttemptContent() {
           }
           setAllQuestions(questions);
           
-          // Load saved answers from localStorage
+          const durationMinutes = data.durationMinutes || 30;
+          
+          // Check if there's an active attempt before loading anything
+          const isActiveAttempt = hasActiveAttempt();
+          
+          // If no active attempt exists, clear all old data first
+          if (!isActiveAttempt) {
+            clearStoredAnswers();
+            clearStoredTimer();
+          }
+          
+          // Now get the timer (will be full duration if we just cleared)
+          const initialTimeLeft = getStoredTimer(durationMinutes);
+          
+          // Load saved answers from localStorage (will be empty if we just cleared)
           const stored = loadAnswersFromStorage();
-          const initialAnswers: Record<number, any> = { ...stored.answers };
-          const initialAnswered = new Set(stored.answered);
-          const initialSkipped = [...stored.skipped];
+          const initialAnswers: Record<number, any> = isActiveAttempt ? { ...stored.answers } : {};
+          const initialAnswered = isActiveAttempt ? new Set<number>(Array.from(stored.answered).map(Number)) : new Set<number>();
+          const initialSkipped = isActiveAttempt ? [...stored.skipped] : [];
           
           // Initialize answers for reorder questions (shuffle the order) only if not already stored
           questions.forEach((q, index) => {
@@ -235,8 +271,6 @@ function QuizAttemptContent() {
           setAnsweredQuestions(initialAnswered);
           setSkippedQuestions(initialSkipped);
           
-          const durationMinutes = data.durationMinutes || 30;
-          const initialTimeLeft = getStoredTimer(durationMinutes);
           setTimeLeft(initialTimeLeft);
           storeTimer(initialTimeLeft);
           
@@ -443,6 +477,7 @@ function QuizAttemptContent() {
 
       if (res.success && res.data) {
         clearStoredTimer();
+        clearStoredAnswers(); // Clear answers after successful submission
         setSubmitted(true);
         toast.success('Quiz submitted successfully!');
 
@@ -715,6 +750,116 @@ function QuizAttemptContent() {
           </div>
         );
 
+      case 'hotspot':
+        // Handle multiple clicks - answer should be an array of clicked points
+        const clickedPoints = Array.isArray(currentAnswer) 
+          ? currentAnswer.filter((p: any) => p && typeof p === 'object' && 'x' in p && 'y' in p)
+          : (currentAnswer && typeof currentAnswer === 'object' && 'x' in currentAnswer && 'y' in currentAnswer
+              ? [currentAnswer]
+              : []);
+        
+        const totalHotspots = question.hotspotRegions?.length || 0;
+        const clickedCount = clickedPoints.length;
+
+        const handleHotspotClick = (e: React.MouseEvent<HTMLImageElement>) => {
+          const target = e.currentTarget;
+          const rect = target.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          
+          // Convert to percentage coordinates
+          const percentX = (x / rect.width) * 100;
+          const percentY = (y / rect.height) * 100;
+          
+          const clickPoint = { x: percentX, y: percentY };
+          
+          // Check if this point is already clicked (within 2% tolerance)
+          const isAlreadyClicked = clickedPoints.some((p: any) => {
+            const distance = Math.sqrt(
+              Math.pow(p.x - percentX, 2) + Math.pow(p.y - percentY, 2)
+            );
+            return distance < 2; // 2% tolerance
+          });
+          
+          if (isAlreadyClicked) {
+            // Remove the click if clicking the same area
+            const newPoints = clickedPoints.filter((p: any) => {
+              const distance = Math.sqrt(
+                Math.pow(p.x - percentX, 2) + Math.pow(p.y - percentY, 2)
+              );
+              return distance >= 2;
+            });
+            handleAnswerChange(qIndex, newPoints.length > 0 ? newPoints : null);
+          } else {
+            // Add new click point
+            const newPoints = [...clickedPoints, clickPoint];
+            handleAnswerChange(qIndex, newPoints);
+          }
+        };
+
+        return (
+          <div className="space-y-4">
+            {question.imageUrl && (
+              <div className="mb-4 relative inline-block">
+                <img 
+                  src={question.imageUrl} 
+                  alt="Question image" 
+                  className="max-w-full h-auto rounded-lg border-2 border-purple-300 shadow-sm cursor-crosshair"
+                  onClick={handleHotspotClick}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'p-4 bg-red-50 border border-red-200 rounded-lg text-red-700';
+                    errorDiv.textContent = 'Failed to load image. Please check the image URL.';
+                    target.parentNode?.appendChild(errorDiv);
+                  }}
+                />
+                {/* Show all clicked points */}
+                {clickedPoints.map((point: any, index: number) => (
+                  <div
+                    key={index}
+                    className="absolute w-5 h-5 bg-blue-600 border-2 border-white rounded-full shadow-lg pointer-events-none z-10 flex items-center justify-center"
+                    style={{
+                      left: `${point.x}%`,
+                      top: `${point.y}%`,
+                      transform: 'translate(-50%, -50%)'
+                    }}
+                    title={`Click ${index + 1}: (${point.x.toFixed(1)}%, ${point.y.toFixed(1)}%)`}
+                  >
+                    <span className="text-white text-xs font-bold">{index + 1}</span>
+                  </div>
+                ))}
+                {/* Don't show hotspot regions during quiz - only show in results/report page */}
+              </div>
+            )}
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-blue-800 font-semibold">
+                  <strong>Instructions:</strong> Click on all {totalHotspots} hotspot areas in the image.
+                </p>
+                <div className={`px-3 py-1 rounded-lg font-bold text-sm ${
+                  clickedCount === totalHotspots
+                    ? 'bg-green-100 text-green-700 border-2 border-green-500'
+                    : 'bg-yellow-100 text-yellow-700 border-2 border-yellow-500'
+                }`}>
+                  {clickedCount} / {totalHotspots} clicked
+                </div>
+              </div>
+              {clickedCount < totalHotspots && (
+                <p className="text-xs text-blue-700 mt-2">
+                  {totalHotspots - clickedCount} more hotspot{totalHotspots - clickedCount !== 1 ? 's' : ''} to find. Click on the numbered markers to remove them if needed.
+                </p>
+              )}
+              {clickedCount === totalHotspots && (
+                <p className="text-xs text-green-700 mt-2 font-semibold">
+                  ✓ All hotspots found! You can still click to adjust your answers.
+                </p>
+              )}
+            </div>
+          </div>
+        );
+
       default:
         return <p className="text-gray-500">Question type not supported</p>;
     }
@@ -802,7 +947,7 @@ function QuizAttemptContent() {
                 </div>
                 <div className="prose max-w-none">
                   <p className="text-lg mb-6 text-gray-800 whitespace-pre-wrap">{currentQ.questionText}</p>
-                  {/* Show image if it's an image-based question and imageUrl exists */}
+                  {/* Show image if it's an image-based question (but not hotspot - hotspot image is shown in renderQuestion) */}
                   {currentQ.questionType === 'image_based' && currentQ.imageUrl && (
                     <div className="mb-6">
                       <img 

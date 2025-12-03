@@ -54,6 +54,17 @@ const questionSchema = z.object({
     .array(z.string().min(1))
     .min(1, 'At least one item is required')
     .optional(),
+  // Hotspot regions
+  hotspotRegions: z
+    .array(z.object({
+      x: z.number().min(0).max(100),
+      y: z.number().min(0).max(100),
+      width: z.number().min(0).max(100),
+      height: z.number().min(0).max(100),
+      label: z.string().optional()
+    }))
+    .min(1, 'At least one hotspot region is required')
+    .optional(),
   // Image URL - can be empty string or URL
   imageUrl: z.union([z.string().url(), z.string().length(0)]).optional(),
   // Passage text
@@ -72,7 +83,7 @@ const questionSchema = z.object({
   metadata: z.record(z.any()).optional()
 }).refine((data) => {
   // Type-specific validation - only validate if question has content
-  const { questionType, questionText, options, correctOptionIndex, correctOptionIndices, correctAnswers, matchPairs, correctOrder, imageUrl } = data;
+  const { questionType, questionText, options, correctOptionIndex, correctOptionIndices, correctAnswers, matchPairs, correctOrder, imageUrl, hotspotRegions } = data;
   
   // Skip validation if question text is empty (question is being created)
   if (!questionText || questionText.trim().length === 0) {
@@ -118,6 +129,19 @@ const questionSchema = z.object({
   // if (['hotspot', 'labeling', 'image_based', 'draw'].includes(questionType)) {
   //   if (!imageUrl || imageUrl.trim().length === 0) return false;
   // }
+  
+  if (questionType === 'hotspot') {
+    // For hotspot questions, must have at least one hotspot region
+    if (questionText && questionText.trim().length > 0) {
+      if (!hotspotRegions || !Array.isArray(hotspotRegions) || hotspotRegions.length === 0) {
+        return false;
+      }
+      // Validate that imageUrl is provided
+      if (!imageUrl || imageUrl.trim().length === 0) {
+        return false;
+      }
+    }
+  }
   
   if (questionType === 'passage') {
     if (!data.passageText || data.passageText.trim().length === 0) return false;
