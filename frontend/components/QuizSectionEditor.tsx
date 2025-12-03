@@ -95,6 +95,10 @@ export default function QuizSectionEditor({ sections, onChange }: QuizSectionEdi
         newQuestion.options = ['', '', '', ''];
         newQuestion.correctOptionIndex = 0;
       }
+      // For hotspot, initialize empty hotspotRegions array
+      if (questionType === 'hotspot') {
+        newQuestion.hotspotRegions = [];
+      }
     } else if (questionType === 'passage') {
       newQuestion.passageText = '';
       newQuestion.options = ['', '', '', ''];

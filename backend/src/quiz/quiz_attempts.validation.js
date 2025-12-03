@@ -5,7 +5,7 @@ const { validate } = require('../auth/auth.validation');
  * Quiz Attempt Validation Schemas
  */
 
-// Accept different answer types: number (single choice), array (multiple choice/match/reorder), string (fill in blank)
+// Accept different answer types: number (single choice), array (multiple choice/match/reorder), string (fill in blank), object (hotspot)
 // Use z.any() with refinement for more flexible validation
 const answerValueSchema = z.any().refine((val) => {
   // Allow null or undefined
@@ -26,9 +26,19 @@ const answerValueSchema = z.any().refine((val) => {
   // Allow boolean (for true/false questions)
   if (typeof val === 'boolean') return true;
   
+  // Allow object (for hotspot questions - { x: number, y: number })
+  if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+    // For hotspot answers, validate that it has x and y properties
+    if ('x' in val && 'y' in val && typeof val.x === 'number' && typeof val.y === 'number') {
+      return true;
+    }
+    // Allow other objects too (for future extensibility)
+    return true;
+  }
+  
   return false;
 }, {
-  message: 'Answer must be a number, string, array, boolean, null, or undefined'
+  message: 'Answer must be a number, string, array, boolean, object (with x and y for hotspot), null, or undefined'
 });
 
 const submitAttemptSchema = z.object({

@@ -124,6 +124,40 @@ class QuizReportRepository {
               : 'Not Attempted';
             break;
 
+          case 'hotspot':
+            // For hotspot questions, userAnswer should be an array of { x, y } coordinates
+            // User must click on ALL hotspots to get it correct
+            if (Array.isArray(userAnswer) && Array.isArray(question.hotspotRegions) && question.hotspotRegions.length > 0) {
+              // First check count matches
+              if (userAnswer.length === question.hotspotRegions.length) {
+                const isClickInHotspot = (click, hotspot) => {
+                  if (!click || !hotspot || typeof click.x !== 'number' || typeof click.y !== 'number') {
+                    return false;
+                  }
+                  const regionLeft = hotspot.x;
+                  const regionRight = hotspot.x + hotspot.width;
+                  const regionTop = hotspot.y;
+                  const regionBottom = hotspot.y + hotspot.height;
+                  return click.x >= regionLeft && click.x <= regionRight &&
+                         click.y >= regionTop && click.y <= regionBottom;
+                };
+
+                const allRegionsClicked = question.hotspotRegions.every((region) => {
+                  return userAnswer.some((click) => isClickInHotspot(click, region));
+                });
+
+                isCorrect = allRegionsClicked;
+              } else {
+                isCorrect = false;
+              }
+            }
+
+            correctAnswer = `All ${question.hotspotRegions?.length || 0} hotspot regions`;
+            userAnswerDisplay = Array.isArray(userAnswer) && userAnswer.length > 0
+              ? `Clicked ${userAnswer.length} hotspot${userAnswer.length !== 1 ? 's' : ''}`
+              : 'Not Attempted';
+            break;
+
           default:
             // Fallback to single choice logic
             isCorrect = userAnswer === question.correctOptionIndex;
@@ -151,6 +185,9 @@ class QuizReportRepository {
           correctAnswers: question.correctAnswers,
           matchPairs: question.matchPairs,
           correctOrder: question.correctOrder,
+          // Image / hotspot info for frontend visualization
+          imageUrl: question.imageUrl,
+          hotspotRegions: question.hotspotRegions,
           correctAnswer: correctAnswer,
           userAnswerIndex: userAnswerIndex,
           userAnswer: userAnswerDisplay,

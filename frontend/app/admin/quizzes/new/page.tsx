@@ -134,6 +134,7 @@ export default function AdminCreateQuizPage() {
               correctOrder: q.correctOrder,
               imageUrl: q.imageUrl,
               passageText: q.passageText,
+              hotspotRegions: q.hotspotRegions || [],
               marks: q.marks || 1,
               negativeMarks: q.negativeMarks || 0
             })),
@@ -316,6 +317,33 @@ export default function AdminCreateQuizPage() {
                   }
                 }
                 
+                // For Hotspot questions, must have imageUrl and at least one hotspot region
+                if (questionType === 'hotspot') {
+                  if (!q.imageUrl || q.imageUrl.trim().length === 0) {
+                    console.warn('Filtering out Hotspot question without imageUrl:', q);
+                    return false;
+                  }
+                  if (!q.hotspotRegions || !Array.isArray(q.hotspotRegions) || q.hotspotRegions.length === 0) {
+                    console.warn('Filtering out Hotspot question without hotspotRegions:', q);
+                    return false;
+                  }
+                  // Validate that all regions have valid coordinates
+                  const validRegions = q.hotspotRegions.filter((region: any) => 
+                    region && 
+                    typeof region === 'object' &&
+                    typeof region.x === 'number' &&
+                    typeof region.y === 'number' &&
+                    typeof region.width === 'number' &&
+                    typeof region.height === 'number' &&
+                    region.width > 0 &&
+                    region.height > 0
+                  );
+                  if (validRegions.length === 0) {
+                    console.warn('Filtering out Hotspot question without valid regions:', q);
+                    return false;
+                  }
+                }
+                
                 return true;
               })
               .map((q: any) => {
@@ -415,6 +443,19 @@ export default function AdminCreateQuizPage() {
                     questionData.correctOptionIndex = q.correctOptionIndex;
                   }
                 }
+                // Hotspot has hotspotRegions
+                if (questionType === 'hotspot') {
+                  if (q.hotspotRegions && Array.isArray(q.hotspotRegions) && q.hotspotRegions.length > 0) {
+                    questionData.hotspotRegions = q.hotspotRegions.filter((region: any) => 
+                      region && 
+                      typeof region === 'object' &&
+                      typeof region.x === 'number' &&
+                      typeof region.y === 'number' &&
+                      typeof region.width === 'number' &&
+                      typeof region.height === 'number'
+                    );
+                  }
+                }
               }
               
               // Passage
@@ -450,6 +491,9 @@ export default function AdminCreateQuizPage() {
               }
               if (!['image_based', 'hotspot', 'labeling', 'draw'].includes(questionType)) {
                 delete questionData.imageUrl; // Remove for non-image questions
+              }
+              if (questionType !== 'hotspot') {
+                delete questionData.hotspotRegions; // Remove for non-hotspot questions
               }
               if (questionType !== 'passage') {
                 delete questionData.passageText; // Remove for non-passage questions
