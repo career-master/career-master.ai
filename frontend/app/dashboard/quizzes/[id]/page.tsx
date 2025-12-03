@@ -45,6 +45,7 @@ function QuizAttemptContent() {
   const [error, setError] = useState('');
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<number, any>>({});
+  const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
   const [skippedQuestions, setSkippedQuestions] = useState<number[]>([]);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -58,6 +59,9 @@ function QuizAttemptContent() {
   // Helper functions for localStorage timer
   const getTimerKey = (userEmail: string, quizId: string) => `quiz_timer_${userEmail}_${quizId}`;
   const getEndTimeKey = (userEmail: string, quizId: string) => `quiz_endTime_${userEmail}_${quizId}`;
+  const getAnswersKey = (userEmail: string, quizId: string) => `quiz_answers_${userEmail}_${quizId}`;
+  const getAnsweredQuestionsKey = (userEmail: string, quizId: string) => `quiz_answered_${userEmail}_${quizId}`;
+  const getSkippedQuestionsKey = (userEmail: string, quizId: string) => `quiz_skipped_${userEmail}_${quizId}`;
 
   const getStoredTimer = (quizTimeLimit: number): number => {
     if (!user?.email) return quizTimeLimit * 60;
@@ -93,6 +97,54 @@ function QuizAttemptContent() {
     const endTimeKey = getEndTimeKey(user.email, quizId);
     localStorage.removeItem(timerKey);
     localStorage.removeItem(endTimeKey);
+  };
+
+  // Helper functions for localStorage answers
+  const saveAnswersToStorage = (answers: Record<number, any>, answered: Set<number>, skipped: number[]) => {
+    if (!user?.email) return;
+    
+    const answersKey = getAnswersKey(user.email, quizId);
+    const answeredKey = getAnsweredQuestionsKey(user.email, quizId);
+    const skippedKey = getSkippedQuestionsKey(user.email, quizId);
+    
+    localStorage.setItem(answersKey, JSON.stringify(answers));
+    localStorage.setItem(answeredKey, JSON.stringify(Array.from(answered)));
+    localStorage.setItem(skippedKey, JSON.stringify(skipped));
+  };
+
+  const loadAnswersFromStorage = (): { answers: Record<number, any>, answered: Set<number>, skipped: number[] } => {
+    if (!user?.email) return { answers: {}, answered: new Set(), skipped: [] };
+    
+    const answersKey = getAnswersKey(user.email, quizId);
+    const answeredKey = getAnsweredQuestionsKey(user.email, quizId);
+    const skippedKey = getSkippedQuestionsKey(user.email, quizId);
+    
+    try {
+      const storedAnswers = localStorage.getItem(answersKey);
+      const storedAnswered = localStorage.getItem(answeredKey);
+      const storedSkipped = localStorage.getItem(skippedKey);
+      
+      return {
+        answers: storedAnswers ? JSON.parse(storedAnswers) : {},
+        answered: storedAnswered ? new Set(JSON.parse(storedAnswered)) : new Set(),
+        skipped: storedSkipped ? JSON.parse(storedSkipped) : []
+      };
+    } catch (err) {
+      console.error('Error loading answers from storage:', err);
+      return { answers: {}, answered: new Set(), skipped: [] };
+    }
+  };
+
+  const clearStoredAnswers = () => {
+    if (!user?.email) return;
+    
+    const answersKey = getAnswersKey(user.email, quizId);
+    const answeredKey = getAnsweredQuestionsKey(user.email, quizId);
+    const skippedKey = getSkippedQuestionsKey(user.email, quizId);
+    
+    localStorage.removeItem(answersKey);
+    localStorage.removeItem(answeredKey);
+    localStorage.removeItem(skippedKey);
   };
 
   // Enter fullscreen (must be called from user gesture)
@@ -163,16 +215,25 @@ function QuizAttemptContent() {
           }
           setAllQuestions(questions);
           
-          // Initialize answers for reorder questions (shuffle the order)
-          const initialAnswers: Record<number, any> = {};
+          // Load saved answers from localStorage
+          const stored = loadAnswersFromStorage();
+          const initialAnswers: Record<number, any> = { ...stored.answers };
+          const initialAnswered = new Set(stored.answered);
+          const initialSkipped = [...stored.skipped];
+          
+          // Initialize answers for reorder questions (shuffle the order) only if not already stored
           questions.forEach((q, index) => {
-            if (q.questionType === 'reorder' && q.correctOrder) {
+            if (q.questionType === 'reorder' && q.correctOrder && !(index in initialAnswers)) {
               // Shuffle the order for the student to rearrange
               const shuffled = [...q.correctOrder].sort(() => Math.random() - 0.5);
               initialAnswers[index] = shuffled;
+              // Don't mark as answered - user hasn't interacted yet
             }
           });
+          
           setAnswers(initialAnswers);
+          setAnsweredQuestions(initialAnswered);
+          setSkippedQuestions(initialSkipped);
           
           const durationMinutes = data.durationMinutes || 30;
           const initialTimeLeft = getStoredTimer(durationMinutes);
@@ -265,6 +326,13 @@ function QuizAttemptContent() {
     };
   }, []);
 
+  // Save answers to localStorage whenever they change
+  useEffect(() => {
+    if (quiz && allQuestions.length > 0 && user?.email && !loading) {
+      saveAnswersToStorage(answers, answeredQuestions, skippedQuestions);
+    }
+  }, [answers, answeredQuestions, skippedQuestions, quiz, allQuestions.length, user?.email, loading]);
+
   // Prevent navigation
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -288,7 +356,28 @@ function QuizAttemptContent() {
 
   const handleAnswerChange = (qIndex: number, answer: any) => {
     if (submitted) return;
+    
     setAnswers((prev) => ({ ...prev, [qIndex]: answer }));
+    
+    // Mark as answered only if answer is not null/undefined
+    if (answer !== null && answer !== undefined) {
+      setAnsweredQuestions((prev) => {
+        const newAnswered = new Set(prev);
+        newAnswered.add(qIndex);
+        return newAnswered;
+      });
+      // Remove from skipped if it was skipped
+      if (skippedQuestions.includes(qIndex)) {
+        setSkippedQuestions((prev) => prev.filter(idx => idx !== qIndex));
+      }
+    } else {
+      // If answer is cleared, remove from answered
+      setAnsweredQuestions((prev) => {
+        const newAnswered = new Set(prev);
+        newAnswered.delete(qIndex);
+        return newAnswered;
+      });
+    }
   };
 
   const handleNext = () => {
@@ -304,10 +393,19 @@ function QuizAttemptContent() {
   };
 
   const handleSkip = () => {
+    setAnswers(prev => ({ ...prev, [currentQuestion]: null }));
+    
     if (!skippedQuestions.includes(currentQuestion)) {
       setSkippedQuestions(prev => [...prev, currentQuestion]);
     }
-    setAnswers(prev => ({ ...prev, [currentQuestion]: null }));
+    
+    // Remove from answered if it was answered
+    setAnsweredQuestions(prev => {
+      const newAnswered = new Set(prev);
+      newAnswered.delete(currentQuestion);
+      return newAnswered;
+    });
+    
     if (currentQuestion < allQuestions.length - 1) {
       setCurrentQuestion(prev => prev + 1);
     }
@@ -648,7 +746,7 @@ function QuizAttemptContent() {
   }
 
   const totalQuestions = allQuestions.length;
-  const answeredQuestions = Object.values(answers).filter(a => a !== null && a !== undefined).length;
+  const answeredCount = answeredQuestions.size;
   const currentQ = allQuestions[currentQuestion];
 
   return (
@@ -808,7 +906,7 @@ function QuizAttemptContent() {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Answered:</span>
-              <span className="font-medium text-green-600">{answeredQuestions}</span>
+              <span className="font-medium text-green-600">{answeredCount}</span>
             </div>
             {skippedQuestions.length > 0 && (
               <div className="flex justify-between">
@@ -825,11 +923,11 @@ function QuizAttemptContent() {
           <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
             <div
               className="bg-purple-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(answeredQuestions / totalQuestions) * 100}%` }}
+              style={{ width: `${(answeredCount / totalQuestions) * 100}%` }}
             ></div>
           </div>
           <p className="text-xs text-gray-600 text-center">
-            {answeredQuestions} of {totalQuestions} questions answered
+            {answeredCount} of {totalQuestions} questions answered
           </p>
         </div>
 
@@ -838,11 +936,11 @@ function QuizAttemptContent() {
           <h3 className="text-sm font-semibold text-gray-700 mb-3">All Questions</h3>
           <div className="grid grid-cols-5 gap-2">
             {allQuestions.map((question, questionIndex) => {
-              const isAnswered = answers[questionIndex] !== null && answers[questionIndex] !== undefined;
+              const isAnswered = answeredQuestions.has(questionIndex);
               const isSkipped = skippedQuestions.includes(questionIndex);
               const isCurrent = currentQuestion === questionIndex;
               const bgColor = isAnswered ? "bg-green-500" : isSkipped ? "bg-yellow-500" : "bg-gray-300";
-              const content = isAnswered ? "✓" : (questionIndex + 1).toString();
+              const content = (questionIndex + 1).toString();
               
               return (
                 <button
