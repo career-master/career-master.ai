@@ -1,0 +1,67 @@
+const mongoose = require('mongoose');
+
+/**
+ * Subject Schema
+ * Represents a learning module/course (e.g., "C Programming", "Data Structures")
+ */
+const subjectSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: [true, 'Subject title is required'],
+      trim: true,
+      maxlength: [200, 'Title cannot exceed 200 characters']
+    },
+    description: {
+      type: String,
+      trim: true,
+      maxlength: [2000, 'Description cannot exceed 2000 characters']
+    },
+    thumbnail: {
+      type: String, // URL to thumbnail image
+      default: ''
+    },
+    category: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Category cannot exceed 100 characters']
+    },
+    level: {
+      type: String,
+      enum: ['beginner', 'intermediate', 'advanced'],
+      default: 'beginner'
+    },
+    isActive: {
+      type: Boolean,
+      default: true
+    },
+    requiresApproval: {
+      type: Boolean,
+      default: true // By default, students need approval to enroll
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    order: {
+      type: Number,
+      default: 0 // For ordering subjects
+    }
+  },
+  {
+    timestamps: true,
+    collection: 'subjects'
+  }
+);
+
+// Indexes
+subjectSchema.index({ title: 1 });
+subjectSchema.index({ isActive: 1 });
+subjectSchema.index({ category: 1 });
+subjectSchema.index({ createdAt: -1 });
+
+const Subject = mongoose.model('Subject', subjectSchema);
+
+module.exports = Subject;
+
