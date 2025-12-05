@@ -76,6 +76,7 @@ export default function AdminLayout({
     { id: 'users', label: 'User Management', icon: 'users', href: '/admin/users' },
     { id: 'batches', label: 'Batches', icon: 'users', href: '/admin/batches' },
     { id: 'institutions', label: 'Institutions', icon: 'university', href: '/admin/institutions' },
+    { id: 'subjects', label: 'Subjects & Topics', icon: 'book', href: '/admin/subjects' },
     { id: 'questions', label: 'Questions Bank', icon: 'database', href: '/admin/quizzes' },
     { id: 'tests', label: 'Test Engine', icon: 'file', href: '/admin/tests' },
     { id: 'content', label: 'Content Library', icon: 'book', href: '/admin/content' },

@@ -1,6 +1,7 @@
 const QuizAttemptRepository = require('./quiz_attempts.repository');
 const QuizRepository = require('./quiz.repository');
 const User = require('../user/users.model');
+const TopicProgressService = require('../topic-progress/topic-progress.service');
 const { ErrorHandler } = require('../middleware/errorHandler');
 
 /**
@@ -211,6 +212,14 @@ class QuizAttemptService {
         percentage: Math.round(percentage * 100) / 100, // Round to 2 decimal places
         result
       });
+
+      // Record quiz completion for topic progress (if quiz is part of a topic)
+      try {
+        await TopicProgressService.recordQuizCompletion(userId, quizId, attempt._id.toString());
+      } catch (progressError) {
+        // Log but don't fail the quiz submission if topic progress tracking fails
+        console.error('Error recording topic progress:', progressError);
+      }
 
       return attempt;
     } catch (error) {

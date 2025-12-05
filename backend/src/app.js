@@ -11,6 +11,12 @@ const usersRoutes = require('./user/users.routes');
 const dashboardRoutes = require('./dashboard/dashboard.routes');
 const reportsRoutes = require('./reports/reports.routes');
 const uploadRoutes = require('./upload/upload.routes');
+const subjectsRoutes = require('./subjects/subjects.routes');
+const topicsRoutes = require('./topics/topics.routes');
+const cheatsheetsRoutes = require('./cheatsheets/cheatsheets.routes');
+const quizSetsRoutes = require('./quiz-sets/quiz-sets.routes');
+const topicProgressRoutes = require('./topic-progress/topic-progress.routes');
+const enrollmentsRoutes = require('./enrollments/enrollments.routes');
 const env = require('./config/env');
 
 /**
@@ -177,6 +183,12 @@ app.use('/api/users', usersRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/subjects', subjectsRoutes);
+app.use('/api/topics', topicsRoutes);
+app.use('/api/cheatsheets', cheatsheetsRoutes);
+app.use('/api/quiz-sets', quizSetsRoutes);
+app.use('/api/topic-progress', topicProgressRoutes);
+app.use('/api/enrollments', enrollmentsRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -194,6 +206,12 @@ app.get('/', (req, res) => {
       dashboard: '/api/dashboard',
       reports: '/api/reports',
       upload: '/api/upload',
+      subjects: '/api/subjects',
+      topics: '/api/topics',
+      cheatsheets: '/api/cheatsheets',
+      quizSets: '/api/quiz-sets',
+      topicProgress: '/api/topic-progress',
+      enrollments: '/api/enrollments',
       testEmail: '/api/test-email'
     }
   });
@@ -215,6 +233,12 @@ app.get('/api', (req, res) => {
       dashboard: '/api/dashboard',
       reports: '/api/reports',
       upload: '/api/upload',
+      subjects: '/api/subjects',
+      topics: '/api/topics',
+      cheatsheets: '/api/cheatsheets',
+      quizSets: '/api/quiz-sets',
+      topicProgress: '/api/topic-progress',
+      enrollments: '/api/enrollments',
       testEmail: '/api/test-email'
     }
   });

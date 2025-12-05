@@ -674,6 +674,136 @@ class ApiService {
       method: 'GET',
     });
   }
+
+  // Subjects (admin + user)
+  async getSubjects(params: { page?: number; limit?: number; isActive?: boolean } = {}): Promise<ApiResponse> {
+    const query = new URLSearchParams();
+    if (params.page) query.set('page', String(params.page));
+    if (params.limit) query.set('limit', String(params.limit));
+    if (params.isActive !== undefined) query.set('isActive', String(params.isActive));
+    const queryString = query.toString();
+    return this.request(`/subjects${queryString ? `?${queryString}` : ''}`, { method: 'GET' });
+  }
+
+  async createSubject(payload: {
+    title: string;
+    description?: string;
+    thumbnail?: string;
+    category?: string;
+    level?: 'beginner' | 'intermediate' | 'advanced';
+    requiresApproval?: boolean;
+    order?: number;
+    isActive?: boolean;
+  }): Promise<ApiResponse> {
+    return this.request('/subjects', { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  async updateSubject(id: string, payload: Partial<{
+    title: string;
+    description?: string;
+    thumbnail?: string;
+    category?: string;
+    level?: 'beginner' | 'intermediate' | 'advanced';
+    requiresApproval?: boolean;
+    order?: number;
+    isActive?: boolean;
+  }>): Promise<ApiResponse> {
+    return this.request(`/subjects/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+  }
+
+  async deleteSubject(id: string): Promise<ApiResponse> {
+    return this.request(`/subjects/${id}`, { method: 'DELETE' });
+  }
+
+  // Topics
+  async getTopics(subjectId?: string, isActive?: boolean): Promise<ApiResponse> {
+    const query = new URLSearchParams();
+    if (subjectId) query.set('subjectId', subjectId);
+    if (isActive !== undefined) query.set('isActive', String(isActive));
+    const qs = query.toString();
+    return this.request(`/topics${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  }
+
+  async createTopic(payload: {
+    subjectId: string;
+    title: string;
+    description?: string;
+    order?: number;
+    prerequisites?: string[];
+    requiredQuizzesToUnlock?: number;
+    isActive?: boolean;
+  }): Promise<ApiResponse> {
+    return this.request('/topics', { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  async updateTopic(id: string, payload: Partial<{
+    subjectId: string;
+    title: string;
+    description?: string;
+    order?: number;
+    prerequisites?: string[];
+    requiredQuizzesToUnlock?: number;
+    isActive?: boolean;
+  }>): Promise<ApiResponse> {
+    return this.request(`/topics/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+  }
+
+  async deleteTopic(id: string): Promise<ApiResponse> {
+    return this.request(`/topics/${id}`, { method: 'DELETE' });
+  }
+
+  // Cheatsheets
+  async getCheatSheetByTopic(topicId: string): Promise<ApiResponse> {
+    return this.request(`/cheatsheets/topic/${topicId}`, { method: 'GET' });
+  }
+
+  async createCheatSheet(payload: {
+    topicId: string;
+    content: string;
+    contentType?: 'html' | 'markdown' | 'text';
+    estReadMinutes?: number;
+    resources?: { title: string; url: string; type?: 'link' | 'video' | 'document' }[];
+  }): Promise<ApiResponse> {
+    return this.request('/cheatsheets', { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  async updateCheatSheet(id: string, payload: Partial<{
+    topicId: string;
+    content: string;
+    contentType?: 'html' | 'markdown' | 'text';
+    estReadMinutes?: number;
+    resources?: { title: string; url: string; type?: 'link' | 'video' | 'document' }[];
+  }>): Promise<ApiResponse> {
+    return this.request(`/cheatsheets/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+  }
+
+  // Quiz sets
+  async getQuizSetsByTopic(topicId: string, isActive?: boolean): Promise<ApiResponse> {
+    const query = new URLSearchParams();
+    if (isActive !== undefined) query.set('isActive', String(isActive));
+    const qs = query.toString();
+    return this.request(`/quiz-sets/topic/${topicId}${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  }
+
+  async createQuizSet(payload: {
+    topicId: string;
+    quizId: string;
+    setName?: string;
+    order?: number;
+    isActive?: boolean;
+  }): Promise<ApiResponse> {
+    return this.request('/quiz-sets', { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  async updateQuizSet(id: string, payload: Partial<{
+    topicId: string;
+    quizId: string;
+    setName?: string;
+    order?: number;
+    isActive?: boolean;
+  }>): Promise<ApiResponse> {
+    return this.request(`/quiz-sets/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+  }
 }
 
 export const apiService = new ApiService();
