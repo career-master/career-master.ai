@@ -13,6 +13,16 @@ const userSchema = new mongoose.Schema(
       minlength: [2, 'Name must be at least 2 characters'],
       maxlength: [100, 'Name cannot exceed 100 characters']
     },
+    profile: {
+      college: { type: String, trim: true, maxlength: 200 },
+      school: { type: String, trim: true, maxlength: 200 },
+      jobTitle: { type: String, trim: true, maxlength: 200 },
+      currentStatus: { type: String, trim: true, maxlength: 100 }, // e.g., student, working professional
+      interests: { type: [String], default: [] },
+      learningGoals: { type: String, trim: true, maxlength: 1000 },
+      city: { type: String, trim: true, maxlength: 100 },
+      country: { type: String, trim: true, maxlength: 100 }
+    },
     email: {
       type: String,
       required: [true, 'Email is required'],

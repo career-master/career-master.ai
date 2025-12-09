@@ -27,5 +27,8 @@ router.put('/:id', adminMiddleware, validate(updateTopicSchema), TopicController
 // Admin: Delete topic
 router.delete('/:id', adminMiddleware, validate(topicIdParamSchema), TopicController.deleteTopic);
 
+// Admin: Bulk update topic orders
+router.put('/orders', adminMiddleware, TopicController.bulkUpdateOrders);
+
 module.exports = router;
 

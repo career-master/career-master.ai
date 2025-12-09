@@ -34,6 +34,10 @@ const createSubjectSchema = z.object({
         z.literal('')
       ])
       .optional(),
+    batches: z
+      .array(z.string().trim().min(1))
+      .default([])
+      .optional(),
     requiresApproval: z
       .boolean()
       .default(true)

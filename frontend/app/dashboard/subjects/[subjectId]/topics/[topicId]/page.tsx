@@ -246,8 +246,9 @@ export default function TopicDetailPage() {
                 <div className="space-y-3">
                   {quizSets.map((quizSet) => {
                     const quizId = typeof quizSet.quizId === 'string' ? quizSet.quizId : quizSet.quizId?._id;
-                    const quizTitle = typeof quizSet.quizId === 'string' ? 'Quiz' : quizSet.quizId?.title || 'Quiz';
-                    const duration = typeof quizSet.quizId === 'object' ? quizSet.quizId?.durationMinutes : undefined;
+                    const setTitle = quizSet.setName || 'Quiz Set';
+                    const duration =
+                      typeof quizSet.quizId === 'object' ? quizSet.quizId?.durationMinutes : undefined;
 
                     return (
                       <div
@@ -255,19 +256,17 @@ export default function TopicDetailPage() {
                         className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors"
                       >
                         <div className="mb-3">
-                          <h3 className="font-semibold text-gray-900 mb-1">
-                            {quizSet.setName || quizTitle}
-                          </h3>
-                          {duration && (
-                            <p className="text-xs text-gray-500">⏱️ {duration} minutes</p>
-                          )}
+                          <h3 className="font-semibold text-gray-900 mb-1">{setTitle}</h3>
+                          <p className="text-xs text-gray-500">
+                            {duration && duration > 0 ? `⏱️ ${duration} minutes` : 'No timer (untimed)'}
+                          </p>
                         </div>
                         <button
                           onClick={() => handleStartQuiz(quizId || '')}
                           disabled={!quizId}
                           className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium"
                         >
-                          Start Quiz
+                          Start {setTitle}
                         </button>
                       </div>
                     );

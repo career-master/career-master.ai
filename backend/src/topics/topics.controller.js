@@ -94,6 +94,20 @@ class TopicController {
       message: 'Topic deleted successfully'
     });
   });
+
+  /**
+   * PUT /topics/orders
+   * Bulk update topic orders
+   */
+  static bulkUpdateOrders = asyncHandler(async (req, res) => {
+    const { orders } = req.body;
+    await TopicService.bulkUpdateOrders(orders);
+
+    res.status(200).json({
+      success: true,
+      message: 'Topic orders updated successfully'
+    });
+  });
 }
 
 module.exports = TopicController;

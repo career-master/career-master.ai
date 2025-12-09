@@ -90,6 +90,20 @@ class SubjectController {
       message: 'Subject deleted successfully'
     });
   });
+
+  /**
+   * PUT /subjects/orders
+   * Bulk update subject orders
+   */
+  static bulkUpdateOrders = asyncHandler(async (req, res) => {
+    const { orders } = req.body;
+    await SubjectService.bulkUpdateOrders(orders);
+
+    res.status(200).json({
+      success: true,
+      message: 'Subject orders updated successfully'
+    });
+  });
 }
 
 module.exports = SubjectController;

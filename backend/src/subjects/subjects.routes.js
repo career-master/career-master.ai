@@ -27,5 +27,8 @@ router.put('/:id', adminMiddleware, validate(updateSubjectSchema), SubjectContro
 // Admin: Delete subject
 router.delete('/:id', adminMiddleware, validate(subjectIdParamSchema), SubjectController.deleteSubject);
 
+// Admin: Bulk update subject orders
+router.put('/orders', adminMiddleware, SubjectController.bulkUpdateOrders);
+
 module.exports = router;
 
