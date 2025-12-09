@@ -161,6 +161,23 @@ class AuthController {
       }
     });
   });
+
+  /**
+   * PUT /auth/me
+   * Update current user profile
+   */
+  static updateCurrentUser = asyncHandler(async (req, res) => {
+    const userId = req.user.userId;
+    const AuthRepository = require('./auth.repository');
+    const updated = await AuthRepository.updateUser(userId, req.body);
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: {
+        user: updated.toJSON()
+      }
+    });
+  });
 }
 
 module.exports = AuthController;

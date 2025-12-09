@@ -127,6 +127,25 @@ class SubjectRepository {
       throw new ErrorHandler(500, `Error deleting subject: ${error.message}`);
     }
   }
+
+  /**
+   * Bulk update subject orders
+   * @param {Array<{id: string, order: number}>} orders
+   * @returns {Promise<void>}
+   */
+  static async bulkUpdateOrders(orders) {
+    try {
+      const bulkOps = orders.map(({ id, order }) => ({
+        updateOne: {
+          filter: { _id: id },
+          update: { $set: { order } }
+        }
+      }));
+      await Subject.bulkWrite(bulkOps);
+    } catch (error) {
+      throw new ErrorHandler(500, `Error updating subject orders: ${error.message}`);
+    }
+  }
 }
 
 module.exports = SubjectRepository;

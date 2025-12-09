@@ -16,7 +16,7 @@ class SubjectService {
       throw new ErrorHandler(401, 'User ID is required to create a subject');
     }
 
-    const { title, description, thumbnail, category, level, requiresApproval, order } = payload;
+    const { title, description, thumbnail, category, level, requiresApproval, order, batches } = payload;
 
     const subjectData = {
       title,
@@ -24,6 +24,7 @@ class SubjectService {
       thumbnail: thumbnail || undefined,
       category: category || undefined,
       level: level || 'beginner',
+      batches: Array.isArray(batches) ? batches.filter(Boolean) : [],
       requiresApproval: requiresApproval !== undefined ? requiresApproval : true,
       order: order || 0,
       createdBy: userId,
@@ -107,6 +108,17 @@ class SubjectService {
       throw new ErrorHandler(404, 'Subject not found');
     }
     await SubjectRepository.deleteSubject(subjectId);
+  }
+
+  /**
+   * Bulk update subject orders
+   * @param {Array<{id: string, order: number}>} orders
+   */
+  static async bulkUpdateOrders(orders) {
+    if (!Array.isArray(orders) || orders.length === 0) {
+      throw new ErrorHandler(400, 'Orders array is required and must not be empty');
+    }
+    await SubjectRepository.bulkUpdateOrders(orders);
   }
 }
 

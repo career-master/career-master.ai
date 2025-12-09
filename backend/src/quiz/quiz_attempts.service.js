@@ -249,8 +249,18 @@ class QuizAttemptService {
       // Get all active quizzes
       const allQuizzes = await QuizRepository.getAllQuizzes(true);
 
+      // Get all quiz IDs that are part of quiz sets (these should only show in subject/topic pages)
+      const QuizSet = require('../quiz-sets/quiz-sets.model');
+      const quizSets = await QuizSet.find({ isActive: true }).select('quizId').lean();
+      const quizIdsInSets = new Set(quizSets.map(qs => qs.quizId.toString()));
+
       // Filter quizzes available to user
+      // Exclude quizzes that are part of quiz sets (they should only appear in subject/topic pages)
       const availableQuizzes = allQuizzes.filter((quiz) => {
+        // Exclude quizzes that are in quiz sets
+        if (quizIdsInSets.has(quiz._id.toString())) {
+          return false;
+        }
         // Check if quiz is active
         if (!quiz.isActive) return false;
 

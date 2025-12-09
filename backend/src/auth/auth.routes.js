@@ -12,6 +12,7 @@ const {
   changePasswordSchema,
   logoutSchema,
   logoutAllSchema,
+  updateCurrentUserSchema,
   validate
 } = require('./auth.validation');
 
@@ -33,5 +34,6 @@ router.post('/logout', validate(logoutSchema), AuthController.logout);
 router.post('/logout-all', authenticate, validate(logoutAllSchema), AuthController.logoutAll);
 router.post('/change-password', authenticate, validate(changePasswordSchema), AuthController.changePassword);
 router.get('/me', authenticate, AuthController.getCurrentUser);
+router.put('/me', authenticate, validate(updateCurrentUserSchema), AuthController.updateCurrentUser);
 
 module.exports = router;

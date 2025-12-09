@@ -100,8 +100,9 @@ class QuizRepository {
    * @param {boolean} options.activeOnly
    * @param {number} options.page
    * @param {number} options.limit
+   * @param {Array<string>} options.excludeQuizIds - Quiz IDs to exclude (e.g., quizzes in quiz sets)
    */
-  static async getQuizzesPaginated({ activeOnly = false, page = 1, limit = 10 }) {
+  static async getQuizzesPaginated({ activeOnly = false, page = 1, limit = 10, excludeQuizIds = [] }) {
     try {
       // Check MongoDB connection
       const mongoose = require('mongoose');
@@ -110,6 +111,20 @@ class QuizRepository {
       }
 
       const filter = activeOnly ? { isActive: true } : {};
+      
+      // Exclude quizzes that are in quiz sets (those should only show in subject/topic pages)
+      if (excludeQuizIds && excludeQuizIds.length > 0) {
+        const mongoose = require('mongoose');
+        const excludeObjectIds = excludeQuizIds.map(id => {
+          try {
+            return mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id;
+          } catch {
+            return id;
+          }
+        });
+        filter._id = { $nin: excludeObjectIds };
+      }
+      
       const skip = (page - 1) * limit;
 
       const [items, total] = await Promise.all([

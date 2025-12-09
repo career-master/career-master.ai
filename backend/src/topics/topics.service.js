@@ -94,6 +94,17 @@ class TopicService {
     }
     await TopicRepository.deleteTopic(topicId);
   }
+
+  /**
+   * Bulk update topic orders
+   * @param {Array<{id: string, order: number}>} orders
+   */
+  static async bulkUpdateOrders(orders) {
+    if (!Array.isArray(orders) || orders.length === 0) {
+      throw new ErrorHandler(400, 'Orders array is required and must not be empty');
+    }
+    await TopicRepository.bulkUpdateOrders(orders);
+  }
 }
 
 module.exports = TopicService;

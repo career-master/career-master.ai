@@ -14,6 +14,8 @@ type Subject = {
   level?: 'beginner' | 'intermediate' | 'advanced';
   requiresApproval?: boolean;
   order?: number;
+  thumbnail?: string;
+  batches?: string[];
 };
 
 
@@ -73,7 +75,10 @@ export default function SubjectsBuilderPage() {
     level: undefined as Subject['level'] | undefined,
     requiresApproval: true,
     order: 0,
+    thumbnail: '',
+    batches: '' as string,
   });
+  const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
 
   const [topicForm, setTopicForm] = useState({
     title: '',
@@ -227,6 +232,39 @@ export default function SubjectsBuilderPage() {
       if (subjectForm.level) {
         payload.level = subjectForm.level;
       }
+    if (subjectForm.thumbnail?.trim()) {
+      payload.thumbnail = subjectForm.thumbnail.trim();
+    }
+    if (subjectForm.batches?.trim()) {
+      payload.batches = subjectForm.batches
+        .split(',')
+        .map((b) => b.trim())
+        .filter(Boolean);
+    }
+    if (subjectForm.batches?.trim()) {
+      payload.batches = subjectForm.batches
+        .split(',')
+        .map((b) => b.trim())
+        .filter(Boolean);
+    }
+    if (subjectForm.batches?.trim()) {
+      payload.batches = subjectForm.batches
+        .split(',')
+        .map((b) => b.trim())
+        .filter(Boolean);
+    }
+    if (subjectForm.thumbnail?.trim()) {
+      payload.thumbnail = subjectForm.thumbnail.trim();
+    }
+    if (subjectForm.batches?.trim()) {
+      payload.batches = subjectForm.batches
+        .split(',')
+        .map((b) => b.trim())
+        .filter(Boolean);
+    }
+      if (subjectForm.thumbnail?.trim()) {
+        payload.thumbnail = subjectForm.thumbnail.trim();
+      }
       const res = await apiService.createSubject(payload);
       if (res.success) {
         const created =
@@ -248,6 +286,8 @@ export default function SubjectsBuilderPage() {
           level: undefined,
           requiresApproval: true,
           order: 0,
+          thumbnail: '',
+          batches: '',
         });
       } else {
         alert(res.message || 'Failed to create subject');
@@ -268,6 +308,8 @@ export default function SubjectsBuilderPage() {
       level: subject.level,
       requiresApproval: subject.requiresApproval ?? true,
       order: subject.order ?? 0,
+      thumbnail: subject.thumbnail || '',
+      batches: (subject.batches || []).join(', '),
     });
   };
 
@@ -289,6 +331,9 @@ export default function SubjectsBuilderPage() {
       if (subjectForm.level) {
         payload.level = subjectForm.level;
       }
+      if (subjectForm.thumbnail?.trim()) {
+        payload.thumbnail = subjectForm.thumbnail.trim();
+      }
       const res = await apiService.updateSubject(editingSubjectId, payload);
       if (res.success) {
         await loadInitial();
@@ -300,6 +345,8 @@ export default function SubjectsBuilderPage() {
           level: undefined,
           requiresApproval: true,
           order: 0,
+          thumbnail: '',
+          batches: '',
         });
       } else {
         alert(res.message || 'Failed to update subject');
@@ -512,10 +559,157 @@ export default function SubjectsBuilderPage() {
     reader.readAsText(file);
   };
 
+  // Enhanced function to detect and format code snippets
+  const detectAndFormatCode = (text: string): string => {
+    const lines = text.split('\n');
+    const formatted: string[] = [];
+    let inCodeBlock = false;
+    let codeBuffer: string[] = [];
+    let detectedLanguage = '';
+
+    // Common code patterns
+    const codePatterns = {
+      javascript: /(function|const|let|var|=>|import|export|console\.|\.js)/i,
+      python: /(def |import |from |print\(|\.py|if __name__)/i,
+      java: /(public |private |class |import java|System\.out)/i,
+      cpp: /(#include|using namespace|std::|int main|\.cpp)/i,
+      c: /(#include|int main|printf|scanf|\.c)/i,
+      html: /(<html|<div|<body|<head|<!DOCTYPE)/i,
+      css: /(@media|@keyframes|\.|#|:hover|:focus)/i,
+      sql: /(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|CREATE TABLE)/i,
+    };
+
+    const detectLanguage = (line: string): string => {
+      for (const [lang, pattern] of Object.entries(codePatterns)) {
+        if (pattern.test(line)) {
+          return lang;
+        }
+      }
+      return '';
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+
+      // Check if line looks like code (contains common code indicators)
+      const looksLikeCode =
+        trimmed.includes('{') ||
+        trimmed.includes('}') ||
+        trimmed.includes('(') && trimmed.includes(')') ||
+        trimmed.includes(';') ||
+        trimmed.includes('=') && trimmed.includes('(') ||
+        trimmed.includes('->') ||
+        trimmed.includes('::') ||
+        trimmed.match(/^\s*(function|def|class|import|const|let|var)\s/) ||
+        trimmed.match(/^\s*[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*/) ||
+        trimmed.match(/^\s*\/\//) ||
+        trimmed.match(/^\s*\/\*/);
+
+      if (looksLikeCode && !inCodeBlock) {
+        // Start code block
+        inCodeBlock = true;
+        codeBuffer = [line];
+        detectedLanguage = detectLanguage(line) || 'javascript';
+      } else if (inCodeBlock) {
+        // Check if we should end the code block
+        const isEmpty = trimmed === '';
+        const nextLine = i < lines.length - 1 ? lines[i + 1] : '';
+        const nextIsCode = nextLine.trim() && (
+          nextLine.trim().includes('{') ||
+          nextLine.trim().includes('}') ||
+          nextLine.trim().includes('(') && nextLine.trim().includes(')') ||
+          nextLine.trim().includes(';') ||
+          nextLine.trim().match(/^\s*(function|def|class|import|const|let|var)\s/)
+        );
+
+        if (isEmpty && !nextIsCode && codeBuffer.length > 0) {
+          // End code block
+          formatted.push(`\`\`\`${detectedLanguage}\n${codeBuffer.join('\n')}\n\`\`\``);
+          codeBuffer = [];
+          inCodeBlock = false;
+          detectedLanguage = '';
+        } else if (looksLikeCode || isEmpty) {
+          codeBuffer.push(line);
+        } else {
+          // End code block and add current line as text
+          if (codeBuffer.length > 0) {
+            formatted.push(`\`\`\`${detectedLanguage}\n${codeBuffer.join('\n')}\n\`\`\``);
+            codeBuffer = [];
+          }
+          inCodeBlock = false;
+          formatted.push(line);
+        }
+      } else {
+        formatted.push(line);
+      }
+    }
+
+    // Close any open code block
+    if (inCodeBlock && codeBuffer.length > 0) {
+      formatted.push(`\`\`\`${detectedLanguage}\n${codeBuffer.join('\n')}\n\`\`\``);
+    }
+
+    return formatted.join('\n');
+  };
+
+  // Enhanced function to detect and format headings
+  const detectAndFormatHeadings = (text: string): string => {
+    const lines = text.split('\n');
+    const formatted: string[] = [];
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+
+      // Skip if already a markdown heading
+      if (trimmed.match(/^#{1,6}\s/)) {
+        formatted.push(line);
+        continue;
+      }
+
+      // Detect bold text that might be a heading (common from GPT)
+      if (trimmed.match(/^\*\*[^*]+\*\*$/) || trimmed.match(/^__[^_]+__$/)) {
+        const headingText = trimmed.replace(/\*\*/g, '').replace(/__/g, '').trim();
+        // Convert to H2 if it's a short line (likely heading)
+        if (headingText.length < 100 && !headingText.includes('.')) {
+          formatted.push(`## ${headingText}`);
+          continue;
+        }
+      }
+
+      // Detect lines that look like headings (short, no punctuation at end, capitalized)
+      if (
+        trimmed.length > 0 &&
+        trimmed.length < 80 &&
+        !trimmed.endsWith('.') &&
+        !trimmed.endsWith(',') &&
+        !trimmed.endsWith(';') &&
+        !trimmed.includes('```') &&
+        trimmed[0] === trimmed[0].toUpperCase() &&
+        !trimmed.includes('{') &&
+        !trimmed.includes('}') &&
+        !trimmed.includes('(') &&
+        !trimmed.includes(')') &&
+        !trimmed.match(/^\d+\./) // Not a numbered list
+      ) {
+        // Check if previous line was empty (common heading pattern)
+        const prevLine = formatted[formatted.length - 1] || '';
+        if (prevLine.trim() === '' || formatted.length === 0) {
+          formatted.push(`## ${trimmed}`);
+          continue;
+        }
+      }
+
+      formatted.push(line);
+    }
+
+    return formatted.join('\n');
+  };
+
   const handlePasteFromSource = async (topicId: string) => {
     try {
       // Get clipboard content
-      const clipboardText = await navigator.clipboard.readText();
+      let clipboardText = await navigator.clipboard.readText();
       
       // Check if it's HTML (common from GPT or web sources)
       const isHTML = clipboardText.trim().startsWith('<') || clipboardText.includes('<html') || clipboardText.includes('<div');
@@ -529,18 +723,45 @@ export default function SubjectsBuilderPage() {
           bulletListMarker: '-',
         });
         
-        // Add code block support
+        // Enhanced code block support
         turndownService.addRule('codeBlocks', {
           filter: ['pre'],
           replacement: (content: string, node: any) => {
             const codeElement = node.querySelector('code');
-            const language = codeElement?.className?.replace('language-', '') || '';
+            const language = codeElement?.className?.replace('language-', '').replace('hljs', '').trim() || '';
             const code = codeElement?.textContent || content;
             return `\n\`\`\`${language}\n${code}\n\`\`\`\n`;
           },
         });
+
+        // Better heading detection
+        turndownService.addRule('headings', {
+          filter: (node: any) => {
+            return node.tagName === 'H1' || node.tagName === 'H2' || node.tagName === 'H3' || 
+                   node.tagName === 'H4' || node.tagName === 'H5' || node.tagName === 'H6' ||
+                   (node.tagName === 'P' && node.querySelector('strong') && node.textContent.length < 100);
+          },
+          replacement: (content: string, node: any) => {
+            if (node.tagName.startsWith('H')) {
+              const level = parseInt(node.tagName.charAt(1));
+              return `\n${'#'.repeat(level)} ${content}\n`;
+            }
+            // Strong text in short paragraphs might be headings
+            const strong = node.querySelector('strong');
+            if (strong && node.textContent.length < 100) {
+              return `\n## ${strong.textContent}\n`;
+            }
+            return content;
+          },
+        });
         
-        const markdown = turndownService.turndown(clipboardText);
+        let markdown = turndownService.turndown(clipboardText);
+        
+        // Post-process: detect and format any remaining code snippets
+        markdown = detectAndFormatCode(markdown);
+        // Format headings
+        markdown = detectAndFormatHeadings(markdown);
+        
         setTopicCheatForms((prev) => ({
           ...prev,
           [topicId]: {
@@ -549,18 +770,25 @@ export default function SubjectsBuilderPage() {
             contentType: 'markdown',
           },
         }));
-        alert('Content pasted and converted from HTML to Markdown!');
+        alert('Content pasted and converted! Headings and code snippets have been automatically formatted.');
       } else {
-        // Plain text or markdown - use as is
+        // Plain text or markdown - detect and format code snippets and headings
+        let formattedText = clipboardText;
+        
+        // First format headings
+        formattedText = detectAndFormatHeadings(formattedText);
+        // Then format code snippets
+        formattedText = detectAndFormatCode(formattedText);
+        
         setTopicCheatForms((prev) => ({
           ...prev,
           [topicId]: {
             ...(prev[topicId] || { contentType: 'html', estReadMinutes: 5 }),
-            content: clipboardText,
+            content: formattedText,
             contentType: 'markdown',
           },
         }));
-        alert('Content pasted successfully!');
+        alert('Content pasted and auto-formatted! Headings and code snippets have been detected and formatted.');
       }
     } catch (error: any) {
       console.error('Paste error:', error);
@@ -568,6 +796,8 @@ export default function SubjectsBuilderPage() {
       const userInput = prompt('Please paste your content here (supports HTML, Markdown, or plain text):');
       if (userInput) {
         const isHTML = userInput.trim().startsWith('<') || userInput.includes('<html') || userInput.includes('<div');
+        let processedContent = userInput;
+        
         if (isHTML) {
           try {
             const TurndownService = (await import('turndown')).default;
@@ -575,36 +805,25 @@ export default function SubjectsBuilderPage() {
               headingStyle: 'atx',
               codeBlockStyle: 'fenced',
             });
-            const markdown = turndownService.turndown(userInput);
-            setTopicCheatForms((prev) => ({
-              ...prev,
-              [topicId]: {
-                ...(prev[topicId] || { contentType: 'html', estReadMinutes: 5 }),
-                content: markdown,
-                contentType: 'markdown',
-              },
-            }));
-            alert('Content converted from HTML to Markdown!');
+            processedContent = turndownService.turndown(userInput);
           } catch (e) {
-            setTopicCheatForms((prev) => ({
-              ...prev,
-              [topicId]: {
-                ...(prev[topicId] || { contentType: 'html', estReadMinutes: 5 }),
-                content: userInput,
-                contentType: 'markdown',
-              },
-            }));
+            // Keep original if conversion fails
           }
-        } else {
-          setTopicCheatForms((prev) => ({
-            ...prev,
-            [topicId]: {
-              ...(prev[topicId] || { contentType: 'html', estReadMinutes: 5 }),
-              content: userInput,
-              contentType: 'markdown',
-            },
-          }));
         }
+        
+        // Auto-format headings and code
+        processedContent = detectAndFormatHeadings(processedContent);
+        processedContent = detectAndFormatCode(processedContent);
+        
+        setTopicCheatForms((prev) => ({
+          ...prev,
+          [topicId]: {
+            ...(prev[topicId] || { contentType: 'html', estReadMinutes: 5 }),
+            content: processedContent,
+            contentType: 'markdown',
+          },
+        }));
+        alert('Content pasted and auto-formatted!');
       }
     }
   };
@@ -810,14 +1029,27 @@ export default function SubjectsBuilderPage() {
       // Dynamically import pdfjs-dist
       const pdfjsLib = await import('pdfjs-dist');
       
-      // Set worker source (required for pdfjs-dist)
-      // Use unpkg CDN for worker file
+      // Set worker source - try local first, then CDN (works in both dev and production)
       if (typeof window !== 'undefined') {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+        const version = pdfjsLib.version || '5.4.449';
+        const localWorkerPath = '/pdfjs/pdf.worker.min.mjs';
+        
+        // Try local worker first (available after build)
+        // Fallback to CDN if local file doesn't exist (works in all environments)
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 
+          // Use CDN as primary source for production reliability
+          // Local file will be used if available, but CDN ensures it always works
+          `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
+        
+        // Optional: Try to use local file if available (faster, but CDN is reliable fallback)
+        // The CDN will work in all environments (dev, production, Vercel, Render, etc.)
       }
 
       const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const pdf = await pdfjsLib.getDocument({ 
+        data: arrayBuffer,
+        verbosity: 0 // Reduce console noise
+      }).promise;
       
       let markdownContent = '';
       const numPages = pdf.numPages;
@@ -844,24 +1076,107 @@ export default function SubjectsBuilderPage() {
           .filter((line) => line.length > 0);
 
         if (pageLines.length > 0) {
-          // Try to detect headings and format
-          const formattedLines = pageLines.map((line) => {
-            // Detect potential headings (short lines, all caps, or lines ending with colon)
-            if (line.length < 80 && (line === line.toUpperCase() || line.endsWith(':'))) {
-              return `## ${line.replace(':', '')}`;
-            }
-            // Detect numbered lists
-            if (/^\d+[\.\)]\s/.test(line)) {
-              return line;
-            }
-            // Detect bullet points
-            if (/^[•\-\*]\s/.test(line)) {
-              return `- ${line.replace(/^[•\-\*]\s/, '')}`;
-            }
-            return line;
-          });
+          // Process lines to detect code blocks, headings, and format properly
+          const processedLines: string[] = [];
+          let inCodeBlock = false;
+          let codeBuffer: string[] = [];
+          let detectedLanguage = '';
 
-          markdownContent += formattedLines.join('\n\n');
+          for (let i = 0; i < pageLines.length; i++) {
+            const line = pageLines[i];
+            const trimmed = line.trim();
+
+            // Detect code patterns (common in programming cheatsheets)
+            const looksLikeCode =
+              trimmed.includes('#include') ||
+              trimmed.includes('int main') ||
+              trimmed.includes('printf') ||
+              trimmed.includes('scanf') ||
+              trimmed.includes('{') ||
+              trimmed.includes('}') ||
+              trimmed.includes(';') ||
+              trimmed.match(/^\s*(function|def|class|import|const|let|var|#include|int|char|float|void)\s/) ||
+              trimmed.match(/^\s*[a-zA-Z_][a-zA-Z0-9_]*\s*[=<>!]+\s*/) ||
+              trimmed.match(/^\s*\/\//) ||
+              (trimmed.includes('(') && trimmed.includes(')') && trimmed.length < 100);
+
+            if (looksLikeCode && !inCodeBlock) {
+              // Start code block
+              inCodeBlock = true;
+              codeBuffer = [line];
+              
+              // Detect language
+              if (trimmed.includes('#include') || trimmed.includes('printf') || trimmed.includes('scanf')) {
+                detectedLanguage = 'c';
+              } else if (trimmed.includes('def ') || trimmed.includes('import ') || trimmed.includes('print(')) {
+                detectedLanguage = 'python';
+              } else if (trimmed.includes('function') || trimmed.includes('const ') || trimmed.includes('let ')) {
+                detectedLanguage = 'javascript';
+              } else {
+                detectedLanguage = 'cpp';
+              }
+            } else if (inCodeBlock) {
+              // Check if we should end the code block
+              const isEmpty = trimmed === '';
+              const nextLine = i < pageLines.length - 1 ? pageLines[i + 1] : '';
+              const nextIsCode = nextLine.trim() && (
+                nextLine.trim().includes('{') ||
+                nextLine.trim().includes('}') ||
+                nextLine.trim().includes(';') ||
+                nextLine.trim().match(/^\s*(function|def|class|import|const|let|var|#include|int|char|float|void)\s/)
+              );
+
+              if (isEmpty && !nextIsCode && codeBuffer.length > 0) {
+                // End code block
+                processedLines.push(`\`\`\`${detectedLanguage}\n${codeBuffer.join('\n')}\n\`\`\``);
+                codeBuffer = [];
+                inCodeBlock = false;
+                detectedLanguage = '';
+              } else if (looksLikeCode || isEmpty || trimmed.match(/^\s+/)) {
+                // Continue code block (includes indented lines)
+                codeBuffer.push(line);
+              } else {
+                // End code block and add current line as text
+                if (codeBuffer.length > 0) {
+                  processedLines.push(`\`\`\`${detectedLanguage}\n${codeBuffer.join('\n')}\n\`\`\``);
+                  codeBuffer = [];
+                }
+                inCodeBlock = false;
+                
+                // Process as regular text
+                if (trimmed.length < 80 && (trimmed === trimmed.toUpperCase() || trimmed.endsWith(':'))) {
+                  processedLines.push(`## ${trimmed.replace(':', '')}`);
+                } else if (/^\d+[\.\)]\s/.test(trimmed)) {
+                  processedLines.push(line);
+                } else if (/^[•\-\*]\s/.test(trimmed)) {
+                  processedLines.push(`- ${trimmed.replace(/^[•\-\*]\s/, '')}`);
+                } else {
+                  processedLines.push(line);
+                }
+              }
+            } else {
+              // Regular text processing
+              // Detect potential headings (short lines, all caps, or lines ending with colon)
+              if (trimmed.length > 0 && trimmed.length < 80 && (trimmed === trimmed.toUpperCase() || trimmed.endsWith(':'))) {
+                processedLines.push(`## ${trimmed.replace(':', '')}`);
+              } else if (/^\d+[\.\)]\s/.test(trimmed)) {
+                // Numbered lists
+                processedLines.push(line);
+              } else if (/^[•\-\*]\s/.test(trimmed)) {
+                // Bullet points
+                processedLines.push(`- ${trimmed.replace(/^[•\-\*]\s/, '')}`);
+              } else {
+                processedLines.push(line);
+              }
+            }
+          }
+
+          // Close any open code block
+          if (inCodeBlock && codeBuffer.length > 0) {
+            processedLines.push(`\`\`\`${detectedLanguage}\n${codeBuffer.join('\n')}\n\`\`\``);
+          }
+
+          markdownContent += processedLines.join('\n\n');
           if (pageNum < numPages) {
             markdownContent += '\n\n---\n\n'; // Page separator
           }
@@ -885,7 +1200,167 @@ export default function SubjectsBuilderPage() {
       alert(`PDF converted successfully! Extracted ${numPages} page(s) and converted to markdown.`);
     } catch (error: any) {
       console.error('PDF conversion error:', error);
-      alert(`Failed to convert PDF: ${error.message || 'Unknown error'}. Please try a different PDF or convert manually.`);
+      
+      // Provide more helpful error messages and retry without worker
+      let errorMessage = 'Failed to convert PDF. ';
+      
+      if (error.message?.includes('worker') || error.message?.includes('Failed to fetch') || error.message?.includes('dynamically imported')) {
+        errorMessage += 'Worker file could not be loaded. Trying alternative method...';
+        
+        // Retry without worker (slower but should work)
+        try {
+          const pdfjsLib = await import('pdfjs-dist');
+          const arrayBuffer = await file.arrayBuffer();
+          
+          // Disable worker completely
+          pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+          
+          const pdf = await pdfjsLib.getDocument({ 
+            data: arrayBuffer,
+            useWorkerFetch: false,
+            isEvalSupported: false,
+            verbosity: 0
+          }).promise;
+          
+          let markdownContent = '';
+          const numPages = pdf.numPages;
+
+          for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+            const page = await pdf.getPage(pageNum);
+            const textContent = await page.getTextContent();
+            
+            const lines: { [key: number]: string[] } = {};
+            textContent.items.forEach((item: any) => {
+              if ('str' in item && item.str.trim()) {
+                const y = Math.round(item.transform[5] || 0);
+                if (!lines[y]) lines[y] = [];
+                lines[y].push(item.str);
+              }
+            });
+
+            const pageLines = Object.keys(lines)
+              .sort((a, b) => Number(b) - Number(a))
+              .map((y) => lines[Number(y)].join(' ').trim())
+              .filter((line) => line.length > 0);
+
+            if (pageLines.length > 0) {
+              // Use the same improved formatting logic
+              const processedLines: string[] = [];
+              let inCodeBlock = false;
+              let codeBuffer: string[] = [];
+              let detectedLanguage = '';
+
+              for (let i = 0; i < pageLines.length; i++) {
+                const line = pageLines[i];
+                const trimmed = line.trim();
+
+                const looksLikeCode =
+                  trimmed.includes('#include') ||
+                  trimmed.includes('int main') ||
+                  trimmed.includes('printf') ||
+                  trimmed.includes('scanf') ||
+                  trimmed.includes('{') ||
+                  trimmed.includes('}') ||
+                  trimmed.includes(';') ||
+                  trimmed.match(/^\s*(function|def|class|import|const|let|var|#include|int|char|float|void)\s/) ||
+                  trimmed.match(/^\s*[a-zA-Z_][a-zA-Z0-9_]*\s*[=<>!]+\s*/) ||
+                  trimmed.match(/^\s*\/\//) ||
+                  (trimmed.includes('(') && trimmed.includes(')') && trimmed.length < 100);
+
+                if (looksLikeCode && !inCodeBlock) {
+                  inCodeBlock = true;
+                  codeBuffer = [line];
+                  
+                  if (trimmed.includes('#include') || trimmed.includes('printf') || trimmed.includes('scanf')) {
+                    detectedLanguage = 'c';
+                  } else if (trimmed.includes('def ') || trimmed.includes('import ') || trimmed.includes('print(')) {
+                    detectedLanguage = 'python';
+                  } else if (trimmed.includes('function') || trimmed.includes('const ') || trimmed.includes('let ')) {
+                    detectedLanguage = 'javascript';
+                  } else {
+                    detectedLanguage = 'cpp';
+                  }
+                } else if (inCodeBlock) {
+                  const isEmpty = trimmed === '';
+                  const nextLine = i < pageLines.length - 1 ? pageLines[i + 1] : '';
+                  const nextIsCode = nextLine.trim() && (
+                    nextLine.trim().includes('{') ||
+                    nextLine.trim().includes('}') ||
+                    nextLine.trim().includes(';') ||
+                    nextLine.trim().match(/^\s*(function|def|class|import|const|let|var|#include|int|char|float|void)\s/)
+                  );
+
+                  if (isEmpty && !nextIsCode && codeBuffer.length > 0) {
+                    processedLines.push(`\`\`\`${detectedLanguage}\n${codeBuffer.join('\n')}\n\`\`\``);
+                    codeBuffer = [];
+                    inCodeBlock = false;
+                    detectedLanguage = '';
+                  } else if (looksLikeCode || isEmpty || trimmed.match(/^\s+/)) {
+                    codeBuffer.push(line);
+                  } else {
+                    if (codeBuffer.length > 0) {
+                      processedLines.push(`\`\`\`${detectedLanguage}\n${codeBuffer.join('\n')}\n\`\`\``);
+                      codeBuffer = [];
+                    }
+                    inCodeBlock = false;
+                    
+                    if (trimmed.length < 80 && (trimmed === trimmed.toUpperCase() || trimmed.endsWith(':'))) {
+                      processedLines.push(`## ${trimmed.replace(':', '')}`);
+                    } else if (/^\d+[\.\)]\s/.test(trimmed)) {
+                      processedLines.push(line);
+                    } else if (/^[•\-\*]\s/.test(trimmed)) {
+                      processedLines.push(`- ${trimmed.replace(/^[•\-\*]\s/, '')}`);
+                    } else {
+                      processedLines.push(line);
+                    }
+                  }
+                } else {
+                  if (trimmed.length > 0 && trimmed.length < 80 && (trimmed === trimmed.toUpperCase() || trimmed.endsWith(':'))) {
+                    processedLines.push(`## ${trimmed.replace(':', '')}`);
+                  } else if (/^\d+[\.\)]\s/.test(trimmed)) {
+                    processedLines.push(line);
+                  } else if (/^[•\-\*]\s/.test(trimmed)) {
+                    processedLines.push(`- ${trimmed.replace(/^[•\-\*]\s/, '')}`);
+                  } else {
+                    processedLines.push(line);
+                  }
+                }
+              }
+
+              if (inCodeBlock && codeBuffer.length > 0) {
+                processedLines.push(`\`\`\`${detectedLanguage}\n${codeBuffer.join('\n')}\n\`\`\``);
+              }
+
+              markdownContent += processedLines.join('\n\n');
+              if (pageNum < numPages) {
+                markdownContent += '\n\n---\n\n';
+              }
+            }
+          }
+
+          const cleanedMarkdown = markdownContent
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+
+          setTopicCheatForms((prev) => ({
+            ...prev,
+            [topicId]: {
+              ...(prev[topicId] || { contentType: 'html', estReadMinutes: 5 }),
+              content: cleanedMarkdown || 'No text extracted from PDF.',
+              contentType: 'markdown',
+            },
+          }));
+
+          alert(`PDF converted successfully! Extracted ${numPages} page(s) and converted to markdown.`);
+          return; // Success, exit early
+        } catch (retryError: any) {
+          errorMessage = `Failed to convert PDF: ${retryError.message || 'Unknown error'}. Please try a different PDF or convert manually.`;
+        }
+      } else {
+        errorMessage += error.message || 'Unknown error. Please try a different PDF or convert manually.';
+      }
+      
+      alert(errorMessage);
       // Reset content on error
       setTopicCheatForms((prev) => ({
         ...prev,
@@ -971,6 +1446,79 @@ export default function SubjectsBuilderPage() {
                 value={subjectForm.description}
                 onChange={(e) => setSubjectForm({ ...subjectForm, description: e.target.value })}
               />
+              
+              {/* Thumbnail Upload */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-gray-700">Subject Image (Thumbnail)</label>
+                {subjectForm.thumbnail ? (
+                  <div className="relative">
+                    <img
+                      src={subjectForm.thumbnail}
+                      alt="Subject thumbnail"
+                      className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSubjectForm({ ...subjectForm, thumbnail: '' })}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                      title="Remove image"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-purple-500 transition-colors">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <svg className="w-8 h-8 mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <p className="mb-2 text-xs text-gray-500">
+                        <span className="font-semibold">Click to upload</span> or drag and drop
+                      </p>
+                      <p className="text-xs text-gray-500">PNG, JPG, GIF (MAX. 10MB)</p>
+                    </div>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+
+                        if (file.size > 10 * 1024 * 1024) {
+                          alert('Image size must be less than 10MB');
+                          return;
+                        }
+
+                        try {
+                          setUploadingThumbnail(true);
+                          const res = await apiService.uploadImage(file, 'career-master/subject-thumbnails');
+                          if (res.success && res.data?.url) {
+                            setSubjectForm({ ...subjectForm, thumbnail: res.data.url });
+                            // Show success message
+                            if (typeof window !== 'undefined' && (window as any).toast) {
+                              (window as any).toast.success('Image uploaded successfully!');
+                            }
+                          } else {
+                            alert('Failed to upload image');
+                          }
+                        } catch (err: any) {
+                          alert(err.message || 'Failed to upload image');
+                        } finally {
+                          setUploadingThumbnail(false);
+                        }
+                      }}
+                      disabled={uploadingThumbnail}
+                    />
+                  </label>
+                )}
+                {uploadingThumbnail && (
+                  <p className="text-xs text-blue-600">Uploading image...</p>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <input
                   className="border rounded-lg px-3 py-2 text-gray-900"
@@ -1010,6 +1558,18 @@ export default function SubjectsBuilderPage() {
                   onChange={(e) => setSubjectForm({ ...subjectForm, order: Number(e.target.value) })}
                 />
               </div>
+              <div className="space-y-1 text-sm">
+                <label className="text-xs font-medium text-gray-700">Batch codes (comma separated)</label>
+                <input
+                  className="w-full border rounded-lg px-3 py-2 text-gray-900"
+                  placeholder="e.g. BATCH-2025-A, BATCH-2025-B"
+                  value={subjectForm.batches}
+                  onChange={(e) => setSubjectForm({ ...subjectForm, batches: e.target.value })}
+                />
+                <p className="text-[11px] text-gray-500">
+                  Leave empty to make the subject visible to all students. If you enter batch codes, only students in those batches will see the subject and its topics/quizzes.
+                </p>
+              </div>
               <div className="flex gap-2">
                 {editingSubjectId ? (
                   <>
@@ -1030,6 +1590,8 @@ export default function SubjectsBuilderPage() {
                           level: undefined,
                           requiresApproval: true,
                           order: 0,
+                          thumbnail: '',
+          batches: '',
                         });
                       }}
                       disabled={saving}
@@ -1274,9 +1836,9 @@ export default function SubjectsBuilderPage() {
                               <button
                                 onClick={() => handlePasteFromSource(topic._id)}
                                 className="text-sm bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors"
-                                title="Paste content from GPT, web, or any source (auto-converts HTML to Markdown)"
+                                title="Paste content from GPT, web, or any source. Auto-detects and formats headings and code snippets!"
                               >
-                                📋 Paste from GPT/Any Source
+                                📋 Paste & Auto-Format
                               </button>
                               <label className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg cursor-pointer hover:bg-blue-700 transition-colors">
                                 📄 Upload .md
@@ -1352,7 +1914,7 @@ export default function SubjectsBuilderPage() {
                           </div>
                           <textarea
                             className="w-full border rounded-lg px-3 py-2 text-sm min-h-[180px] text-gray-900 font-mono text-xs"
-                            placeholder="Paste content here (Markdown, HTML, or plain text). Use buttons above to upload files or paste from GPT/any source. Supports code blocks, images, and links."
+                            placeholder="Paste content here (Markdown, HTML, or plain text). Use buttons above to upload files or paste from GPT/any source. Supports code blocks, images, and links. Headings and code snippets will be auto-detected and formatted when you paste."
                             value={cheatForm.content}
                             onChange={(e) =>
                               setTopicCheatForms((prev) => ({
@@ -1360,6 +1922,58 @@ export default function SubjectsBuilderPage() {
                                 [topic._id]: { ...cheatForm, content: e.target.value },
                               }))
                             }
+                            onPaste={async (e) => {
+                              const pastedText = e.clipboardData.getData('text');
+                              e.preventDefault();
+                              
+                              const isHTML = pastedText.trim().startsWith('<') || pastedText.includes('<html') || pastedText.includes('<div');
+                              let processedContent = pastedText;
+                              
+                              if (isHTML) {
+                                try {
+                                  const TurndownService = (await import('turndown')).default;
+                                  const turndownService = new TurndownService({
+                                    headingStyle: 'atx',
+                                    codeBlockStyle: 'fenced',
+                                    bulletListMarker: '-',
+                                  });
+                                  
+                                  turndownService.addRule('codeBlocks', {
+                                    filter: ['pre'],
+                                    replacement: (content: string, node: any) => {
+                                      const codeElement = node.querySelector('code');
+                                      const language = codeElement?.className?.replace('language-', '').replace('hljs', '').trim() || '';
+                                      const code = codeElement?.textContent || content;
+                                      return `\n\`\`\`${language}\n${code}\n\`\`\`\n`;
+                                    },
+                                  });
+                                  
+                                  processedContent = turndownService.turndown(pastedText);
+                                } catch (err) {
+                                  console.error('HTML conversion error:', err);
+                                }
+                              }
+                              
+                              // Use the helper functions defined above
+                              processedContent = detectAndFormatHeadings(processedContent);
+                              processedContent = detectAndFormatCode(processedContent);
+                              
+                              const textarea = e.currentTarget;
+                              const start = textarea.selectionStart;
+                              const end = textarea.selectionEnd;
+                              const currentContent = cheatForm.content;
+                              const newContent = currentContent.substring(0, start) + processedContent + currentContent.substring(end);
+                              
+                              setTopicCheatForms((prev) => ({
+                                ...prev,
+                                [topic._id]: { ...cheatForm, content: newContent },
+                              }));
+                              
+                              setTimeout(() => {
+                                textarea.focus();
+                                textarea.setSelectionRange(start + processedContent.length, start + processedContent.length);
+                              }, 0);
+                            }}
                           />
                           <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center gap-2">

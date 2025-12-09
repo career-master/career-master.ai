@@ -183,12 +183,22 @@ class QuizService {
 
   /**
    * Get all quizzes
+   * Excludes quizzes that are part of quiz sets (those should only show in subject/topic pages)
    */
-  static async getQuizzes({ page = 1, limit = 10 } = {}) {
+  static async getQuizzes({ page = 1, limit = 10, excludeQuizSets = true } = {}) {
+    // Get all quiz IDs that are part of quiz sets
+    let excludeQuizIds = [];
+    if (excludeQuizSets) {
+      const QuizSet = require('../quiz-sets/quiz-sets.model');
+      const quizSets = await QuizSet.find({ isActive: true }).select('quizId').lean();
+      excludeQuizIds = quizSets.map(qs => qs.quizId.toString());
+    }
+
     return QuizRepository.getQuizzesPaginated({
       activeOnly: false,
       page,
-      limit
+      limit,
+      excludeQuizIds
     });
   }
 

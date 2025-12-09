@@ -29,8 +29,19 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
+  profilePicture?: string;
   roles: string[];
   status: string;
+  profile?: {
+    college?: string;
+    school?: string;
+    jobTitle?: string;
+    currentStatus?: string;
+    interests?: string[];
+    learningGoals?: string;
+    city?: string;
+    country?: string;
+  };
   verification: {
     emailVerified: boolean;
   };
@@ -668,6 +679,26 @@ class ApiService {
     return this.request('/auth/me');
   }
 
+  async updateCurrentUser(payload: Partial<{
+    name: string;
+    phone: string;
+    profile: {
+      college?: string;
+      school?: string;
+      jobTitle?: string;
+      currentStatus?: string;
+      interests?: string[];
+      learningGoals?: string;
+      city?: string;
+      country?: string;
+    };
+  }>): Promise<ApiResponse<{ user: User }>> {
+    return this.request('/auth/me', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
   // Dashboard endpoints
   async getDashboardStatistics(): Promise<ApiResponse> {
     return this.request('/dashboard/statistics', {
@@ -715,6 +746,10 @@ class ApiService {
     return this.request(`/subjects/${id}`, { method: 'DELETE' });
   }
 
+  async bulkUpdateSubjectOrders(orders: Array<{ id: string; order: number }>): Promise<ApiResponse> {
+    return this.request('/subjects/orders', { method: 'PUT', body: JSON.stringify({ orders }) });
+  }
+
   // Topics
   async getTopics(subjectId?: string, isActive?: boolean): Promise<ApiResponse> {
     const query = new URLSearchParams();
@@ -750,6 +785,10 @@ class ApiService {
 
   async deleteTopic(id: string): Promise<ApiResponse> {
     return this.request(`/topics/${id}`, { method: 'DELETE' });
+  }
+
+  async bulkUpdateTopicOrders(orders: Array<{ id: string; order: number }>): Promise<ApiResponse> {
+    return this.request('/topics/orders', { method: 'PUT', body: JSON.stringify({ orders }) });
   }
 
   // Cheatsheets

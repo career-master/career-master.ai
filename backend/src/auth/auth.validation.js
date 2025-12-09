@@ -140,6 +140,27 @@ const logoutAllSchema = z.object({
   body: z.object({}).optional()
 });
 
+// Update current user profile
+const updateCurrentUserSchema = z.object({
+  body: z.object({
+    name: nameSchema.optional(),
+    phone: phoneSchema,
+    profile: z
+      .object({
+        college: z.string().max(200).trim().optional(),
+        school: z.string().max(200).trim().optional(),
+        jobTitle: z.string().max(200).trim().optional(),
+        currentStatus: z.string().max(100).trim().optional(),
+        interests: z.array(z.string().trim().min(1)).optional(),
+        learningGoals: z.string().max(1000).trim().optional(),
+        city: z.string().max(100).trim().optional(),
+        country: z.string().max(100).trim().optional()
+      })
+      .partial()
+      .optional()
+  })
+});
+
 /**
  * Validation middleware factory
  * Creates a middleware function that validates request data against a Zod schema
@@ -206,5 +227,6 @@ module.exports = {
   changePasswordSchema,
   logoutSchema,
   logoutAllSchema,
+  updateCurrentUserSchema,
   validate
 };

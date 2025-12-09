@@ -10,6 +10,7 @@ const {
   paginatedStudentsSchema,
   validate
 } = require('./batches.validation');
+const batchRequestRoutes = require('./batch-requests.routes');
 
 const router = express.Router();
 
@@ -53,6 +54,9 @@ router.delete(
   validate(addRemoveStudentsSchema),
   BatchesController.removeStudentsFromBatch
 );
+
+// Batch join requests (mounted under /batches/requests)
+router.use('/requests', batchRequestRoutes);
 
 module.exports = router;
 
