@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import { toast } from 'react-hot-toast';
+import SubjectRequestModal from '@/components/SubjectRequestModal';
 
 type Subject = {
   _id: string;
@@ -15,6 +16,7 @@ type Subject = {
   level?: 'beginner' | 'intermediate' | 'advanced';
   thumbnail?: string;
   batches?: string[];
+  requiresApproval?: boolean;
   order?: number;
 };
 
@@ -26,6 +28,8 @@ export default function SubjectsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('');
   const [filterLevel, setFilterLevel] = useState<string>('');
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -54,7 +58,30 @@ export default function SubjectsPage() {
     }
   };
 
-  // Filter subjects (respect batch assignments)
+  // Calculate profile completion
+  const profileCompletion = useMemo(() => {
+    if (!user) return 0;
+    const fields = [
+      user.name,
+      user.phone,
+      (user as any).profile?.currentStatus,
+      (user as any).profile?.college,
+      (user as any).profile?.school,
+      (user as any).profile?.jobTitle,
+      (user as any).profile?.interests?.length > 0,
+      (user as any).profile?.learningGoals,
+      (user as any).profile?.city,
+      (user as any).profile?.country,
+      (user as any).profilePicture
+    ];
+    const filledFields = fields.filter(field => {
+      if (Array.isArray(field)) return field.length > 0;
+      return field && String(field).trim().length > 0;
+    }).length;
+    return Math.round((filledFields / fields.length) * 100);
+  }, [user]);
+
+  // Filter subjects - show all subjects (including those requiring approval)
   const userBatches = (user as any)?.batches || [];
   const filteredSubjects = subjects.filter((subject) => {
     const matchesSearch =
@@ -62,10 +89,36 @@ export default function SubjectsPage() {
       (subject.description || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = !filterCategory || subject.category === filterCategory;
     const matchesLevel = !filterLevel || subject.level === filterLevel;
-    const matchesBatch =
-      !subject.batches || subject.batches.length === 0 || userBatches.some((b: string) => subject.batches?.includes(b));
-    return matchesSearch && matchesCategory && matchesLevel && matchesBatch;
+    return matchesSearch && matchesCategory && matchesLevel;
   });
+
+  // Check if user has access to a subject
+  const hasAccess = (subject: Subject) => {
+    // If subject has no batches, it's available to all
+    if (!subject.batches || subject.batches.length === 0) {
+      return true;
+    }
+    // Check if user is in one of the subject's batches
+    return userBatches.some((b: string) => subject.batches?.includes(b));
+  };
+
+  // Check if subject requires approval and user doesn't have access
+  const requiresRequest = (subject: Subject) => {
+    return subject.requiresApproval && !hasAccess(subject);
+  };
+
+  const handleRequestAccess = (subject: Subject, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (profileCompletion < 70) {
+      toast.error(`Profile completion must be at least 70%. Your profile is ${profileCompletion}% complete. Please complete your profile first.`);
+      return;
+    }
+    
+    setSelectedSubject(subject);
+    setRequestModalOpen(true);
+  };
 
   // Group by category
   const groupedByCategory = filteredSubjects.reduce((acc, subject) => {
@@ -188,10 +241,13 @@ export default function SubjectsPage() {
 
                 {/* Subjects Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {categorySubjects.map((subject) => (
-                    <Link
+                  {categorySubjects.map((subject) => {
+                    const needsRequest = requiresRequest(subject);
+                    const hasSubjectAccess = hasAccess(subject);
+                    
+                    return (
+                    <div
                       key={subject._id}
-                      href={`/dashboard/subjects/${subject._id}`}
                       className="group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden"
                     >
                       {/* Thumbnail */}
@@ -258,19 +314,51 @@ export default function SubjectsPage() {
                         </div>
 
                         {/* CTA */}
-                        <div className="flex items-center text-purple-600 text-sm font-medium group-hover:text-purple-700">
-                          View Topics
-                          <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </div>
+                        {needsRequest ? (
+                          <button
+                            onClick={(e) => handleRequestAccess(subject, e)}
+                            className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+                          >
+                            Request Access
+                          </button>
+                        ) : hasSubjectAccess ? (
+                          <Link
+                            href={`/dashboard/subjects/${subject._id}`}
+                            className="flex items-center text-purple-600 text-sm font-medium group-hover:text-purple-700"
+                          >
+                            View Topics
+                            <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </Link>
+                        ) : (
+                          <div className="text-sm text-gray-500 italic">
+                            Access required
+                          </div>
+                        )}
                       </div>
-                    </Link>
-                  ))}
+                    </div>
+                  )})}
                 </div>
               </div>
             ))}
           </div>
+        )}
+
+        {/* Request Access Modal */}
+        {selectedSubject && (
+          <SubjectRequestModal
+            isOpen={requestModalOpen}
+            onClose={() => {
+              setRequestModalOpen(false);
+              setSelectedSubject(null);
+            }}
+            subject={selectedSubject}
+            user={user as any}
+            onSuccess={() => {
+              loadSubjects();
+            }}
+          />
         )}
       </div>
     </div>

@@ -16,16 +16,34 @@ class Database {
    */
   async connect() {
     try {
+      // Validate connection string format
+      if (!env.MONGODB_URI || !env.MONGODB_URI.startsWith('mongodb')) {
+        throw new Error('Invalid MONGODB_URI: Must start with mongodb:// or mongodb+srv://');
+      }
+
       const options = {
         maxPoolSize: 10, // Maintain up to 10 socket connections
-        serverSelectionTimeoutMS: 10000, // Increased to 10 seconds for DNS resolution
+        serverSelectionTimeoutMS: 30000, // Increased to 30 seconds for DNS resolution
         socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
-        connectTimeoutMS: 10000, // Connection timeout
-        family: 4 // Use IPv4, skip trying IPv6
+        connectTimeoutMS: 30000, // Connection timeout increased
+        retryWrites: true,
+        retryReads: true,
+        // Remove family: 4 to allow both IPv4 and IPv6
+        // family: 4 // Use IPv4, skip trying IPv6
       };
 
       console.log('🔄 Connecting to MongoDB...');
-      console.log(`📍 URI: ${env.MONGODB_URI.replace(/:[^:@]+@/, ':****@')}`); // Hide password in logs
+      const maskedUri = env.MONGODB_URI.replace(/:[^:@]+@/, ':****@');
+      console.log(`📍 URI: ${maskedUri}`);
+      
+      // Check if it's a mongodb+srv connection
+      if (env.MONGODB_URI.includes('mongodb+srv://')) {
+        console.log('📡 Using SRV connection (MongoDB Atlas)');
+        console.log('💡 If connection fails, check:');
+        console.log('   1. Network Access IP whitelist in MongoDB Atlas');
+        console.log('   2. DNS resolution (try: nslookup cluster0.hjokhqk.mongodb.net)');
+        console.log('   3. Internet connectivity');
+      }
 
       this.connection = await mongoose.connect(env.MONGODB_URI, options);
 
@@ -56,12 +74,30 @@ class Database {
       
       // Provide helpful error messages
       if (error.message.includes('ECONNREFUSED') || error.message.includes('querySrv')) {
-        console.error('\n💡 Troubleshooting tips:');
-        console.error('   1. Check MongoDB Atlas IP whitelist (Network Access)');
-        console.error('   2. Verify connection string in .env file');
-        console.error('   3. Check network connectivity and DNS resolution');
-        console.error('   4. Ensure database user credentials are correct');
-        console.error('   5. See MONGODB_CONNECTION_TROUBLESHOOTING.md for details\n');
+        console.error('\n💡 Troubleshooting tips for DNS/Connection issues:');
+        console.error('   1. ✅ Check MongoDB Atlas Network Access:');
+        console.error('      - Go to: https://cloud.mongodb.com/ → Network Access');
+        console.error('      - Click "Add IP Address" → "Allow Access from Anywhere" (0.0.0.0/0)');
+        console.error('      - Wait 1-2 minutes for changes to propagate');
+        console.error('   2. ✅ Test DNS resolution:');
+        console.error('      - Run: nslookup cluster0.hjokhqk.mongodb.net');
+        console.error('      - Or: dig cluster0.hjokhqk.mongodb.net');
+        console.error('   3. ✅ Verify connection string format in .env:');
+        console.error('      - Should be: mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/dbname?appName=...');
+        console.error('      - Check for special characters in password (URL encode if needed)');
+        console.error('   4. ✅ Check internet connectivity:');
+        console.error('      - Try: ping 8.8.8.8');
+        console.error('      - Check firewall/VPN settings');
+        console.error('   5. ✅ Verify database user exists and has correct password');
+        console.error('   6. ✅ Check if MongoDB Atlas cluster is running (not paused)');
+        console.error('   7. ✅ Try using direct connection instead of SRV:');
+        console.error('      - Get connection string from Atlas → Connect → Drivers');
+        console.error('      - Use "Standard connection string" instead of "SRV connection string"\n');
+      } else if (error.message.includes('authentication failed')) {
+        console.error('\n💡 Authentication failed - check:');
+        console.error('   1. Database username and password in connection string');
+        console.error('   2. User exists in MongoDB Atlas → Database Access');
+        console.error('   3. User has correct database permissions\n');
       }
       
       throw error;

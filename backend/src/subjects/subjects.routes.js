@@ -1,5 +1,6 @@
 const express = require('express');
 const SubjectController = require('./subjects.controller');
+const SubjectJoinRequestController = require('./subject-requests.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 const { requireRole } = require('../middleware/rbac.middleware');
 const { createSubjectSchema, updateSubjectSchema, subjectIdParamSchema, validate } = require('./subjects.validation');
@@ -17,6 +18,19 @@ router.post('/', adminMiddleware, validate(createSubjectSchema), SubjectControll
 
 // User: Get all subjects (with optional filters)
 router.get('/', userMiddleware, SubjectController.getSubjects);
+
+// Subject Join Requests
+// User: Create subject join request
+router.post('/requests', userMiddleware, SubjectJoinRequestController.createRequest);
+
+// Admin: List subject join requests
+router.get('/requests', adminMiddleware, SubjectJoinRequestController.listRequests);
+
+// Admin: Approve subject join request
+router.post('/requests/:id/approve', adminMiddleware, SubjectJoinRequestController.approveRequest);
+
+// Admin: Reject subject join request
+router.post('/requests/:id/reject', adminMiddleware, SubjectJoinRequestController.rejectRequest);
 
 // User: Get subject by ID
 router.get('/:id', userMiddleware, validate(subjectIdParamSchema), SubjectController.getSubjectById);

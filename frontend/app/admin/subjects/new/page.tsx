@@ -76,9 +76,11 @@ export default function SubjectsBuilderPage() {
     requiresApproval: true,
     order: 0,
     thumbnail: '',
-    batches: '' as string,
+    batches: [] as string[],
   });
   const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
+  const [batches, setBatches] = useState<any[]>([]);
+  const [loadingBatches, setLoadingBatches] = useState(false);
 
   const [topicForm, setTopicForm] = useState({
     title: '',
@@ -124,10 +126,15 @@ export default function SubjectsBuilderPage() {
     try {
       setLoading(true);
       const preferredSubjectId = searchParams.get('subjectId');
-      const [subjectsRes, quizzesRes] = await Promise.all([
+      const [subjectsRes, quizzesRes, batchesRes] = await Promise.all([
         apiService.getSubjects({ page: 1, limit: 100 }),
         apiService.getQuizzes(1, 50),
+        apiService.getBatches(1, 100),
       ]);
+      if (batchesRes.success && batchesRes.data) {
+        const data: any = batchesRes.data;
+        setBatches(Array.isArray(data.items) ? data.items : []);
+      }
       if (subjectsRes.success && subjectsRes.data?.items) {
         setSubjects(subjectsRes.data.items);
         const initialSubject =
@@ -235,36 +242,12 @@ export default function SubjectsBuilderPage() {
     if (subjectForm.thumbnail?.trim()) {
       payload.thumbnail = subjectForm.thumbnail.trim();
     }
-    if (subjectForm.batches?.trim()) {
-      payload.batches = subjectForm.batches
-        .split(',')
-        .map((b) => b.trim())
-        .filter(Boolean);
-    }
-    if (subjectForm.batches?.trim()) {
-      payload.batches = subjectForm.batches
-        .split(',')
-        .map((b) => b.trim())
-        .filter(Boolean);
-    }
-    if (subjectForm.batches?.trim()) {
-      payload.batches = subjectForm.batches
-        .split(',')
-        .map((b) => b.trim())
-        .filter(Boolean);
-    }
     if (subjectForm.thumbnail?.trim()) {
       payload.thumbnail = subjectForm.thumbnail.trim();
     }
-    if (subjectForm.batches?.trim()) {
-      payload.batches = subjectForm.batches
-        .split(',')
-        .map((b) => b.trim())
-        .filter(Boolean);
+    if (subjectForm.batches && subjectForm.batches.length > 0) {
+      payload.batches = subjectForm.batches;
     }
-      if (subjectForm.thumbnail?.trim()) {
-        payload.thumbnail = subjectForm.thumbnail.trim();
-      }
       const res = await apiService.createSubject(payload);
       if (res.success) {
         const created =
@@ -287,7 +270,7 @@ export default function SubjectsBuilderPage() {
           requiresApproval: true,
           order: 0,
           thumbnail: '',
-          batches: '',
+          batches: [],
         });
       } else {
         alert(res.message || 'Failed to create subject');
@@ -309,7 +292,7 @@ export default function SubjectsBuilderPage() {
       requiresApproval: subject.requiresApproval ?? true,
       order: subject.order ?? 0,
       thumbnail: subject.thumbnail || '',
-      batches: (subject.batches || []).join(', '),
+      batches: subject.batches || [],
     });
   };
 
@@ -334,6 +317,9 @@ export default function SubjectsBuilderPage() {
       if (subjectForm.thumbnail?.trim()) {
         payload.thumbnail = subjectForm.thumbnail.trim();
       }
+      if (subjectForm.batches && Array.isArray(subjectForm.batches)) {
+        payload.batches = subjectForm.batches;
+      }
       const res = await apiService.updateSubject(editingSubjectId, payload);
       if (res.success) {
         await loadInitial();
@@ -346,7 +332,7 @@ export default function SubjectsBuilderPage() {
           requiresApproval: true,
           order: 0,
           thumbnail: '',
-          batches: '',
+          batches: [],
         });
       } else {
         alert(res.message || 'Failed to update subject');
@@ -1397,19 +1383,27 @@ export default function SubjectsBuilderPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4 space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Add / Manage Subject</h1>
             <p className="text-sm text-gray-600">
               Create a subject, then add topics. Each topic can have cheatsheets and quiz sets.
             </p>
           </div>
-          <button
-            onClick={() => router.push('/admin/subjects')}
-            className="text-sm text-gray-600 hover:text-gray-900"
-          >
-            ← Back to Subject List
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => router.push('/admin/subjects/requests')}
+              className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700"
+            >
+              View Subject Requests
+            </button>
+            <button
+              onClick={() => router.push('/admin/subjects')}
+              className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900"
+            >
+              ← Back to Subject List
+            </button>
+          </div>
         </div>
 
         {/* Subjects */}
@@ -1558,16 +1552,50 @@ export default function SubjectsBuilderPage() {
                   onChange={(e) => setSubjectForm({ ...subjectForm, order: Number(e.target.value) })}
                 />
               </div>
-              <div className="space-y-1 text-sm">
-                <label className="text-xs font-medium text-gray-700">Batch codes (comma separated)</label>
-                <input
-                  className="w-full border rounded-lg px-3 py-2 text-gray-900"
-                  placeholder="e.g. BATCH-2025-A, BATCH-2025-B"
-                  value={subjectForm.batches}
-                  onChange={(e) => setSubjectForm({ ...subjectForm, batches: e.target.value })}
-                />
+              <div className="space-y-2 text-sm">
+                <label className="text-xs font-medium text-gray-700 block">
+                  Assign to Batches
+                </label>
+                {batches.length === 0 ? (
+                  <p className="text-sm text-gray-500">No batches available. Create batches first.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                    {batches.map((batch) => (
+                      <button
+                        key={batch._id}
+                        type="button"
+                        onClick={() => {
+                          const isSelected = subjectForm.batches.includes(batch.code);
+                          if (isSelected) {
+                            setSubjectForm({
+                              ...subjectForm,
+                              batches: subjectForm.batches.filter((b) => b !== batch.code),
+                            });
+                          } else {
+                            setSubjectForm({
+                              ...subjectForm,
+                              batches: [...subjectForm.batches, batch.code],
+                            });
+                          }
+                        }}
+                        className={`rounded-full px-3 py-1 text-xs font-semibold border transition-colors ${
+                          subjectForm.batches.includes(batch.code)
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
+                        }`}
+                      >
+                        {batch.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {subjectForm.batches.length > 0 && (
+                  <p className="text-xs text-gray-500">
+                    Selected: {subjectForm.batches.length} batch(es)
+                  </p>
+                )}
                 <p className="text-[11px] text-gray-500">
-                  Leave empty to make the subject visible to all students. If you enter batch codes, only students in those batches will see the subject and its topics/quizzes.
+                  Leave empty to make the subject visible to all students. If you select batches, only students in those batches will see the subject and its topics/quizzes.
                 </p>
               </div>
               <div className="flex gap-2">
@@ -1591,7 +1619,7 @@ export default function SubjectsBuilderPage() {
                           requiresApproval: true,
                           order: 0,
                           thumbnail: '',
-          batches: '',
+          batches: [],
                         });
                       }}
                       disabled={saving}

@@ -10,7 +10,9 @@ const env = {
   PORT: process.env.PORT || 3000,
 
   // MongoDB
-  MONGODB_URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/career-master',
+  // Local MongoDB: mongodb://localhost:27017/careermaster
+  // MongoDB Atlas: mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/dbname?appName=...
+  MONGODB_URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/careermaster',
 
   // JWT Secrets
   JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || 'your-access-secret-key-change-in-production',
