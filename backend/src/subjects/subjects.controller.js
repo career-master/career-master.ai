@@ -36,13 +36,27 @@ class SubjectController {
     const limit = parseInt(req.query.limit, 10) || 10;
     const { isActive, category, level } = req.query;
 
+    // Get user batches and roles for filtering
+    const User = require('../user/users.model');
+    const userId = req.user?.userId || req.user?.id || req.user?._id;
+    let userBatches = [];
+    let userRoles = [];
+
+    if (userId) {
+      const user = await User.findById(userId).select('batches roles').lean();
+      if (user) {
+        userBatches = user.batches || [];
+        userRoles = user.roles || [];
+      }
+    }
+
     const result = await SubjectService.getSubjectsPaginated({
       page,
       limit,
       isActive,
       category,
       level
-    });
+    }, userBatches, userRoles);
 
     res.status(200).json({
       success: true,

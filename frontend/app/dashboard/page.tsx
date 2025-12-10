@@ -1,12 +1,14 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { apiService } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import LeaderboardCard from '@/components/LeaderboardCard';
 import ComparisonView from '@/components/ComparisonView';
+import SubjectRequestModal from '@/components/SubjectRequestModal';
+import { toast } from 'react-hot-toast';
 
 interface DashboardStats {
   overview: {
@@ -44,6 +46,265 @@ interface DashboardStats {
     correctAnswers: number;
     incorrectAnswers: number;
   }>;
+}
+
+// Subject Suggestions Component
+function SubjectSuggestions({ user }: { user: any }) {
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [selectedSubject, setSelectedSubject] = useState<any>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const loadSubjects = async () => {
+      try {
+        setLoading(true);
+        // Fetch more subjects to ensure we have enough after filtering
+        const res = await apiService.getSubjects({ page: 1, limit: 20, isActive: true });
+        if (res.success && res.data?.items) {
+          const userBatches = (user as any)?.batches || [];
+          
+          // Filter subjects based on user's batches
+          const filtered = res.data.items.filter((subject: any) => {
+            // Check if subject has no batches assigned (null, undefined, or empty array)
+            const hasNoBatches = !subject.batches || 
+                                 (Array.isArray(subject.batches) && subject.batches.length === 0);
+            
+            // Show if no batches assigned (available to all) or user is in one of the batches
+            if (hasNoBatches) {
+              return true; // Available to everyone
+            }
+            
+            // Check if user is in any of the subject's batches
+            if (Array.isArray(subject.batches) && userBatches.length > 0) {
+              return userBatches.some((b: string) => subject.batches.includes(b));
+            }
+            
+            return false;
+          });
+          
+          // Show all subjects (including those requiring approval) - let user see what's available
+          // But prioritize accessible subjects
+          const sorted = filtered.sort((a: any, b: any) => {
+            const aUnassigned = !a.batches || (Array.isArray(a.batches) && a.batches.length === 0);
+            const bUnassigned = !b.batches || (Array.isArray(b.batches) && b.batches.length === 0);
+            const aHasAccess = aUnassigned || userBatches.some((batch: string) => a.batches?.includes(batch));
+            const bHasAccess = bUnassigned || userBatches.some((batch: string) => b.batches?.includes(batch));
+            
+            // Accessible subjects first
+            if (aHasAccess && !bHasAccess) return -1;
+            if (!aHasAccess && bHasAccess) return 1;
+            // Then unassigned
+            if (aUnassigned && !bUnassigned) return -1;
+            if (!aUnassigned && bUnassigned) return 1;
+            return 0;
+          });
+          
+          setSubjects(sorted.slice(0, 4)); // Show max 4
+        }
+      } catch (err) {
+        console.error('Failed to load subjects:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user) {
+      loadSubjects();
+    }
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="text-center py-4">
+        <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
+
+  if (subjects.length === 0) {
+    return (
+      <div className="text-center py-4">
+        <p className="text-gray-600 mb-2">No subjects available yet</p>
+        <Link href="/dashboard/subjects" className="text-purple-600 hover:underline text-sm font-medium">
+          Browse All Subjects
+        </Link>
+      </div>
+    );
+  }
+
+  // Calculate profile completion
+  const profileCompletion = useMemo(() => {
+    if (!user) return 0;
+    const fields = [
+      user.name,
+      user.phone,
+      user.profile?.currentStatus,
+      user.profile?.college,
+      user.profile?.school,
+      user.profile?.jobTitle,
+      user.profile?.interests?.length > 0,
+      user.profile?.learningGoals,
+      user.profile?.city,
+      user.profile?.country,
+      user.profilePicture
+    ];
+    const filledFields = fields.filter(field => {
+      if (Array.isArray(field)) return field.length > 0;
+      return field && String(field).trim().length > 0;
+    }).length;
+    return Math.round((filledFields / fields.length) * 100);
+  }, [user]);
+
+  // Check if user has access
+  const hasAccess = (subject: any) => {
+    const userBatches = (user as any)?.batches || [];
+    if (!subject.batches || subject.batches.length === 0) return true;
+    return userBatches.some((b: string) => subject.batches?.includes(b));
+  };
+
+  const requiresRequest = (subject: any) => {
+    return subject.requiresApproval && !hasAccess(subject);
+  };
+
+  const handleRequestAccess = (subject: any, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (profileCompletion < 70) {
+      toast.error(`Profile completion must be at least 70%. Your profile is ${profileCompletion}% complete. Please complete your profile first.`);
+      return;
+    }
+    
+    setSelectedSubject(subject);
+    setRequestModalOpen(true);
+  };
+
+  const colors = [
+    { bg: 'bg-purple-500', border: 'border-purple-500' },
+    { bg: 'bg-green-500', border: 'border-green-500' },
+    { bg: 'bg-blue-500', border: 'border-blue-500' },
+    { bg: 'bg-yellow-500', border: 'border-yellow-500' },
+  ];
+
+  return (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {subjects.map((subject, index) => {
+          const color = colors[index % colors.length];
+          const needsRequest = requiresRequest(subject);
+          const hasSubjectAccess = hasAccess(subject);
+          
+          return (
+            <div
+              key={subject._id}
+              className={`bg-white rounded-xl shadow-lg p-5 border-l-4 ${color.border} relative overflow-hidden hover:shadow-xl transition-all ${needsRequest ? '' : 'cursor-pointer'}`}
+              onClick={needsRequest ? undefined : () => router.push(`/dashboard/subjects/${subject._id}`)}
+            >
+            <div className="absolute top-3 -right-8 bg-gradient-to-r from-[#0dcaf0] to-[#6f42c1] text-white text-xs px-8 py-1.5 transform rotate-45 shadow-lg font-bold">
+              AI RECOMMENDED
+            </div>
+            <div className="flex items-start gap-4 mb-3">
+              {subject.thumbnail ? (
+                <img
+                  src={subject.thumbnail}
+                  alt={subject.title}
+                  className="w-16 h-16 rounded-lg object-cover"
+                />
+              ) : (
+                <div className={`w-16 h-16 ${color.bg} rounded-lg flex items-center justify-center flex-shrink-0 shadow-md`}>
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                </div>
+              )}
+              <div className="flex-1">
+                <h6 className="font-bold mb-1 text-gray-900 text-base">{subject.title}</h6>
+                <p className="text-gray-600 text-sm line-clamp-2">{subject.description || 'Explore this subject to enhance your learning'}</p>
+                <div className="flex items-center gap-2 mt-2">
+                  {subject.level && (
+                    <span className="inline-block bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-semibold capitalize">
+                      {subject.level}
+                    </span>
+                  )}
+                  {subject.category && (
+                    <span className="inline-block bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-semibold">
+                      {subject.category}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            {needsRequest ? (
+              <button
+                onClick={(e) => handleRequestAccess(subject, e)}
+                className="w-full mt-3 bg-gradient-to-r from-[#0dcaf0] to-[#6f42c1] text-white px-4 py-2 rounded-lg text-sm font-bold hover:shadow-lg transition-all transform hover:scale-105"
+              >
+                Request Access
+              </button>
+            ) : (
+              <button
+                onClick={() => router.push(`/dashboard/subjects/${subject._id}`)}
+                className="w-full mt-3 bg-gradient-to-r from-[#0dcaf0] to-[#6f42c1] text-white px-4 py-2 rounded-lg text-sm font-bold hover:shadow-lg transition-all transform hover:scale-105"
+              >
+                Explore Subject
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+
+    {/* Request Access Modal */}
+    {selectedSubject && (
+      <SubjectRequestModal
+        isOpen={requestModalOpen}
+        onClose={() => {
+          setRequestModalOpen(false);
+          setSelectedSubject(null);
+        }}
+        subject={selectedSubject}
+        user={user as any}
+        onSuccess={() => {
+          // Reload subjects
+          const loadSubjects = async () => {
+            try {
+              const res = await apiService.getSubjects({ page: 1, limit: 20, isActive: true });
+              if (res.success && res.data?.items) {
+                const userBatches = (user as any)?.batches || [];
+                const filtered = res.data.items.filter((subject: any) => {
+                  const hasNoBatches = !subject.batches || 
+                                       (Array.isArray(subject.batches) && subject.batches.length === 0);
+                  if (hasNoBatches) return true;
+                  if (Array.isArray(subject.batches) && userBatches.length > 0) {
+                    return userBatches.some((b: string) => subject.batches.includes(b));
+                  }
+                  return false;
+                });
+                const sorted = filtered.sort((a: any, b: any) => {
+                  const aUnassigned = !a.batches || (Array.isArray(a.batches) && a.batches.length === 0);
+                  const bUnassigned = !b.batches || (Array.isArray(b.batches) && b.batches.length === 0);
+                  const aHasAccess = aUnassigned || userBatches.some((batch: string) => a.batches?.includes(batch));
+                  const bHasAccess = bUnassigned || userBatches.some((batch: string) => b.batches?.includes(batch));
+                  if (aHasAccess && !bHasAccess) return -1;
+                  if (!aHasAccess && bHasAccess) return 1;
+                  if (aUnassigned && !bUnassigned) return -1;
+                  if (!aUnassigned && bUnassigned) return 1;
+                  return 0;
+                });
+                setSubjects(sorted.slice(0, 4));
+              }
+            } catch (err) {
+              console.error('Failed to reload subjects:', err);
+            }
+          };
+          loadSubjects();
+        }}
+      />
+    )}
+    </>
+  );
 }
 
 export default function DashboardPage() {
@@ -261,11 +522,8 @@ export default function DashboardPage() {
                     className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-40"
                     onMouseDown={(e) => e.stopPropagation()}
                   >
-                    <Link href="/profile" className="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                    <Link href="/dashboard/profile" className="block px-4 py-2 text-gray-700 hover:bg-gray-100">
                       Profile
-                    </Link>
-                    <Link href="/settings" className="block px-4 py-2 text-gray-700 hover:bg-gray-100">
-                      Settings
                     </Link>
                     <hr className="my-2" />
                     <button onClick={logout} className="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100">
@@ -541,55 +799,16 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {/* AI Recommendations & Weakness Analysis */}
+            {/* Best AI Recommended Courses */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="md:col-span-2">
                 <div className="flex justify-between items-center mb-4">
-                  <h4 className="text-xl font-bold text-gray-900">AI-Powered Recommendations</h4>
-                  <button className="text-sm text-purple-600 hover:underline font-semibold">View All</button>
+                  <h4 className="text-xl font-bold text-gray-900">Best AI Recommended Courses for You</h4>
+                  <Link href="/dashboard/subjects" className="text-sm text-purple-600 hover:underline font-semibold">
+                    View All
+                  </Link>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[
-                    { title: 'Algebra Focus Test', desc: 'Targets your weak areas in quadratic equations', badge: 'AI Customized', icon: 'calculator', color: 'purple', bgColor: 'bg-purple-500', borderColor: 'border-purple-500' },
-                    { title: 'Biology Revision', desc: 'Focus on genetics and evolution concepts', badge: '15 min', icon: 'dna', color: 'green', bgColor: 'bg-green-500', borderColor: 'border-green-500' },
-                    { title: 'Speed Challenge', desc: 'Improve your problem-solving speed', badge: 'Time Trial', icon: 'bolt', color: 'blue', bgColor: 'bg-blue-500', borderColor: 'border-blue-500' },
-                    { title: 'Concept Mastery', desc: 'Advanced physics concepts', badge: 'Master Level', icon: 'puzzle', color: 'yellow', bgColor: 'bg-yellow-500', borderColor: 'border-yellow-500' },
-                  ].map((rec) => (
-                    <div key={rec.title} className={`bg-white rounded-xl shadow-lg p-5 border-l-4 ${rec.borderColor} relative overflow-hidden hover:shadow-xl transition-all`}>
-                      <div className="absolute top-3 -right-8 bg-gradient-to-r from-[#0dcaf0] to-[#6f42c1] text-white text-xs px-8 py-1.5 transform rotate-45 shadow-lg font-bold">
-                        AI RECOMMENDED
-                      </div>
-                      <div className="flex items-start gap-4 mb-3">
-                        <div className={`w-12 h-12 ${rec.bgColor} rounded-full flex items-center justify-center flex-shrink-0 shadow-md`}>
-                          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            {rec.icon === 'calculator' && (
-                              <path fillRule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm1 2a1 1 0 000 2h6a1 1 0 100-2H7zM7 8a1 1 0 000 2h6a1 1 0 100-2H7zm0 4a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                            )}
-                            {rec.icon === 'dna' && (
-                              <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                            )}
-                            {rec.icon === 'bolt' && (
-                              <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
-                            )}
-                            {rec.icon === 'puzzle' && (
-                              <path d="M10 2a4 4 0 104 4V4a2 2 0 00-2-2h-2zM4 6a2 2 0 012-2h2v2a4 4 0 11-4 4zm12 8a2 2 0 01-2 2h-2v-2a4 4 0 10-4-4v2a2 2 0 102 2h2zm-6-4a2 2 0 100-4 2 2 0 000 4z" />
-                            )}
-                          </svg>
-                        </div>
-                        <div className="flex-1">
-                          <h6 className="font-bold mb-2 text-gray-900 text-base">{rec.title}</h6>
-                          <small className="text-gray-700 text-sm leading-relaxed">{rec.desc}</small>
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center mt-4">
-                        <span className="bg-gray-100 text-gray-800 px-3 py-1.5 rounded-full text-xs font-bold border border-gray-200">{rec.badge}</span>
-                        <button className="bg-gradient-to-r from-[#0dcaf0] to-[#6f42c1] text-white px-4 py-2 rounded-lg text-sm font-bold hover:shadow-lg transition-all transform hover:scale-105">
-                          Start Now
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <SubjectSuggestions user={user} />
               </div>
 
               <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
@@ -678,6 +897,7 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
+
 
             {/* Adaptive Learning Path & Performance */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">

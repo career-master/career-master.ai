@@ -42,7 +42,14 @@ class SubjectService {
   static async updateSubject(subjectId, payload) {
     const updates = { ...payload };
     
-    // Remove undefined values
+    // Process batches field - ensure it's an array
+    if ('batches' in updates) {
+      updates.batches = Array.isArray(updates.batches) 
+        ? updates.batches.filter(Boolean) // Remove empty strings
+        : [];
+    }
+    
+    // Remove undefined values (but keep empty arrays for batches)
     Object.keys(updates).forEach(key => {
       if (updates[key] === undefined) {
         delete updates[key];
@@ -80,8 +87,10 @@ class SubjectService {
   /**
    * Get subjects with pagination
    * @param {Object} options
+   * @param {Array<string>} userBatches - User's batch codes (optional, for filtering)
+   * @param {Array<string>} userRoles - User's roles (optional, admins see all)
    */
-  static async getSubjectsPaginated(options = {}) {
+  static async getSubjectsPaginated(options = {}, userBatches = [], userRoles = []) {
     const { page = 1, limit = 10, isActive, category, level } = options;
     const filter = {};
 
@@ -93,6 +102,33 @@ class SubjectService {
     }
     if (level) {
       filter.level = level;
+    }
+
+    // Check if user is admin (admins see all subjects)
+    const isAdmin = userRoles.some(role => 
+      ['super_admin', 'technical_admin', 'content_admin', 'institution_admin'].includes(role)
+    );
+
+    // If not admin, allow:
+    // - Subjects with no batches (available to all)
+    // - Subjects where user is in one of the batches
+    // - Subjects that require approval (so users can see and request)
+    if (!isAdmin) {
+      if (userBatches && userBatches.length > 0) {
+        filter.$or = [
+          { batches: { $exists: false } }, // No batches field
+          { batches: { $size: 0 } }, // Empty batches array
+          { batches: { $in: userBatches } }, // User is in one of the batches
+          { requiresApproval: true } // Show approval-required subjects for requesting access
+        ];
+      } else {
+        // User has no batches, show unassigned subjects and approval-required subjects
+        filter.$or = [
+          { batches: { $exists: false } },
+          { batches: { $size: 0 } },
+          { requiresApproval: true }
+        ];
+      }
     }
 
     return await SubjectRepository.getSubjectsPaginated({ filter, page, limit });

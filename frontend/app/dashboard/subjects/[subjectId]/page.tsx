@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,14 +26,39 @@ type Topic = {
 };
 
 export default function SubjectDetailPage() {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
   const router = useRouter();
   const params = useParams();
   const subjectId = params?.subjectId as string;
 
   const [subject, setSubject] = useState<Subject | null>(null);
   const [topics, setTopics] = useState<Topic[]>([]);
+  const [hasAccess, setHasAccess] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
+  const [requesting, setRequesting] = useState(false);
+  const [requestSent, setRequestSent] = useState(false);
+
+  const profileCompletion = useMemo(() => {
+    if (!user) return 0;
+    const fields = [
+      user.name,
+      user.phone,
+      user.profile?.currentStatus,
+      user.profile?.college,
+      user.profile?.school,
+      user.profile?.jobTitle,
+      user.profile?.interests?.length > 0,
+      user.profile?.learningGoals,
+      user.profile?.city,
+      user.profile?.country,
+      user.profilePicture,
+    ];
+    const filled = fields.filter((field) => {
+      if (Array.isArray(field)) return field.length > 0;
+      return field && String(field).trim().length > 0;
+    }).length;
+    return Math.round((filled / fields.length) * 100);
+  }, [user]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -56,6 +81,14 @@ export default function SubjectDetailPage() {
       if (subjectsRes.success && subjectsRes.data?.items) {
         const found = subjectsRes.data.items.find((s: Subject) => s._id === subjectId);
         setSubject(found || null);
+        if (found) {
+          const userBatches = (user as any)?.batches || [];
+          const access =
+            !found.batches ||
+            (Array.isArray(found.batches) && found.batches.length === 0) ||
+            userBatches.some((b: string) => found.batches?.includes(b));
+          setHasAccess(access);
+        }
       }
 
       if (topicsRes.success && Array.isArray(topicsRes.data)) {
@@ -66,6 +99,32 @@ export default function SubjectDetailPage() {
       toast.error(err.message || 'Failed to load subject details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRequestAccess = async () => {
+    if (!subject) return;
+    if (profileCompletion < 70) {
+      toast.error(`Profile completion must be at least 70%. Your profile is ${profileCompletion}% complete. Please complete your profile first.`);
+      return;
+    }
+    try {
+      setRequesting(true);
+      const res = await apiService.createSubjectRequest({
+        subjectId,
+        email: (user as any)?.email,
+        phone: (user as any)?.phone,
+      });
+      if (res.success) {
+        setRequestSent(true);
+        toast.success('Request submitted. Admin will review and grant access.');
+      } else {
+        toast.error(res.message || 'Failed to submit request');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to submit request');
+    } finally {
+      setRequesting(false);
     }
   };
 
@@ -142,6 +201,37 @@ export default function SubjectDetailPage() {
           </div>
         </div>
 
+        {/* Access status */}
+        {!hasAccess && (
+          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl p-4 mb-6">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div className="flex-1">
+                <p className="font-semibold mb-1">Access locked</p>
+                <p className="text-sm text-yellow-800">
+                  You are not assigned to this subject's batches. {profileCompletion < 70 ? 'Complete your profile to request access.' : 'Request access to join the subject.'}
+                </p>
+                <div className="flex items-center gap-3 mt-3">
+                  <button
+                    onClick={handleRequestAccess}
+                    disabled={requesting || requestSent || profileCompletion < 70}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 disabled:opacity-60"
+                  >
+                    {requestSent ? 'Request Sent' : requesting ? 'Submitting...' : 'Request Access'}
+                  </button>
+                  {profileCompletion < 70 && (
+                    <span className="text-xs text-gray-700">
+                      Profile completion: {profileCompletion}% (needs at least 70%)
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Topics Section */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="bg-gradient-to-r from-purple-600 to-blue-600 px-8 py-6">
@@ -172,10 +262,9 @@ export default function SubjectDetailPage() {
         ) : (
             <div className="divide-y divide-gray-200">
             {topics.map((topic, index) => (
-              <Link
+              <div
                 key={topic._id}
-                href={`/dashboard/subjects/${subjectId}/topics/${topic._id}`}
-                  className="block p-6 hover:bg-gray-50 transition-colors group"
+                className={`block p-6 transition-colors group ${hasAccess ? 'hover:bg-gray-50' : 'opacity-80'}`}
               >
                   <div className="flex items-start gap-4">
                     {/* Number Badge */}
@@ -215,19 +304,29 @@ export default function SubjectDetailPage() {
                   </div>
                         </div>
 
-                        {/* Arrow */}
-                        <svg
-                          className="w-6 h-6 text-gray-400 flex-shrink-0 group-hover:text-purple-600 group-hover:translate-x-1 transition-all"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
+                        {/* Action */}
+                        {hasAccess ? (
+                          <Link
+                            href={`/dashboard/subjects/${subjectId}/topics/${topic._id}`}
+                            className="flex items-center text-purple-600 text-sm font-medium group-hover:text-purple-700"
+                          >
+                            View
+                            <svg className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </Link>
+                        ) : (
+                          <div className="flex items-center gap-1 text-sm text-gray-500">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            Locked
+                          </div>
+                        )}
                       </div>
                     </div>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}

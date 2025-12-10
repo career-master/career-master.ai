@@ -729,6 +729,35 @@ class ApiService {
     return this.request('/subjects', { method: 'POST', body: JSON.stringify(payload) });
   }
 
+  // Subject Join Requests
+  async getSubjectRequests(params: { status?: string; page?: number; limit?: number } = {}): Promise<ApiResponse> {
+    const queryParams = new URLSearchParams();
+    if (params.status) queryParams.append('status', params.status);
+    if (params.page) queryParams.append('page', String(params.page));
+    if (params.limit) queryParams.append('limit', String(params.limit));
+    return this.request(`/subjects/requests?${queryParams.toString()}`);
+  }
+
+  async approveSubjectRequest(requestId: string): Promise<ApiResponse> {
+    return this.request(`/subjects/requests/${requestId}/approve`, {
+      method: 'POST',
+    });
+  }
+
+  async rejectSubjectRequest(requestId: string, notes?: string): Promise<ApiResponse> {
+    return this.request(`/subjects/requests/${requestId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ notes }),
+    });
+  }
+
+  async createSubjectRequest(payload: { subjectId: string; email?: string; phone?: string }): Promise<ApiResponse> {
+    return this.request('/subjects/requests', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
   async updateSubject(id: string, payload: Partial<{
     title: string;
     description?: string;
@@ -814,6 +843,15 @@ class ApiService {
     resources?: { title: string; url: string; type?: 'link' | 'video' | 'document' }[];
   }>): Promise<ApiResponse> {
     return this.request(`/cheatsheets/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+  }
+
+  // Topic Progress
+  async getTopicProgress(topicId: string): Promise<ApiResponse> {
+    return this.request(`/topic-progress/topic/${topicId}`, { method: 'GET' });
+  }
+
+  async markCheatSheetRead(topicId: string): Promise<ApiResponse> {
+    return this.request('/topic-progress/cheat-viewed', { method: 'POST', body: JSON.stringify({ topicId }) });
   }
 
   // Quiz sets

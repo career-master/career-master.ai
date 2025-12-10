@@ -263,9 +263,64 @@ const getPasswordChangeTemplate = (name, timestamp = null) => {
   return getBaseTemplate(content, 'Password Changed Successfully');
 };
 
+/**
+ * Subject Access Approval Email Template
+ * @param {string} name - User's name
+ * @param {string} subjectTitle - Subject title
+ */
+const getSubjectAccessApprovalTemplate = (name, subjectTitle) => {
+  const content = `
+    <div style="text-align: center;">
+      <div style="margin: 0 0 30px;">
+        <div style="display: inline-block; width: 80px; height: 80px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+          <span style="font-size: 40px; color: #ffffff;">🎉</span>
+        </div>
+      </div>
+      
+      <h2 style="margin: 0 0 20px; color: #111827; font-size: 28px; font-weight: 700;">
+        Congratulations, ${name}!
+      </h2>
+      
+      <p style="margin: 0 0 25px; color: #374151; font-size: 16px; line-height: 1.7;">
+        Your request to access <strong>${subjectTitle}</strong> has been approved!
+      </p>
+      
+      <p style="margin: 0 0 30px; color: #6b7280; font-size: 15px; line-height: 1.7;">
+        You now have full access to all topics, cheatsheets, and quizzes in this subject. Start learning and continue your course journey!
+      </p>
+      
+      <div style="margin: 40px 0; padding: 30px; background-color: #f0fdf4; border-radius: 8px; text-align: left; border-left: 4px solid #10b981;">
+        <h3 style="margin: 0 0 15px; color: #111827; font-size: 18px; font-weight: 600;">
+          What You Can Do Now:
+        </h3>
+        <ul style="margin: 0; padding-left: 20px; color: #6b7280; font-size: 15px; line-height: 1.8;">
+          <li style="margin-bottom: 10px;">Access all topics and study materials</li>
+          <li style="margin-bottom: 10px;">Take quizzes and track your progress</li>
+          <li style="margin-bottom: 10px;">Complete assignments and assessments</li>
+          <li>Explore new content as it's added to the subject</li>
+        </ul>
+      </div>
+      
+      <div style="margin: 40px 0;">
+        <a href="${env.FRONTEND_URL || 'http://localhost:3000'}/dashboard/subjects" 
+           style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);">
+          Continue Your Course
+        </a>
+      </div>
+      
+      <p style="margin: 30px 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
+        Happy learning! If you have any questions, feel free to reach out to our support team.
+      </p>
+    </div>
+  `;
+
+  return getBaseTemplate(content, 'Subject Access Approved - Career Master');
+};
+
 module.exports = {
   getOTPTemplate,
   getWelcomeTemplate,
   getPasswordChangeTemplate,
+  getSubjectAccessApprovalTemplate,
 };
 

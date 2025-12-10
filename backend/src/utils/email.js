@@ -3,7 +3,8 @@ const env = require('../config/env');
 const {
   getOTPTemplate,
   getWelcomeTemplate,
-  getPasswordChangeTemplate
+  getPasswordChangeTemplate,
+  getSubjectAccessApprovalTemplate
 } = require('./emailTemplates');
 
 /**
@@ -356,6 +357,55 @@ class EmailUtil {
     }
 
     return result;
+  }
+
+  /**
+   * Send subject access approval email
+   * @param {string} email - Recipient email
+   * @param {string} name - User name
+   * @param {string} subjectTitle - Subject title
+   * @returns {Promise<Object>} - Email send result
+   */
+  async sendSubjectAccessApprovalEmail(email, name, subjectTitle) {
+    try {
+      if (!this.resend) {
+        throw new Error('Resend API is not initialized. Please check RESEND_API_KEY configuration.');
+      }
+
+      const htmlContent = getSubjectAccessApprovalTemplate(name, subjectTitle);
+      const textContent = `Congratulations ${name}! Your request to access ${subjectTitle} has been approved. You now have full access to all topics, cheatsheets, and quizzes in this subject. Start learning and continue your course journey!`;
+
+      // Format: "Display Name <email@domain.com>"
+      let displayName = env.EMAIL_FROM_NAME;
+      if (displayName.includes('<') && displayName.includes('>')) {
+        displayName = displayName.split('<')[0].trim();
+      }
+      const fromAddress = `${displayName} <${this.emailFrom || env.EMAIL_FROM}>`;
+      
+      const { data, error } = await this.resend.emails.send({
+        from: fromAddress,
+        to: email,
+        subject: `Subject Access Approved - ${subjectTitle} - Career Master`,
+        html: htmlContent,
+        text: textContent
+      });
+
+      if (error) {
+        console.error('❌ Error sending subject access approval email via Resend:', error);
+        return { success: false, error: error.message };
+      }
+
+      console.log(`✅ Subject access approval email sent successfully to ${email}. Message ID: ${data.id}`);
+      return {
+        success: true,
+        messageId: data.id,
+        provider: 'resend'
+      };
+    } catch (error) {
+      console.error('❌ Error sending subject access approval email:', error);
+      // Don't throw error as email is not critical for the approval process
+      return { success: false, error: error.message };
+    }
   }
 }
 

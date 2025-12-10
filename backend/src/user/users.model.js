@@ -116,8 +116,10 @@ userSchema.methods.hasRole = function(role) {
 userSchema.methods.toJSON = function() {
   const obj = this.toObject();
   delete obj.passwordHash;
-  delete obj.verification.otp;
-  delete obj.verification.otpExpiry;
+  if (obj.verification) {
+    delete obj.verification.otp;
+    delete obj.verification.otpExpiry;
+  }
   return obj;
 };
 
