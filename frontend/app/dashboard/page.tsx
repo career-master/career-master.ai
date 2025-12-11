@@ -115,26 +115,7 @@ function SubjectSuggestions({ user }: { user: any }) {
     }
   }, [user]);
 
-  if (loading) {
-    return (
-      <div className="text-center py-4">
-        <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
-      </div>
-    );
-  }
-
-  if (subjects.length === 0) {
-    return (
-      <div className="text-center py-4">
-        <p className="text-gray-600 mb-2">No subjects available yet</p>
-        <Link href="/dashboard/subjects" className="text-purple-600 hover:underline text-sm font-medium">
-          Browse All Subjects
-        </Link>
-      </div>
-    );
-  }
-
-  // Calculate profile completion
+  // Calculate profile completion - MUST be before early returns (Rules of Hooks)
   const profileCompletion = useMemo(() => {
     if (!user) return 0;
     const fields = [
@@ -156,6 +137,25 @@ function SubjectSuggestions({ user }: { user: any }) {
     }).length;
     return Math.round((filledFields / fields.length) * 100);
   }, [user]);
+
+  if (loading) {
+    return (
+      <div className="text-center py-4">
+        <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
+
+  if (subjects.length === 0) {
+    return (
+      <div className="text-center py-4">
+        <p className="text-gray-600 mb-2">No subjects available yet</p>
+        <Link href="/dashboard/subjects" className="text-purple-600 hover:underline text-sm font-medium">
+          Browse All Subjects
+        </Link>
+      </div>
+    );
+  }
 
   // Check if user has access
   const hasAccess = (subject: any) => {

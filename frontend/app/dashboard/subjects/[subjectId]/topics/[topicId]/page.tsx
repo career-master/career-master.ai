@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -57,11 +57,14 @@ export default function TopicDetailPage() {
   const [progress, setProgress] = useState<TopicProgress | null>(null);
   const [loading, setLoading] = useState(true);
   const [cheatsheetViewed, setCheatsheetViewed] = useState(false);
+  const [readingProgress, setReadingProgress] = useState(0);
+  const [showReadingToast, setShowReadingToast] = useState(false);
   const [hasAccess, setHasAccess] = useState<boolean>(false);
   const [showTimeLimitModal, setShowTimeLimitModal] = useState(false);
   const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
   const [selectedQuizDuration, setSelectedQuizDuration] = useState<number | null>(null);
   const [useTimeLimit, setUseTimeLimit] = useState(true);
+  const cheatsheetRef = useRef<HTMLDivElement | null>(null);
 
   const profileCompletion = useMemo(() => {
     if (!user) return 0;
@@ -86,17 +89,81 @@ export default function TopicDetailPage() {
   }, [user]);
 
   // Calculate topic progress percentage
+  // Completed quiz IDs set for quick lookup
+  const completedQuizIds = useMemo(() => {
+    return new Set(
+      (progress?.completedQuizzes || [])
+        .map((q) => (typeof q.quizId === 'string' ? q.quizId : q.quizId?._id))
+        .filter(Boolean)
+    );
+  }, [progress?.completedQuizzes]);
+
+  // Group quiz sets by setName and compute per-set progress
+  const groupedSets = useMemo(() => {
+    const groups = new Map<
+      string,
+      { setName: string; quizzes: Array<{ quizId: string; duration?: number; title?: string }>; completed: number; total: number }
+    >();
+
+    quizSets.forEach((qs) => {
+      const setName = qs.setName || 'Quiz Set';
+      const quizId = typeof qs.quizId === 'string' ? qs.quizId : qs.quizId?._id;
+      const duration = typeof qs.quizId === 'object' ? qs.quizId?.durationMinutes : undefined;
+      const title = typeof qs.quizId === 'object' ? qs.quizId?.title : undefined;
+      if (!quizId) return;
+
+      const existing = groups.get(setName) || { setName, quizzes: [], completed: 0, total: 0 };
+      existing.quizzes.push({ quizId, duration, title });
+      existing.total += 1;
+      if (completedQuizIds.has(quizId)) {
+        existing.completed += 1;
+      }
+      groups.set(setName, existing);
+    });
+
+    return Array.from(groups.values());
+  }, [quizSets, completedQuizIds]);
+
+  const completedSetsCount = useMemo(
+    () => groupedSets.filter((set) => set.total > 0 && set.completed >= set.total).length,
+    [groupedSets]
+  );
+
+  // Overall topic progress (cheatsheet + per set)
   const progressPercentage = useMemo(() => {
-    if (!progress || !quizSets.length) return 0;
-    
-    const totalItems = 1 + quizSets.length; // 1 for cheatsheet + quizzes
+    if (!progress || !groupedSets.length) return 0;
+
+    const totalItems = 1 + groupedSets.length; // 1 for cheatsheet + each set
     let completed = 0;
-    
+
     if (progress.cheatSheetRead) completed++;
-    completed += progress.totalQuizzesCompleted || 0;
-    
+    completed += groupedSets.filter((set) => set.total > 0 && set.completed >= set.total).length;
+
     return Math.round((completed / totalItems) * 100);
-  }, [progress, quizSets.length]);
+  }, [progress, groupedSets]);
+
+  // Reading progress (cheatsheet scroll)
+  useEffect(() => {
+    const handleScroll = () => {
+      const el = cheatsheetRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const viewHeight = window.innerHeight || document.documentElement.clientHeight;
+      const total = rect.height;
+      const visibleTop = Math.max(0, -rect.top);
+      const visibleBottom = Math.min(rect.height, viewHeight - rect.top);
+      const visible = Math.max(0, Math.min(total, visibleBottom) - visibleTop);
+      const progressValue = total > 0 ? Math.min(100, Math.max(0, Math.round(((visibleTop + visible) / total) * 100))) : 0;
+      setReadingProgress(progressValue);
+      setShowReadingToast(true);
+      window.clearTimeout((handleScroll as any)._timeout);
+      (handleScroll as any)._timeout = window.setTimeout(() => setShowReadingToast(false), 1200);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -144,15 +211,6 @@ export default function TopicDetailPage() {
 
       if (cheatRes.success && cheatRes.data) {
         setCheatsheet(cheatRes.data);
-        // Mark cheatsheet as read if user has access
-        if (hasAccess) {
-          try {
-            await apiService.markCheatSheetRead(topicId);
-            setCheatsheetViewed(true);
-          } catch (err) {
-            // Non-blocking
-          }
-        }
       }
 
       if (quizSetsRes.success && Array.isArray(quizSetsRes.data)) {
@@ -198,6 +256,21 @@ export default function TopicDetailPage() {
     
     setShowTimeLimitModal(false);
     router.push(`/dashboard/quizzes/${selectedQuizId}/instructions`);
+  };
+
+  const handleMarkCheatsheetRead = async () => {
+    if (!hasAccess) {
+      toast.error('Access locked. Request access from the subject page.');
+      return;
+    }
+    try {
+      await apiService.markCheatSheetRead(topicId);
+      setCheatsheetViewed(true);
+      setProgress((prev) => prev ? { ...prev, cheatSheetRead: true } : prev);
+      toast.success('Marked as read');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to mark as read');
+    }
   };
 
   const renderCheatsheetContent = () => {
@@ -292,6 +365,22 @@ export default function TopicDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+      {showReadingToast && (
+        <div className="fixed top-6 right-6 z-50 bg-white shadow-lg border border-gray-200 rounded-lg px-4 py-3 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-sm font-bold text-purple-700">
+            {Math.min(100, readingProgress)}%
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Reading progress</p>
+            <div className="w-40 bg-gray-200 rounded-full h-2 mt-1">
+              <div
+                className="h-2 rounded-full bg-gradient-to-r from-purple-500 to-blue-500"
+                style={{ width: `${Math.min(100, readingProgress)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto">
         {!hasAccess && (
           <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl p-4 mb-6">
@@ -330,17 +419,28 @@ export default function TopicDetailPage() {
             </div>
 
             {cheatsheet ? (
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200" ref={cheatsheetRef}>
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-gray-900">Cheatsheet / Study Material</h2>
-                  {cheatsheet.estReadMinutes && (
-                    <span className="text-xs text-gray-500">
-                      📖 ~{cheatsheet.estReadMinutes} min read
-                    </span>
-                  )}
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-900">Cheatsheet / Study Material</h2>
+                    {cheatsheet.estReadMinutes && (
+                      <span className="text-xs text-gray-500">
+                        📖 ~{cheatsheet.estReadMinutes} min read
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="border-t pt-4 text-gray-900">
                   {renderCheatsheetContent()}
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={handleMarkCheatsheetRead}
+                    disabled={cheatsheetViewed}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border border-purple-200 text-purple-700 hover:bg-purple-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {cheatsheetViewed ? 'Marked as read' : 'Done reading'}
+                  </button>
                 </div>
               </div>
             ) : (
@@ -357,44 +457,67 @@ export default function TopicDetailPage() {
             {quizSets.length > 0 && (
               <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Quiz Sets</h2>
-                <div className="space-y-3">
-                  {quizSets.map((quizSet) => {
-                    const quizId = typeof quizSet.quizId === 'string' ? quizSet.quizId : quizSet.quizId?._id;
-                    const setTitle = quizSet.setName || 'Quiz Set';
-                    const duration =
-                      typeof quizSet.quizId === 'object' ? quizSet.quizId?.durationMinutes : undefined;
-                    const isCompleted = progress?.completedQuizzes.some(
-                      (q) => q.quizId === quizId
-                    );
-
+                <div className="space-y-4">
+                  {groupedSets.map((set) => {
+                    const percent = set.total > 0 ? Math.round((set.completed / set.total) * 100) : 0;
                     return (
                       <div
-                        key={quizSet._id}
+                        key={set.setName}
                         className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors"
                       >
-                        <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-start justify-between gap-4 mb-3">
                           <div className="flex-1">
-                            <h3 className="font-semibold text-gray-900 mb-1">{setTitle}</h3>
+                            <h3 className="font-semibold text-gray-900 mb-1">{set.setName}</h3>
                             <p className="text-xs text-gray-500">
-                              {duration && duration > 0 ? `⏱️ ${duration} minutes` : 'No timer (untimed)'}
+                              {set.total} quiz{set.total !== 1 ? 'zes' : ''} • {set.completed} completed
                             </p>
-                            {isCompleted && (
-                              <span className="inline-flex items-center gap-1 text-xs text-green-600 mt-1">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                                Completed
-                              </span>
-                            )}
+                          </div>
+                          <div className="min-w-[100px] text-right">
+                            <span className="text-xs font-semibold text-purple-700">{percent}%</span>
+                            <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                              <div
+                                className="h-2 rounded-full bg-gradient-to-r from-purple-500 to-blue-500"
+                                style={{ width: `${percent}%` }}
+                              />
+                            </div>
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleStartQuizClick(quizId || '', duration)}
-                          disabled={!quizId || !hasAccess}
-                          className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-                        >
-                          {isCompleted ? 'Retake Quiz' : 'Start Quiz'}
-                        </button>
+
+                        <div className="grid sm:grid-cols-2 gap-3">
+                          {set.quizzes.map((quiz) => {
+                            const isCompleted = completedQuizIds.has(quiz.quizId);
+                            return (
+                              <div
+                                key={quiz.quizId}
+                                className="border border-gray-200 rounded-lg p-3 flex items-center justify-between"
+                              >
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-900">
+                                    {quiz.title || 'Quiz'}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {quiz.duration && quiz.duration > 0 ? `⏱️ ${quiz.duration} min` : 'No timer'}
+                                  </p>
+                                  {isCompleted && (
+                                    <span className="inline-flex items-center gap-1 text-xs text-green-600 mt-1">
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                      </svg>
+                                      Completed
+                                    </span>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={() => handleStartQuizClick(quiz.quizId, quiz.duration)}
+                                  disabled={!hasAccess}
+                                  className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                >
+                                  {isCompleted ? 'Retake' : 'Start'}
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     );
                   })}
@@ -433,11 +556,32 @@ export default function TopicDetailPage() {
                   )}
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Quizzes</span>
+                  <span className="text-gray-600">Sets</span>
                   <span className="text-gray-900 font-semibold">
-                    {progress?.totalQuizzesCompleted || 0} / {quizSets.length}
+                    {completedSetsCount} / {groupedSets.length}
                   </span>
                 </div>
+                {groupedSets.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    {groupedSets.map((set) => {
+                      const percent = set.total > 0 ? Math.round((set.completed / set.total) * 100) : 0;
+                      return (
+                        <div key={set.setName}>
+                          <div className="flex justify-between text-xs text-gray-600">
+                            <span>{set.setName}</span>
+                            <span className="font-semibold text-gray-800">{set.completed}/{set.total}</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                            <div
+                              className="h-2 rounded-full bg-gradient-to-r from-purple-500 to-blue-500"
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
                 {progress?.isCompleted && (
                   <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                     <div className="flex items-center gap-2 text-green-700">

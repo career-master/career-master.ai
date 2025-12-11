@@ -61,31 +61,65 @@ class QuizReportRepository {
         let userAnswerDisplay = 'Not Attempted';
         let userAnswerIndex = null;
 
+        // Normalize correct answers for robust comparison
+        const correctSingle =
+          typeof question.correctOptionIndex === 'number'
+            ? question.correctOptionIndex
+            : Array.isArray(question.correctOptionIndices) && question.correctOptionIndices.length === 1
+              ? question.correctOptionIndices[0]
+              : undefined;
+        const correctMultiple = Array.isArray(question.correctOptionIndices)
+          ? question.correctOptionIndices
+          : typeof correctSingle === 'number'
+            ? [correctSingle]
+            : [];
+
         switch (questionType) {
           case 'multiple_choice_single':
-          case 'true_false':
-            isCorrect = userAnswer === question.correctOptionIndex;
+          case 'true_false': {
+            isCorrect =
+              typeof userAnswer === 'number' &&
+              typeof correctSingle === 'number' &&
+              userAnswer === correctSingle;
             userAnswerIndex = userAnswer;
-            correctAnswer = question.options?.[question.correctOptionIndex] || '';
-            userAnswerDisplay = isAnswered && question.options?.[userAnswer] 
-              ? question.options[userAnswer] 
+            correctAnswer = typeof correctSingle === 'number'
+              ? (question.options?.[correctSingle] || '')
+              : '';
+            userAnswerDisplay = isAnswered && typeof userAnswer === 'number' && question.options?.[userAnswer]
+              ? question.options[userAnswer]
               : 'Not Attempted';
             break;
+          }
 
-          case 'multiple_choice_multiple':
-            if (Array.isArray(userAnswer) && Array.isArray(question.correctOptionIndices)) {
-              const userSet = new Set(userAnswer.sort());
-              const correctSet = new Set(question.correctOptionIndices.sort());
-              isCorrect = userSet.size === correctSet.size && 
-                         [...userSet].every(val => correctSet.has(val));
+          case 'multiple_choice_multiple': {
+            const userArray = Array.isArray(userAnswer)
+              ? userAnswer
+              : typeof userAnswer === 'number'
+                ? [userAnswer]
+                : [];
+            const correctArray = correctMultiple;
+
+            if (userArray.length > 0 && correctArray.length > 0) {
+              const userSet = new Set(userArray.sort());
+              const correctSet = new Set(correctArray.sort());
+              isCorrect =
+                userSet.size === correctSet.size &&
+                [...userSet].every((val) => correctSet.has(val));
+            } else if (
+              userArray.length === 1 &&
+              typeof correctSingle === 'number'
+            ) {
+              isCorrect = userArray[0] === correctSingle;
             }
-            correctAnswer = question.correctOptionIndices?.map(idx => 
-              question.options?.[idx] || `Option ${idx + 1}`
-            ).join(', ') || '';
-            userAnswerDisplay = isAnswered && Array.isArray(userAnswer)
-              ? userAnswer.map(idx => question.options?.[idx] || `Option ${idx + 1}`).join(', ')
+
+            correctAnswer = correctArray
+              .map((idx) => question.options?.[idx] || `Option ${idx + 1}`)
+              .join(', ') || '';
+            userAnswerDisplay = isAnswered && userArray.length > 0
+              ? userArray.map((idx) => question.options?.[idx] || `Option ${idx + 1}`).join(', ')
               : 'Not Attempted';
             break;
+          }
 
           case 'fill_in_blank':
             if (typeof userAnswer === 'string' && Array.isArray(question.correctAnswers)) {

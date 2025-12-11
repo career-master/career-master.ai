@@ -60,9 +60,26 @@ function QuizAttemptContent() {
   // Helper functions for localStorage timer
   const getTimerKey = (userEmail: string, quizId: string) => `quiz_timer_${userEmail}_${quizId}`;
   const getEndTimeKey = (userEmail: string, quizId: string) => `quiz_endTime_${userEmail}_${quizId}`;
+
+  const getTimeLimitKey = (userEmail: string, quizId: string) => `quiz_time_limit_${userEmail}_${quizId}`;
+  const getDurationKey = (userEmail: string, quizId: string) => `quiz_duration_${userEmail}_${quizId}`;
   const getAnswersKey = (userEmail: string, quizId: string) => `quiz_answers_${userEmail}_${quizId}`;
   const getAnsweredQuestionsKey = (userEmail: string, quizId: string) => `quiz_answered_${userEmail}_${quizId}`;
   const getSkippedQuestionsKey = (userEmail: string, quizId: string) => `quiz_skipped_${userEmail}_${quizId}`;
+  const getQuestionOrderKey = (userEmail: string, quizId: string) => `quiz_qorder_${userEmail}_${quizId}`;
+
+  // Check if user enabled time limit for this quiz
+  const isTimeLimitEnabled = (): boolean => {
+    if (!user?.email) return true; // Default to enabled if no user
+    const timeLimitKey = getTimeLimitKey(user.email, quizId);
+    const preference = localStorage.getItem(timeLimitKey);
+    // Explicitly check for 'false' string - if it's 'false', return false
+    // If it's 'true' or null/undefined, return true (default enabled)
+    if (preference === 'false') {
+      return false;
+    }
+    return true; // Default to enabled if not set or set to 'true'
+  };
 
   const hasActiveAttempt = (): boolean => {
     if (!user?.email) return false;
@@ -119,6 +136,12 @@ function QuizAttemptContent() {
     const endTimeKey = getEndTimeKey(user.email, quizId);
     localStorage.removeItem(timerKey);
     localStorage.removeItem(endTimeKey);
+  };
+
+  const clearQuestionOrder = () => {
+    if (!user?.email) return;
+    const orderKey = getQuestionOrderKey(user.email, quizId);
+    localStorage.removeItem(orderKey);
   };
 
   // Helper functions for localStorage answers
@@ -235,21 +258,67 @@ function QuizAttemptContent() {
           } else if (data.questions && Array.isArray(data.questions)) {
             questions = data.questions;
           }
-          setAllQuestions(questions);
           
           const durationMinutes = data.durationMinutes || 30;
           
-          // Check if there's an active attempt before loading anything
-          const isActiveAttempt = hasActiveAttempt();
+          // Check user's time limit preference FIRST
+          const timeLimitEnabled = isTimeLimitEnabled();
+          
+          // If time limit is disabled, clear timer data immediately
+          if (!timeLimitEnabled) {
+            clearStoredTimer();
+          }
+          
+          // Check if there's an active attempt (only if time limit is enabled)
+          const isActiveAttempt = timeLimitEnabled ? hasActiveAttempt() : false;
           
           // If no active attempt exists, clear all old data first
           if (!isActiveAttempt) {
             clearStoredAnswers();
+            if (timeLimitEnabled) {
+              clearStoredTimer();
+            }
+            clearQuestionOrder();
+          }
+
+          // Determine question order
+          const userEmail = user?.email;
+          const orderKey = userEmail ? getQuestionOrderKey(userEmail, quizId) : null;
+          let orderedQuestions = questions;
+          let storedOrder: number[] | null = null;
+
+          if (isActiveAttempt && orderKey) {
+            try {
+              const parsed = JSON.parse(localStorage.getItem(orderKey) || 'null');
+              if (Array.isArray(parsed) && parsed.length === questions.length) {
+                storedOrder = parsed.map((n: any) => Number(n)).filter((n: number) => Number.isInteger(n));
+              }
+            } catch (err) {
+              console.warn('Failed to parse stored question order, reshuffling.', err);
+            }
+          }
+
+          if (storedOrder && storedOrder.length === questions.length) {
+            orderedQuestions = storedOrder.map((idx) => questions[idx]).filter(Boolean);
+          } else if (!isActiveAttempt) {
+            const newOrder = questions.map((_, idx) => idx).sort(() => Math.random() - 0.5);
+            orderedQuestions = newOrder.map((idx) => questions[idx]);
+            if (orderKey) {
+              localStorage.setItem(orderKey, JSON.stringify(newOrder));
+            }
+          }
+
+          // Initialize timer based on user preference
+          let initialTimeLeft: number | null = null;
+          if (timeLimitEnabled) {
+            // User enabled time limit - get timer (will be full duration if we just cleared)
+            initialTimeLeft = getStoredTimer(durationMinutes);
+            storeTimer(initialTimeLeft);
+          } else {
+            // User disabled time limit - ensure timer is null and cleared
+            initialTimeLeft = null;
             clearStoredTimer();
           }
-          
-          // Now get the timer (will be full duration if we just cleared)
-          const initialTimeLeft = getStoredTimer(durationMinutes);
           
           // Load saved answers from localStorage (will be empty if we just cleared)
           const stored = loadAnswersFromStorage();
@@ -258,7 +327,7 @@ function QuizAttemptContent() {
           const initialSkipped = isActiveAttempt ? [...stored.skipped] : [];
           
           // Initialize answers for reorder questions (shuffle the order) only if not already stored
-          questions.forEach((q, index) => {
+          orderedQuestions.forEach((q, index) => {
             if (q.questionType === 'reorder' && q.correctOrder && !(index in initialAnswers)) {
               // Shuffle the order for the student to rearrange
               const shuffled = [...q.correctOrder].sort(() => Math.random() - 0.5);
@@ -271,8 +340,8 @@ function QuizAttemptContent() {
           setAnsweredQuestions(initialAnswered);
           setSkippedQuestions(initialSkipped);
           
+          setAllQuestions(orderedQuestions);
           setTimeLeft(initialTimeLeft);
-          storeTimer(initialTimeLeft);
           
           // Don't auto-enter fullscreen - browsers require user gesture
           // User can click the "Enter Fullscreen" button if they want
@@ -456,8 +525,21 @@ function QuizAttemptContent() {
         return;
       }
 
-      const initialTime = quiz.durationMinutes * 60;
-      const timeSpentInSeconds = initialTime - (timeLeft || 0);
+      // Calculate time spent (only if timer was enabled)
+      let timeSpentInSeconds = 0;
+      if (timeLeft !== null) {
+        const initialTime = quiz.durationMinutes * 60;
+        timeSpentInSeconds = initialTime - timeLeft;
+      } else {
+        // For untimed quizzes, calculate time from start
+        // We'll use a fallback - if there's a stored start time, use it
+        // Otherwise, we can't calculate exact time, so use 0 or a default
+        const startTimeKey = `quiz_startTime_${user.email}_${quizId}`;
+        const startTime = localStorage.getItem(startTimeKey);
+        if (startTime) {
+          timeSpentInSeconds = Math.floor((Date.now() - parseInt(startTime)) / 1000);
+        }
+      }
 
       // Convert answers to the format expected by backend
       const formattedAnswers: Record<string, any> = {};
@@ -478,6 +560,7 @@ function QuizAttemptContent() {
       if (res.success && res.data) {
         clearStoredTimer();
         clearStoredAnswers(); // Clear answers after successful submission
+        clearQuestionOrder(); // Allow reshuffle on next attempt
         setSubmitted(true);
         toast.success('Quiz submitted successfully!');
 
@@ -532,11 +615,31 @@ function QuizAttemptContent() {
     }
   };
 
+  const resolveQuestionType = (q: QuizQuestion): string => {
+    if (!q) return 'multiple_choice_single';
+
+    // If explicitly multiple-choice-multiple, respect it
+    if (q.questionType === 'multiple_choice_multiple') return 'multiple_choice_multiple';
+
+    // If multiple correct options are provided, force multiple-choice-multiple
+    if (Array.isArray(q.correctOptionIndices) && q.correctOptionIndices.length > 1) {
+      return 'multiple_choice_multiple';
+    }
+
+    // Normalize default MCQ single variants
+    if (!q.questionType || q.questionType === 'multiple_choice' || q.questionType === 'multiple_choice_single') {
+      return 'multiple_choice_single';
+    }
+
+    return q.questionType;
+  };
+
   // Render question based on type
   const renderQuestion = (question: QuizQuestion, qIndex: number) => {
     const currentAnswer = answers[qIndex];
+    const questionType = resolveQuestionType(question);
 
-    switch (question.questionType) {
+    switch (questionType) {
       case 'multiple_choice_single':
       case 'true_false':
         return (
@@ -1023,17 +1126,33 @@ function QuizAttemptContent() {
         {/* Timer */}
         <div className="mb-6 p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg">
           <div className="flex flex-col items-center">
-            <div className="flex items-center mb-2">
-              <svg className="h-6 w-6 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className={`text-3xl font-bold tracking-wide ${
-                timeLeft !== null && timeLeft <= 60 ? 'text-red-600' : 'text-purple-900'
-              }`}>
-                {formatTime(timeLeft)}
-              </span>
-            </div>
-            <span className="text-xs font-semibold text-purple-700 tracking-widest uppercase">Time Remaining</span>
+            {timeLeft !== null ? (
+              <>
+                <div className="flex items-center mb-2">
+                  <svg className="h-6 w-6 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className={`text-3xl font-bold tracking-wide ${
+                    timeLeft <= 60 ? 'text-red-600' : 'text-purple-900'
+                  }`}>
+                    {formatTime(timeLeft)}
+                  </span>
+                </div>
+                <span className="text-xs font-semibold text-purple-700 tracking-widest uppercase">Time Remaining</span>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center mb-2">
+                  <svg className="h-6 w-6 text-gray-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-2xl font-bold tracking-wide text-gray-700">
+                    Untimed
+                  </span>
+                </div>
+                <span className="text-xs font-semibold text-gray-600 tracking-widest uppercase">No Time Limit</span>
+              </>
+            )}
           </div>
         </div>
 

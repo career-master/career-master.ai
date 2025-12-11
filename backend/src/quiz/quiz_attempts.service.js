@@ -86,18 +86,49 @@ class QuizAttemptService {
         let isCorrect = false;
         const questionType = question.questionType || 'multiple_choice_single';
 
+        // Normalize correct answers for robustness
+        const correctSingle =
+          typeof question.correctOptionIndex === 'number'
+            ? question.correctOptionIndex
+            : Array.isArray(question.correctOptionIndices) && question.correctOptionIndices.length === 1
+              ? question.correctOptionIndices[0]
+              : undefined;
+        const correctMultiple = Array.isArray(question.correctOptionIndices)
+          ? question.correctOptionIndices
+          : typeof correctSingle === 'number'
+            ? [correctSingle]
+            : [];
+
         switch (questionType) {
           case 'multiple_choice_single':
           case 'true_false':
-            isCorrect = userAnswer === question.correctOptionIndex;
+            isCorrect =
+              typeof userAnswer === 'number' &&
+              typeof correctSingle === 'number' &&
+              userAnswer === correctSingle;
             break;
 
           case 'multiple_choice_multiple':
-            if (Array.isArray(userAnswer) && Array.isArray(question.correctOptionIndices)) {
-              const userSet = new Set(userAnswer.sort());
-              const correctSet = new Set(question.correctOptionIndices.sort());
-              isCorrect = userSet.size === correctSet.size && 
-                         [...userSet].every(val => correctSet.has(val));
+            // Normalize user answer to array
+            const userArray = Array.isArray(userAnswer)
+              ? userAnswer
+              : typeof userAnswer === 'number'
+                ? [userAnswer]
+                : [];
+            const correctArray = correctMultiple;
+
+            if (userArray.length > 0 && correctArray.length > 0) {
+              const userSet = new Set(userArray.sort());
+              const correctSet = new Set(correctArray.sort());
+              isCorrect =
+                userSet.size === correctSet.size &&
+                [...userSet].every((val) => correctSet.has(val));
+            } else if (
+              userArray.length === 1 &&
+              typeof correctSingle === 'number'
+            ) {
+              // Fallback when only a single correct option exists
+              isCorrect = userArray[0] === correctSingle;
             }
             break;
 
