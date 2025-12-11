@@ -6,26 +6,34 @@ const { validate } = require('../auth/auth.validation');
  */
 
 const markCheatSheetReadSchema = z.object({
-  topicId: z
-    .string()
-    .regex(/^[0-9a-fA-F]{24}$/, 'Invalid topic ID')
+  body: z.object({
+    topicId: z
+      .string()
+      .regex(/^[0-9a-fA-F]{24}$/, 'Invalid topic ID')
+  })
 });
 
 const recordQuizCompletionSchema = z.object({
-  quizId: z
-    .string()
-    .regex(/^[0-9a-fA-F]{24}$/, 'Invalid quiz ID'),
-  attemptId: z
-    .string()
-    .regex(/^[0-9a-fA-F]{24}$/, 'Invalid attempt ID')
+  body: z.object({
+    quizId: z
+      .string()
+      .regex(/^[0-9a-fA-F]{24}$/, 'Invalid quiz ID'),
+    attemptId: z
+      .string()
+      .regex(/^[0-9a-fA-F]{24}$/, 'Invalid attempt ID')
+  })
 });
 
 const topicIdParamSchema = z.object({
-  topicId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid topic ID')
+  params: z.object({
+    topicId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid topic ID')
+  })
 });
 
 const subjectIdParamSchema = z.object({
-  subjectId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid subject ID')
+  params: z.object({
+    subjectId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid subject ID')
+  })
 });
 
 module.exports = {

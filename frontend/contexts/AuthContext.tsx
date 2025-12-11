@@ -27,7 +27,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth();
 
     // Set up periodic token refresh (check every 5 minutes)
+    let isRefreshing = false;
     const refreshInterval = setInterval(async () => {
+      // Prevent concurrent refresh attempts
+      if (isRefreshing) return;
+      
       const token = authUtils.getAccessToken();
       const refreshToken = authUtils.getRefreshToken();
       
@@ -38,15 +42,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const timeUntilExpiry = parseInt(expiry) - Date.now();
           // Refresh if expired or will expire in next 2 minutes
           if (timeUntilExpiry < 2 * 60 * 1000) {
+            isRefreshing = true;
             try {
               const response = await apiService.refreshToken(refreshToken);
               if (response.success && response.data?.tokens) {
                 authUtils.saveTokens(response.data.tokens);
               }
-            } catch (error) {
-              // Refresh failed, clear auth
-              authUtils.clearAuth();
-              setUser(null);
+            } catch (error: any) {
+              // Handle 409 Conflict (token already used) or other errors gracefully
+              if (error?.statusCode === 409 || error?.message?.includes('Conflict')) {
+                // Token was already refreshed, try to get the new token from storage
+                const newToken = authUtils.getAccessToken();
+                if (!newToken || authUtils.isTokenExpired()) {
+                  // If no valid token, clear auth
+                  authUtils.clearAuth();
+                  setUser(null);
+                }
+              } else {
+                // Other errors - clear auth
+                authUtils.clearAuth();
+                setUser(null);
+              }
+            } finally {
+              isRefreshing = false;
             }
           }
         }

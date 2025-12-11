@@ -253,6 +253,17 @@ class AuthRepository {
    */
   static async createSession(sessionData) {
     try {
+      // Check if session with this refresh token already exists
+      const existingSession = await Session.findOne({ refreshToken: sessionData.refreshToken });
+      if (existingSession) {
+        // If it's for the same user, return existing session
+        if (existingSession.userId.toString() === sessionData.userId.toString()) {
+          return existingSession;
+        }
+        // Otherwise, it's a conflict
+        throw new ErrorHandler(409, 'Session already exists');
+      }
+
       const session = new Session({
         userId: sessionData.userId,
         refreshToken: sessionData.refreshToken,
@@ -264,7 +275,15 @@ class AuthRepository {
       const savedSession = await session.save();
       return savedSession;
     } catch (error) {
+      if (error instanceof ErrorHandler) {
+        throw error;
+      }
       if (error.code === 11000) {
+        // Duplicate key error - session already exists, try to find and return it
+        const existingSession = await Session.findOne({ refreshToken: sessionData.refreshToken });
+        if (existingSession && existingSession.userId.toString() === sessionData.userId.toString()) {
+          return existingSession;
+        }
         throw new ErrorHandler(409, 'Session already exists');
       }
       throw new ErrorHandler(500, `Error creating session: ${error.message}`);
