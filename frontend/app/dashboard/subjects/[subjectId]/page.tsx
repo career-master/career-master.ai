@@ -47,7 +47,7 @@ export default function SubjectDetailPage() {
       user.profile?.college,
       user.profile?.school,
       user.profile?.jobTitle,
-      user.profile?.interests?.length > 0,
+      (user.profile?.interests?.length ?? 0) > 0,
       user.profile?.learningGoals,
       user.profile?.city,
       user.profile?.country,
