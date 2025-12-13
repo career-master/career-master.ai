@@ -39,7 +39,11 @@ type QuizSet = {
 
 type TopicProgress = {
   cheatSheetRead: boolean;
-  completedQuizzes: Array<{ quizId: string; score: number; percentage: number }>;
+  completedQuizzes: Array<{ 
+    quizId: string | { _id: string; title?: string; durationMinutes?: number }; 
+    score: number; 
+    percentage: number 
+  }>;
   totalQuizzesCompleted: number;
   isCompleted: boolean;
 };
