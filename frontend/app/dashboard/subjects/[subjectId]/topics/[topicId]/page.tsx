@@ -368,15 +368,15 @@ export default function TopicDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
       {showReadingToast && (
-        <div className="fixed top-6 right-6 z-50 bg-white shadow-lg border border-gray-200 rounded-lg px-4 py-3 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-sm font-bold text-purple-700">
+        <div className="fixed top-4 right-4 left-4 sm:left-auto sm:w-auto z-50 bg-white shadow-lg border border-gray-200 rounded-lg px-3 py-2 sm:px-4 sm:py-3 flex items-center gap-2 sm:gap-3">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-purple-100 flex items-center justify-center text-xs sm:text-sm font-bold text-purple-700 flex-shrink-0">
             {Math.min(100, readingProgress)}%
           </div>
-          <div>
-            <p className="text-sm font-semibold text-gray-900">Reading progress</p>
-            <div className="w-40 bg-gray-200 rounded-full h-2 mt-1">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs sm:text-sm font-semibold text-gray-900 truncate">Reading progress</p>
+            <div className="w-full sm:w-40 bg-gray-200 rounded-full h-2 mt-1">
               <div
                 className="h-2 rounded-full bg-gradient-to-r from-purple-500 to-blue-500"
                 style={{ width: `${Math.min(100, readingProgress)}%` }}
@@ -416,7 +416,7 @@ export default function TopicDetailPage() {
                 </svg>
                 Back to Topics
               </Link>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">{topic.title}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">{topic.title}</h1>
               {topic.description && (
                 <p className="text-gray-600">{topic.description}</p>
               )}
@@ -493,10 +493,10 @@ export default function TopicDetailPage() {
                             return (
                               <div
                                 key={quiz.quizId}
-                                className="border border-gray-200 rounded-lg p-3 flex items-center justify-between"
+                                className="border border-gray-200 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0"
                               >
-                                <div>
-                                  <p className="text-sm font-semibold text-gray-900">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-semibold text-gray-900 truncate">
                                     {quiz.title || 'Quiz'}
                                   </p>
                                   <p className="text-xs text-gray-500">
@@ -514,7 +514,7 @@ export default function TopicDetailPage() {
                                 <button
                                   onClick={() => handleStartQuizClick(quiz.quizId, quiz.duration)}
                                   disabled={!hasAccess}
-                                  className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                  className="w-full sm:w-auto px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
                                 >
                                   {isCompleted ? 'Retake' : 'Start'}
                                 </button>
@@ -531,8 +531,8 @@ export default function TopicDetailPage() {
           </div>
 
           {/* Right Sidebar - Progress Bar */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 sticky top-6">
+          <div className="lg:col-span-1 order-first lg:order-last">
+            <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-200 lg:sticky lg:top-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Progress</h2>
               
               {/* Progress Bar */}
