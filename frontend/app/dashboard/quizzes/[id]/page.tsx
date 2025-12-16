@@ -60,6 +60,7 @@ function QuizAttemptContent() {
   // Helper functions for localStorage timer
   const getTimerKey = (userEmail: string, quizId: string) => `quiz_timer_${userEmail}_${quizId}`;
   const getEndTimeKey = (userEmail: string, quizId: string) => `quiz_endTime_${userEmail}_${quizId}`;
+  const getAttemptKey = (userEmail: string, quizId: string) => `quiz_attempt_${userEmail}_${quizId}`;
 
   const getTimeLimitKey = (userEmail: string, quizId: string) => `quiz_time_limit_${userEmail}_${quizId}`;
   const getDurationKey = (userEmail: string, quizId: string) => `quiz_duration_${userEmail}_${quizId}`;
@@ -81,21 +82,27 @@ function QuizAttemptContent() {
     return true; // Default to enabled if not set or set to 'true'
   };
 
+  /**
+   * Track whether there's an in-progress attempt for this user + quiz.
+   * This is independent of the timer so that question order and answers
+   * stay stable even for untimed quizzes or after page refresh.
+   */
   const hasActiveAttempt = (): boolean => {
     if (!user?.email) return false;
-    
-    const timerKey = getTimerKey(user.email, quizId);
-    const endTimeKey = getEndTimeKey(user.email, quizId);
-    const storedTime = localStorage.getItem(timerKey);
-    
-    if (storedTime) {
-      const now = Date.now();
-      const endTime = parseInt(localStorage.getItem(endTimeKey) || '0');
-      if (endTime && now < endTime) {
-        return true; // Active attempt exists
-      }
-    }
-    return false; // No active attempt
+    const attemptKey = getAttemptKey(user.email, quizId);
+    return localStorage.getItem(attemptKey) === 'active';
+  };
+
+  const markAttemptActive = () => {
+    if (!user?.email) return;
+    const attemptKey = getAttemptKey(user.email, quizId);
+    localStorage.setItem(attemptKey, 'active');
+  };
+
+  const clearActiveAttempt = () => {
+    if (!user?.email) return;
+    const attemptKey = getAttemptKey(user.email, quizId);
+    localStorage.removeItem(attemptKey);
   };
 
   const getStoredTimer = (quizTimeLimit: number): number => {
@@ -269,16 +276,17 @@ function QuizAttemptContent() {
             clearStoredTimer();
           }
           
-          // Check if there's an active attempt (only if time limit is enabled)
-          const isActiveAttempt = timeLimitEnabled ? hasActiveAttempt() : false;
+          // Check if there's an active attempt (independent of timer)
+          const isActiveAttempt = hasActiveAttempt();
           
-          // If no active attempt exists, clear all old data first
+          // If no active attempt exists, clear all old data first and mark attempt as active
           if (!isActiveAttempt) {
             clearStoredAnswers();
             if (timeLimitEnabled) {
               clearStoredTimer();
             }
             clearQuestionOrder();
+            markAttemptActive();
           }
 
           // Determine question order
@@ -561,6 +569,7 @@ function QuizAttemptContent() {
         clearStoredTimer();
         clearStoredAnswers(); // Clear answers after successful submission
         clearQuestionOrder(); // Allow reshuffle on next attempt
+        clearActiveAttempt(); // End active attempt so next try reshuffles
         setSubmitted(true);
         toast.success('Quiz submitted successfully!');
 
