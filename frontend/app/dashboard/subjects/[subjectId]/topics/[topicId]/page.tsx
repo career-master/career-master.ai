@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
@@ -52,6 +52,7 @@ export default function TopicDetailPage() {
   const { isAuthenticated, loading: authLoading, user } = useAuth();
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const subjectId = params?.subjectId as string;
   const topicId = params?.topicId as string;
 
@@ -69,6 +70,8 @@ export default function TopicDetailPage() {
   const [selectedQuizDuration, setSelectedQuizDuration] = useState<number | null>(null);
   const [useTimeLimit, setUseTimeLimit] = useState(true);
   const cheatsheetRef = useRef<HTMLDivElement | null>(null);
+  const loadDataLock = useRef(false);
+  const lastLoadTime = useRef<number>(0);
 
   const profileCompletion = useMemo(() => {
     if (!user) return 0;
@@ -93,20 +96,53 @@ export default function TopicDetailPage() {
   }, [user]);
 
   // Calculate topic progress percentage
-  // Completed quiz IDs set for quick lookup
+  // Attempted quiz IDs set (all attempts, regardless of score)
+  const attemptedQuizIds = useMemo(() => {
+    return new Set(
+      (progress?.completedQuizzes || [])
+        .map((q) => {
+          const id = typeof q.quizId === 'string' ? q.quizId : (q.quizId?._id || q.quizId);
+          return id ? String(id) : null;
+        })
+        .filter(Boolean) as string[]
+    );
+  }, [progress?.completedQuizzes]);
+
+  // Completed quiz IDs set for quick lookup (only passed quizzes with >= 60%)
   const completedQuizIds = useMemo(() => {
     return new Set(
       (progress?.completedQuizzes || [])
-        .map((q) => (typeof q.quizId === 'string' ? q.quizId : q.quizId?._id))
-        .filter(Boolean)
+        .filter((q) => q.percentage >= 60) // Only count passed quizzes
+        .map((q) => {
+          const id = typeof q.quizId === 'string' ? q.quizId : (q.quizId?._id || q.quizId);
+          return id ? String(id) : null;
+        })
+        .filter(Boolean) as string[]
     );
+  }, [progress?.completedQuizzes]);
+
+  // Get quiz status (attempted but not passed, or completed)
+  const getQuizStatus = useMemo(() => {
+    const statusMap = new Map<string, 'completed' | 'attempted' | 'not_attempted'>();
+    (progress?.completedQuizzes || []).forEach((q) => {
+      const quizId = typeof q.quizId === 'string' ? q.quizId : (q.quizId?._id || q.quizId);
+      if (quizId) {
+        const idStr = String(quizId);
+        if (q.percentage >= 60) {
+          statusMap.set(idStr, 'completed');
+        } else {
+          statusMap.set(idStr, 'attempted');
+        }
+      }
+    });
+    return statusMap;
   }, [progress?.completedQuizzes]);
 
   // Group quiz sets by setName and compute per-set progress
   const groupedSets = useMemo(() => {
     const groups = new Map<
       string,
-      { setName: string; quizzes: Array<{ quizId: string; duration?: number; title?: string }>; completed: number; total: number }
+      { setName: string; quizzes: Array<{ quizId: string; duration?: number; title?: string }>; completed: number; attempted: number; total: number }
     >();
 
     quizSets.forEach((qs) => {
@@ -116,17 +152,21 @@ export default function TopicDetailPage() {
       const title = typeof qs.quizId === 'object' ? qs.quizId?.title : undefined;
       if (!quizId) return;
 
-      const existing = groups.get(setName) || { setName, quizzes: [], completed: 0, total: 0 };
-      existing.quizzes.push({ quizId, duration, title });
+      const quizIdStr = String(quizId);
+      const existing = groups.get(setName) || { setName, quizzes: [], completed: 0, attempted: 0, total: 0 };
+      existing.quizzes.push({ quizId: quizIdStr, duration, title });
       existing.total += 1;
-      if (completedQuizIds.has(quizId)) {
+      if (completedQuizIds.has(quizIdStr)) {
         existing.completed += 1;
+        existing.attempted += 1;
+      } else if (attemptedQuizIds.has(quizIdStr)) {
+        existing.attempted += 1;
       }
       groups.set(setName, existing);
     });
 
     return Array.from(groups.values());
-  }, [quizSets, completedQuizIds]);
+  }, [quizSets, completedQuizIds, attemptedQuizIds]);
 
   const completedSetsCount = useMemo(
     () => groupedSets.filter((set) => set.total > 0 && set.completed >= set.total).length,
@@ -135,7 +175,12 @@ export default function TopicDetailPage() {
 
   // Overall topic progress (cheatsheet + per set)
   const progressPercentage = useMemo(() => {
-    if (!progress || !groupedSets.length) return 0;
+    if (!progress) return 0;
+
+    // If no quiz sets, progress is 100% if cheatsheet is read, 0% otherwise
+    if (!groupedSets.length) {
+      return progress.cheatSheetRead ? 100 : 0;
+    }
 
     const totalItems = 1 + groupedSets.length; // 1 for cheatsheet + each set
     let completed = 0;
@@ -179,9 +224,63 @@ export default function TopicDetailPage() {
     }
   }, [isAuthenticated, authLoading, router, topicId]);
 
+  // Reload data when URL changes (e.g., refresh parameter added)
+  useEffect(() => {
+    if (isAuthenticated && topicId) {
+      const refreshParam = searchParams.get('_refresh');
+      if (refreshParam) {
+        // Remove the refresh parameter from URL immediately
+        const newUrl = window.location.pathname;
+        router.replace(newUrl);
+        // Force reload data immediately, bypassing lock
+        loadDataLock.current = false;
+        lastLoadTime.current = 0;
+        loadData();
+      }
+    }
+  }, [searchParams, isAuthenticated, topicId]);
+
+  // Reload data when page becomes visible (e.g., returning from quiz) - with debouncing
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && isAuthenticated && topicId && !loading) {
+        const now = Date.now();
+        // Debounce: only reload if last load was more than 2 seconds ago
+        if (now - lastLoadTime.current > 2000) {
+          loadData();
+        }
+      }
+    };
+
+    const handleFocus = () => {
+      if (isAuthenticated && topicId && !loading) {
+        const now = Date.now();
+        // Debounce: only reload if last load was more than 2 seconds ago
+        if (now - lastLoadTime.current > 2000) {
+          loadData();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [isAuthenticated, topicId, loading]);
+
   const loadData = async () => {
+    // Prevent concurrent loads
+    if (loadDataLock.current) {
+      return;
+    }
+    
     try {
+      loadDataLock.current = true;
       setLoading(true);
+      lastLoadTime.current = Date.now();
+      
       const [topicsRes, cheatRes, quizSetsRes, progressRes] = await Promise.all([
         apiService.getTopics(subjectId, true),
         apiService.getCheatSheetByTopic(topicId),
@@ -224,12 +323,25 @@ export default function TopicDetailPage() {
       if (progressRes.success && progressRes.data) {
         setProgress(progressRes.data as TopicProgress);
         setCheatsheetViewed((progressRes.data as TopicProgress).cheatSheetRead || false);
+      } else {
+        // Initialize with default progress if none exists
+        setProgress({
+          cheatSheetRead: false,
+          completedQuizzes: [],
+          totalQuizzesCompleted: 0,
+          isCompleted: false
+        } as TopicProgress);
+        setCheatsheetViewed(false);
       }
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || 'Failed to load topic details');
+      // Don't show error toast for rate limiting - it's already shown by the API
+      if (!err.message?.includes('Too many requests')) {
+        toast.error(err.message || 'Failed to load topic details');
+      }
     } finally {
       setLoading(false);
+      loadDataLock.current = false;
     }
   };
 
@@ -256,6 +368,11 @@ export default function TopicDetailPage() {
         const durationKey = `quiz_duration_${user.email}_${selectedQuizId}`;
         localStorage.setItem(durationKey, selectedQuizDuration.toString());
       }
+      
+      // Store return URL to redirect back to topic page after quiz completion
+      const returnUrl = `/dashboard/subjects/${subjectId}/topics/${topicId}`;
+      const returnUrlKey = `quiz_return_url_${user.email}_${selectedQuizId}`;
+      localStorage.setItem(returnUrlKey, returnUrl);
     }
     
     setShowTimeLimitModal(false);
@@ -268,12 +385,22 @@ export default function TopicDetailPage() {
       return;
     }
     try {
-      await apiService.markCheatSheetRead(topicId);
-      setCheatsheetViewed(true);
-      setProgress((prev) => prev ? { ...prev, cheatSheetRead: true } : prev);
-      toast.success('Marked as read');
+      const res = await apiService.markCheatSheetRead(topicId);
+      if (res.success && res.data) {
+        // Use the progress data returned from the API instead of making another call
+        setCheatsheetViewed(true);
+        setProgress(res.data as TopicProgress);
+        setCheatsheetViewed((res.data as TopicProgress).cheatSheetRead || false);
+        toast.success('Marked as read');
+      } else {
+        throw new Error(res.message || 'Failed to mark as read');
+      }
     } catch (err: any) {
-      toast.error(err.message || 'Failed to mark as read');
+      console.error('Error marking cheatsheet as read:', err);
+      // Don't show error toast for rate limiting
+      if (!err.message?.includes('Too many requests')) {
+        toast.error(err.message || 'Failed to mark as read');
+      }
     }
   };
 
@@ -473,7 +600,7 @@ export default function TopicDetailPage() {
                           <div className="flex-1">
                             <h3 className="font-semibold text-gray-900 mb-1">{set.setName}</h3>
                             <p className="text-xs text-gray-500">
-                              {set.total} quiz{set.total !== 1 ? 'zes' : ''} • {set.completed} completed
+                              {set.total} quiz{set.total !== 1 ? 'zes' : ''} • {set.attempted} attempted • {set.completed} completed
                             </p>
                           </div>
                           <div className="min-w-[100px] text-right">
@@ -489,7 +616,10 @@ export default function TopicDetailPage() {
 
                         <div className="grid sm:grid-cols-2 gap-3">
                           {set.quizzes.map((quiz) => {
-                            const isCompleted = completedQuizIds.has(quiz.quizId);
+                            const quizIdStr = String(quiz.quizId);
+                            const quizStatus = getQuizStatus.get(quizIdStr) || 'not_attempted';
+                            const isCompleted = quizStatus === 'completed';
+                            const isAttempted = quizStatus === 'attempted';
                             return (
                               <div
                                 key={quiz.quizId}
@@ -510,13 +640,21 @@ export default function TopicDetailPage() {
                                       Completed
                                     </span>
                                   )}
+                                  {isAttempted && !isCompleted && (
+                                    <span className="inline-flex items-center gap-1 text-xs text-yellow-600 mt-1">
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                      </svg>
+                                      Attempted
+                                    </span>
+                                  )}
                                 </div>
                                 <button
                                   onClick={() => handleStartQuizClick(quiz.quizId, quiz.duration)}
                                   disabled={!hasAccess}
                                   className="w-full sm:w-auto px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
                                 >
-                                  {isCompleted ? 'Retake' : 'Start'}
+                                  {isCompleted || isAttempted ? 'Retake' : 'Start'}
                                 </button>
                               </div>
                             );

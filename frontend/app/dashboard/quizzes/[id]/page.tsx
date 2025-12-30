@@ -56,6 +56,10 @@ function QuizAttemptContent() {
   const [hasShownTimeAlert, setHasShownTimeAlert] = useState(false);
   const submitLock = useRef(false);
   const [allQuestions, setAllQuestions] = useState<QuizQuestion[]>([]);
+  const [showSubmitConfirmModal, setShowSubmitConfirmModal] = useState(false);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [completionData, setCompletionData] = useState<any>(null);
+  const [topicCompletionStatus, setTopicCompletionStatus] = useState<any>(null);
 
   // Helper functions for localStorage timer
   const getTimerKey = (userEmail: string, quizId: string) => `quiz_timer_${userEmail}_${quizId}`;
@@ -68,6 +72,7 @@ function QuizAttemptContent() {
   const getAnsweredQuestionsKey = (userEmail: string, quizId: string) => `quiz_answered_${userEmail}_${quizId}`;
   const getSkippedQuestionsKey = (userEmail: string, quizId: string) => `quiz_skipped_${userEmail}_${quizId}`;
   const getQuestionOrderKey = (userEmail: string, quizId: string) => `quiz_qorder_${userEmail}_${quizId}`;
+  const getReturnUrlKey = (userEmail: string, quizId: string) => `quiz_return_url_${userEmail}_${quizId}`;
 
   // Check if user enabled time limit for this quiz
   const isTimeLimitEnabled = (): boolean => {
@@ -444,6 +449,46 @@ function QuizAttemptContent() {
     }
   }, [answers, answeredQuestions, skippedQuestions, quiz, allQuestions.length, user?.email, loading]);
 
+  // Sync answeredQuestions with actual answers state
+  // This ensures progress bar updates correctly when answers are loaded from storage
+  useEffect(() => {
+    if (allQuestions.length > 0 && !submitted && !loading) {
+      const newAnswered = new Set<number>();
+      Object.keys(answers).forEach((key) => {
+        const qIndex = parseInt(key);
+        if (isNaN(qIndex)) return;
+        const answer = answers[qIndex];
+        // Mark as answered if answer exists and is not null/undefined
+        if (answer !== null && answer !== undefined) {
+          // For arrays, check if it's not empty
+          if (Array.isArray(answer)) {
+            if (answer.length > 0) {
+              newAnswered.add(qIndex);
+            }
+          } else if (typeof answer === 'string') {
+            // For strings, check if not empty
+            if (answer.trim().length > 0) {
+              newAnswered.add(qIndex);
+            }
+          } else {
+            // For numbers and other types, just check if truthy
+            newAnswered.add(qIndex);
+          }
+        }
+      });
+      
+      // Only update if there's a meaningful difference to avoid unnecessary re-renders
+      const currentAnsweredArray = Array.from(answeredQuestions).sort();
+      const newAnsweredArray = Array.from(newAnswered).sort();
+      const hasChanged = currentAnsweredArray.length !== newAnsweredArray.length ||
+        currentAnsweredArray.some((q, i) => q !== newAnsweredArray[i]);
+      
+      if (hasChanged) {
+        setAnsweredQuestions(newAnswered);
+      }
+    }
+  }, [answers, allQuestions.length, submitted, loading]);
+
   // Prevent navigation
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -582,37 +627,49 @@ function QuizAttemptContent() {
         }
 
         const attempt = res.data.attempt;
-        const thankYouModal = document.createElement('div');
-        thankYouModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-        thankYouModal.innerHTML = `
-          <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4 animate-fade-in">
-            <div class="text-center">
-              <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg class="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                </svg>
-              </div>
-              <h2 class="text-2xl font-bold text-gray-900 mb-2">Thank You!</h2>
-              <p class="text-gray-600 mb-4">Your quiz has been submitted successfully.</p>
-              <div class="text-left bg-gray-50 p-4 rounded-lg mb-4">
-                <p class="text-sm text-gray-600">Marks Obtained: <span class="font-semibold">${attempt.marksObtained}</span></p>
-                <p class="text-sm text-gray-600">Total Marks: <span class="font-semibold">${attempt.totalMarks}</span></p>
-                <p class="text-sm text-gray-600">Percentage: <span class="font-semibold">${attempt.percentage.toFixed(2)}%</span></p>
-                <p class="text-sm text-gray-600">Result: <span class="font-semibold ${attempt.result === 'pass' ? 'text-green-600' : 'text-red-600'}">${attempt.result.toUpperCase()}</span></p>
-                <p class="text-sm text-gray-600">Correct Answers: ${attempt.correctAnswers}</p>
-                <p class="text-sm text-gray-600">Incorrect Answers: ${attempt.incorrectAnswers}</p>
-                <p class="text-sm text-gray-600">Unattempted: ${attempt.unattemptedAnswers}</p>
-              </div>
-              <p class="text-sm text-gray-500">Redirecting to quizzes page...</p>
-            </div>
-          </div>
-        `;
-        document.body.appendChild(thankYouModal);
-
-        setTimeout(() => {
-          document.body.removeChild(thankYouModal);
-          router.push('/dashboard/quizzes');
-        }, 3000);
+        setCompletionData(attempt);
+        
+        // Show completion modal first
+        setShowCompletionModal(true);
+        
+        // Try to fetch topic completion status after a short delay to ensure backend has processed
+        setTimeout(async () => {
+          try {
+            // Get return URL to find topicId
+            const returnUrlKey = user?.email ? getReturnUrlKey(user.email, quizId) : null;
+            const returnUrl = returnUrlKey ? localStorage.getItem(returnUrlKey) : null;
+            
+            if (returnUrl) {
+              // Extract topicId from return URL
+              const topicMatch = returnUrl.match(/\/topics\/([^\/]+)/);
+              if (topicMatch && topicMatch[1]) {
+                const topicId = topicMatch[1];
+                // Only retry once if first attempt fails (reduced from 3 retries)
+                try {
+                  const progressRes = await apiService.getTopicProgress(topicId);
+                  if (progressRes.success && progressRes.data) {
+                    setTopicCompletionStatus(progressRes.data);
+                  }
+                } catch (err) {
+                  // If first attempt fails, try once more after delay
+                  console.error('Error fetching topic progress, retrying once:', err);
+                  setTimeout(async () => {
+                    try {
+                      const progressRes = await apiService.getTopicProgress(topicId);
+                      if (progressRes.success && progressRes.data) {
+                        setTopicCompletionStatus(progressRes.data);
+                      }
+                    } catch (retryErr) {
+                      console.error('Error fetching topic progress on retry:', retryErr);
+                    }
+                  }, 1000);
+                }
+              }
+            }
+          } catch (err) {
+            console.error('Error fetching topic progress:', err);
+          }
+        }, 1500); // Wait 1.5 seconds before fetching to ensure backend has processed
       } else {
         throw new Error(res.error?.message || 'Failed to submit quiz');
       }
@@ -1005,6 +1062,11 @@ function QuizAttemptContent() {
   const totalQuestions = allQuestions.length;
   const answeredCount = answeredQuestions.size;
   const currentQ = allQuestions[currentQuestion];
+  
+  // Calculate progress percentage safely
+  const progressPercentage = totalQuestions > 0 
+    ? Math.min(100, Math.max(0, (answeredCount / totalQuestions) * 100))
+    : 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1193,14 +1255,18 @@ function QuizAttemptContent() {
         {/* Progress */}
         <div className="mb-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Progress</h3>
-          <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+          <div className="w-full bg-gray-200 rounded-full h-2 mb-2 overflow-hidden relative">
             <div
-              className="bg-purple-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(answeredCount / totalQuestions) * 100}%` }}
+              className="bg-purple-600 h-2 rounded-full transition-all duration-300 ease-out"
+              style={{ 
+                width: `${progressPercentage}%`,
+                minWidth: progressPercentage > 0 ? '2px' : '0px',
+                maxWidth: '100%'
+              }}
             ></div>
           </div>
           <p className="text-xs text-gray-600 text-center">
-            {answeredCount} of {totalQuestions} questions answered
+            {answeredCount} of {totalQuestions} questions answered ({Math.round(progressPercentage)}%)
           </p>
         </div>
 
@@ -1255,9 +1321,7 @@ function QuizAttemptContent() {
           <button
             className="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-md transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={() => {
-              if (confirm('Are you sure you want to submit the quiz? You cannot change your answers after submission.')) {
-                handleSubmit(false);
-              }
+              setShowSubmitConfirmModal(true);
             }}
             disabled={submitted || submitting}
           >
@@ -1266,6 +1330,149 @@ function QuizAttemptContent() {
         </div>
         </div>
       </div>
+
+      {/* Submit Confirmation Modal */}
+      {showSubmitConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-fade-in">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="h-8 w-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Confirm Submission</h2>
+              <p className="text-gray-600 mb-4">
+                Are you sure you want to submit the quiz? You cannot change your answers after submission.
+              </p>
+              <div className="bg-gray-50 p-4 rounded-lg text-left mb-4">
+                <p className="text-sm text-gray-600">
+                  <span className="font-semibold">Answered:</span> {answeredQuestions.size} / {totalQuestions}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-semibold">Skipped:</span> {skippedQuestions.length}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-semibold">Unattempted:</span> {totalQuestions - answeredQuestions.size - skippedQuestions.length}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSubmitConfirmModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowSubmitConfirmModal(false);
+                  handleSubmit(false);
+                }}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Yes, Submit Quiz
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Completion Modal */}
+      {showCompletionModal && completionData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-fade-in">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Quiz Completed!</h2>
+              <p className="text-gray-600 mb-4">Your quiz has been submitted successfully.</p>
+              
+              {/* Quiz Results */}
+              <div className="text-left bg-gray-50 p-4 rounded-lg mb-4">
+                <p className="text-sm text-gray-600 mb-1">
+                  Marks Obtained: <span className="font-semibold">{completionData.marksObtained}</span>
+                </p>
+                <p className="text-sm text-gray-600 mb-1">
+                  Total Marks: <span className="font-semibold">{completionData.totalMarks}</span>
+                </p>
+                <p className="text-sm text-gray-600 mb-1">
+                  Percentage: <span className="font-semibold">{completionData.percentage.toFixed(2)}%</span>
+                </p>
+                <p className="text-sm text-gray-600 mb-1">
+                  Result: <span className={`font-semibold ${completionData.result === 'pass' ? 'text-green-600' : 'text-red-600'}`}>
+                    {completionData.result.toUpperCase()}
+                  </span>
+                </p>
+                <p className="text-sm text-gray-600 mb-1">
+                  Correct Answers: <span className="font-semibold">{completionData.correctAnswers}</span>
+                </p>
+                <p className="text-sm text-gray-600 mb-1">
+                  Incorrect Answers: <span className="font-semibold">{completionData.incorrectAnswers}</span>
+                </p>
+                <p className="text-sm text-gray-600">
+                  Unattempted: <span className="font-semibold">{completionData.unattemptedAnswers}</span>
+                </p>
+              </div>
+
+              {/* Topic Completion Status */}
+              {topicCompletionStatus && (
+                <div className={`p-4 rounded-lg mb-4 ${
+                  topicCompletionStatus.isCompleted 
+                    ? 'bg-green-50 border border-green-200' 
+                    : 'bg-blue-50 border border-blue-200'
+                }`}>
+                  {topicCompletionStatus.isCompleted ? (
+                    <div className="flex items-center gap-2 text-green-700">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="font-semibold">Topic Completed! 🎉</span>
+                    </div>
+                  ) : (
+                    <div className="text-blue-700">
+                      <p className="text-sm font-semibold mb-1">Topic Progress</p>
+                      <p className="text-xs">
+                        Keep going! Complete all quizzes to finish this topic.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button
+                onClick={() => {
+                  setShowCompletionModal(false);
+                  // Get return URL or default to quizzes page
+                  const returnUrlKey = user?.email ? getReturnUrlKey(user.email, quizId) : null;
+                  const returnUrl = returnUrlKey ? localStorage.getItem(returnUrlKey) : null;
+                  
+                  // Clear return URL
+                  if (returnUrlKey) {
+                    localStorage.removeItem(returnUrlKey);
+                  }
+                  
+                  // Force hard refresh when returning to topic page
+                  if (returnUrl) {
+                    // Use window.location for hard refresh to ensure fresh data
+                    const separator = returnUrl.includes('?') ? '&' : '?';
+                    const refreshUrl = `${returnUrl}${separator}_refresh=${Date.now()}`;
+                    window.location.href = refreshUrl;
+                  } else {
+                    router.push('/dashboard/quizzes');
+                  }
+                }}
+                className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
+              >
+                {topicCompletionStatus?.isCompleted ? 'View Topic' : 'Back to Topic'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
