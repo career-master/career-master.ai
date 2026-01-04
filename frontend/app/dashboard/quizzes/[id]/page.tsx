@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { apiService } from '@/lib/api';
@@ -456,7 +456,7 @@ function QuizAttemptContent() {
       const newAnswered = new Set<number>();
       Object.keys(answers).forEach((key) => {
         const qIndex = parseInt(key);
-        if (isNaN(qIndex)) return;
+        if (isNaN(qIndex) || qIndex < 0 || qIndex >= allQuestions.length) return;
         const answer = answers[qIndex];
         // Mark as answered if answer exists and is not null/undefined
         if (answer !== null && answer !== undefined) {
@@ -477,15 +477,16 @@ function QuizAttemptContent() {
         }
       });
       
-      // Only update if there's a meaningful difference to avoid unnecessary re-renders
-      const currentAnsweredArray = Array.from(answeredQuestions).sort();
-      const newAnsweredArray = Array.from(newAnswered).sort();
-      const hasChanged = currentAnsweredArray.length !== newAnsweredArray.length ||
-        currentAnsweredArray.some((q, i) => q !== newAnsweredArray[i]);
-      
-      if (hasChanged) {
-        setAnsweredQuestions(newAnswered);
-      }
+      // Update answeredQuestions if there's a difference
+      // Use functional update to avoid dependency on answeredQuestions
+      setAnsweredQuestions((prev) => {
+        const prevArray = Array.from(prev).sort();
+        const newArray = Array.from(newAnswered).sort();
+        const hasChanged = prevArray.length !== newArray.length ||
+          prevArray.some((q, i) => q !== newArray[i]);
+        
+        return hasChanged ? newAnswered : prev;
+      });
     }
   }, [answers, allQuestions.length, submitted, loading]);
 
@@ -1063,10 +1064,12 @@ function QuizAttemptContent() {
   const answeredCount = answeredQuestions.size;
   const currentQ = allQuestions[currentQuestion];
   
-  // Calculate progress percentage safely
-  const progressPercentage = totalQuestions > 0 
-    ? Math.min(100, Math.max(0, (answeredCount / totalQuestions) * 100))
-    : 0;
+  // Calculate progress percentage safely with useMemo for performance
+  const progressPercentage = useMemo(() => {
+    if (totalQuestions === 0) return 0;
+    const percentage = (answeredCount / totalQuestions) * 100;
+    return Math.min(100, Math.max(0, percentage));
+  }, [answeredCount, totalQuestions]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1255,17 +1258,19 @@ function QuizAttemptContent() {
         {/* Progress */}
         <div className="mb-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Progress</h3>
-          <div className="w-full bg-gray-200 rounded-full h-2 mb-2 overflow-hidden relative">
+          <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2 overflow-hidden relative">
             <div
-              className="bg-purple-600 h-2 rounded-full transition-all duration-300 ease-out"
+              key={`progress-${answeredCount}-${totalQuestions}`}
+              className="bg-gradient-to-r from-purple-600 to-purple-500 h-2.5 rounded-full transition-all duration-500 ease-out"
               style={{ 
                 width: `${progressPercentage}%`,
-                minWidth: progressPercentage > 0 ? '2px' : '0px',
-                maxWidth: '100%'
+                minWidth: progressPercentage > 0 ? '4px' : '0px',
+                maxWidth: '100%',
+                display: 'block'
               }}
             ></div>
           </div>
-          <p className="text-xs text-gray-600 text-center">
+          <p className="text-xs text-gray-600 text-center font-medium">
             {answeredCount} of {totalQuestions} questions answered ({Math.round(progressPercentage)}%)
           </p>
         </div>
