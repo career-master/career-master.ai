@@ -308,6 +308,23 @@ export default function SubjectDetailPage() {
                         {hasAccess ? (
                           <Link
                             href={`/dashboard/subjects/${subjectId}/topics/${topic._id}`}
+                            onClick={(e) => {
+                              // Check profile completion before accessing any topic (including General Knowledge)
+                              if (profileCompletion < 70) {
+                                e.preventDefault();
+                                toast.error(
+                                  `Please complete your profile first. Your profile is ${profileCompletion}% complete. Minimum required: 70%.`,
+                                  {
+                                    duration: 5000,
+                                    icon: '⚠️',
+                                  }
+                                );
+                                setTimeout(() => {
+                                  router.push('/dashboard/profile');
+                                }, 2000);
+                                return;
+                              }
+                            }}
                             className="flex items-center text-purple-600 text-sm font-medium group-hover:text-purple-700"
                           >
                             View

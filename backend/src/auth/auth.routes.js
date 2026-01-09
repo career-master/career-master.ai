@@ -4,6 +4,8 @@ const AuthController = require('./auth.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 const {
   signupSchema,
+  directSignupSchema,
+  googleAuthSchema,
   verifyOtpSchema,
   loginSchema,
   refreshTokenSchema,
@@ -22,7 +24,9 @@ const {
  */
 
 // Public routes
-router.post('/signup', validate(signupSchema), AuthController.signup);
+router.post('/signup', validate(signupSchema), AuthController.signup); // OLD - OTP based
+router.post('/signup-direct', validate(directSignupSchema), AuthController.directSignup); // NEW - Direct signup
+router.post('/google', validate(googleAuthSchema), AuthController.googleAuth); // Google OAuth
 router.post('/verify-otp', validate(verifyOtpSchema), AuthController.verifyOtp);
 router.post('/login', validate(loginSchema), AuthController.login);
 router.post('/refresh', validate(refreshTokenSchema), AuthController.refresh);

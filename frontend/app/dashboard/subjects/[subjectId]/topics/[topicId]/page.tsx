@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -232,10 +232,22 @@ export default function TopicDetailPage() {
         // Remove the refresh parameter from URL immediately
         const newUrl = window.location.pathname;
         router.replace(newUrl);
-        // Force reload data immediately, bypassing lock
+        // Force reload data immediately, bypassing lock and adding delay for backend processing
         loadDataLock.current = false;
         lastLoadTime.current = 0;
-        loadData();
+        // Add a delay and retry mechanism to ensure backend has processed the quiz completion
+        const retryLoad = async (attempt = 0) => {
+          if (attempt < 3) {
+            setTimeout(async () => {
+              await loadData();
+              // Check if progress was updated, if not retry
+              if (attempt < 2) {
+                retryLoad(attempt + 1);
+              }
+            }, attempt === 0 ? 500 : 1000);
+          }
+        };
+        retryLoad();
       }
     }
   }, [searchParams, isAuthenticated, topicId]);
@@ -270,7 +282,7 @@ export default function TopicDetailPage() {
     };
   }, [isAuthenticated, topicId, loading]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     // Prevent concurrent loads
     if (loadDataLock.current) {
       return;
@@ -281,11 +293,13 @@ export default function TopicDetailPage() {
       setLoading(true);
       lastLoadTime.current = Date.now();
       
+      // Add cache-busting timestamp to ensure fresh data after quiz completion
+      const cacheBuster = Date.now();
       const [topicsRes, cheatRes, quizSetsRes, progressRes] = await Promise.all([
         apiService.getTopics(subjectId, true),
         apiService.getCheatSheetByTopic(topicId),
         apiService.getQuizSetsByTopic(topicId, true),
-        apiService.getTopicProgress(topicId).catch(() => ({ success: false, data: null })),
+        apiService.getTopicProgress(topicId, cacheBuster).catch(() => ({ success: false, data: null })),
       ]);
 
       // Determine access based on subject batches
@@ -321,8 +335,18 @@ export default function TopicDetailPage() {
       }
 
       if (progressRes.success && progressRes.data) {
-        setProgress(progressRes.data as TopicProgress);
-        setCheatsheetViewed((progressRes.data as TopicProgress).cheatSheetRead || false);
+        const progressData = progressRes.data as TopicProgress;
+        setProgress(progressData);
+        setCheatsheetViewed(progressData.cheatSheetRead || false);
+        // Force a re-render to update progress calculations
+        console.log('Progress updated:', {
+          cheatSheetRead: progressData.cheatSheetRead,
+          completedQuizzes: progressData.completedQuizzes?.length || 0,
+          quizzes: progressData.completedQuizzes?.map(q => ({
+            quizId: typeof q.quizId === 'string' ? q.quizId : (q.quizId?._id || q.quizId),
+            percentage: q.percentage
+          }))
+        });
       } else {
         // Initialize with default progress if none exists
         setProgress({
@@ -337,19 +361,36 @@ export default function TopicDetailPage() {
       console.error(err);
       // Don't show error toast for rate limiting - it's already shown by the API
       if (!err.message?.includes('Too many requests')) {
-        toast.error(err.message || 'Failed to load topic details');
+      toast.error(err.message || 'Failed to load topic details');
       }
     } finally {
       setLoading(false);
       loadDataLock.current = false;
     }
-  };
+  }, [subjectId, topicId, user]);
 
   const handleStartQuizClick = (quizId: string, duration?: number) => {
     if (!hasAccess) {
       toast.error('Access locked. Request access from the subject page.');
       return;
     }
+
+    // Check profile completion
+    if (profileCompletion < 70) {
+      toast.error(
+        `Please complete your profile first. Your profile is ${profileCompletion}% complete. Minimum required: 70%.`,
+        {
+          duration: 5000,
+          icon: '⚠️',
+        }
+      );
+      // Redirect to profile page
+      setTimeout(() => {
+        router.push('/dashboard/profile');
+      }, 2000);
+      return;
+    }
+
     setSelectedQuizId(quizId);
     setSelectedQuizDuration(duration || null);
     setShowTimeLimitModal(true);
@@ -388,10 +429,10 @@ export default function TopicDetailPage() {
       const res = await apiService.markCheatSheetRead(topicId);
       if (res.success && res.data) {
         // Use the progress data returned from the API instead of making another call
-        setCheatsheetViewed(true);
+      setCheatsheetViewed(true);
         setProgress(res.data as TopicProgress);
         setCheatsheetViewed((res.data as TopicProgress).cheatSheetRead || false);
-        toast.success('Marked as read');
+      toast.success('Marked as read');
       } else {
         throw new Error(res.message || 'Failed to mark as read');
       }
@@ -399,7 +440,7 @@ export default function TopicDetailPage() {
       console.error('Error marking cheatsheet as read:', err);
       // Don't show error toast for rate limiting
       if (!err.message?.includes('Too many requests')) {
-        toast.error(err.message || 'Failed to mark as read');
+      toast.error(err.message || 'Failed to mark as read');
       }
     }
   };
@@ -681,8 +722,13 @@ export default function TopicDetailPage() {
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                   <div
-                    className="bg-gradient-to-r from-purple-500 to-blue-500 h-3 rounded-full transition-all duration-500"
-                    style={{ width: `${progressPercentage}%` }}
+                    key={`progress-${progressPercentage}-${progress?.completedQuizzes?.length || 0}`}
+                    className="bg-gradient-to-r from-purple-500 to-blue-500 h-3 rounded-full transition-all duration-500 ease-out"
+                    style={{ 
+                      width: `${progressPercentage}%`,
+                      minWidth: progressPercentage > 0 ? '4px' : '0',
+                      display: 'block'
+                    }}
                   />
                 </div>
               </div>

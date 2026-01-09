@@ -49,6 +49,16 @@ async function startServer() {
       // Continue even if admin seeding fails
     }
 
+    // Seed default course with quiz (only if it doesn't exist)
+    console.log('🔄 Seeding default course...');
+    try {
+      const DefaultCourseSeed = require('./src/admin/default-course.seed');
+      await DefaultCourseSeed.seedDefaultCourse();
+    } catch (error) {
+      console.warn('⚠️  Warning: Could not seed default course:', error.message);
+      // Continue even if course seeding fails
+    }
+
     // Start Express server
     const PORT = env.PORT;
     app.listen(PORT, () => {

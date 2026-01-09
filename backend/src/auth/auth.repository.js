@@ -83,9 +83,11 @@ class AuthRepository {
         email: userData.email.toLowerCase(),
         passwordHash: userData.passwordHash,
         phone: userData.phone,
+        googleId: userData.googleId,
+        profilePicture: userData.profilePicture,
         roles: userData.roles || ['student'],
         verification: {
-          emailVerified: false,
+          emailVerified: userData.emailVerified || false,
           otp: userData.otp,
           otpExpiry: userData.otpExpiry
         },

@@ -147,7 +147,7 @@ export default function SubjectsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-3">Subjects & Topics</h1>
@@ -230,17 +230,17 @@ export default function SubjectsPage() {
         ) : (
           <div className="space-y-8">
             {Object.entries(groupedByCategory).map(([category, categorySubjects]) => (
-              <div key={category} className="space-y-4">
+              <div key={category} className="space-y-5">
                 {/* Category Header */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 mb-4">
                   <h2 className="text-2xl font-bold text-gray-900">{category}</h2>
-                  <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                  <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-medium">
                     {categorySubjects.length} {categorySubjects.length === 1 ? 'subject' : 'subjects'}
                   </span>
                 </div>
 
-                {/* Subjects Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Subjects Grid - Neat Row and Column Layout */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5 lg:gap-6 w-full">
                   {categorySubjects.map((subject) => {
                     const needsRequest = requiresRequest(subject);
                     const hasSubjectAccess = hasAccess(subject);
@@ -248,10 +248,10 @@ export default function SubjectsPage() {
                     return (
                     <div
                       key={subject._id}
-                      className="group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden"
+                      className="group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden flex flex-col h-full"
                     >
                       {/* Thumbnail */}
-                      <div className="h-40 bg-gradient-to-br from-purple-500 to-blue-500 relative overflow-hidden">
+                      <div className="h-48 bg-gradient-to-br from-purple-500 to-blue-500 relative overflow-hidden flex-shrink-0">
                         {subject.thumbnail ? (
                           <img
                             src={subject.thumbnail}
@@ -288,12 +288,12 @@ export default function SubjectsPage() {
                       </div>
 
                       {/* Content */}
-                      <div className="p-5">
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-purple-600 transition-colors">
+                      <div className="p-5 flex flex-col flex-1">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-purple-600 transition-colors line-clamp-2">
                           {subject.title}
                         </h3>
                         {subject.description && (
-                          <p className="text-sm text-gray-600 line-clamp-2 mb-4">{subject.description}</p>
+                          <p className="text-sm text-gray-600 line-clamp-3 mb-4 flex-1">{subject.description}</p>
                         )}
 
                         {/* Badges */}
@@ -314,28 +314,47 @@ export default function SubjectsPage() {
                         </div>
 
                         {/* CTA */}
-                        {needsRequest ? (
-                          <button
-                            onClick={(e) => handleRequestAccess(subject, e)}
-                            className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
-                          >
-                            Request Access
-                          </button>
-                        ) : hasSubjectAccess ? (
-                          <Link
-                            href={`/dashboard/subjects/${subject._id}`}
-                            className="flex items-center text-purple-600 text-sm font-medium group-hover:text-purple-700"
-                          >
-                            View Topics
-                            <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                          </Link>
-                        ) : (
-                          <div className="text-sm text-gray-500 italic">
-                            Access required
-                          </div>
-                        )}
+                        <div className="mt-auto pt-4">
+                          {needsRequest ? (
+                            <button
+                              onClick={(e) => handleRequestAccess(subject, e)}
+                              className="w-full px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+                            >
+                              Request Access
+                            </button>
+                          ) : hasSubjectAccess ? (
+                            <Link
+                              href={`/dashboard/subjects/${subject._id}`}
+                              onClick={(e) => {
+                                // Check profile completion before accessing any subject (including General Knowledge)
+                                if (profileCompletion < 70) {
+                                  e.preventDefault();
+                                  toast.error(
+                                    `Please complete your profile first. Your profile is ${profileCompletion}% complete. Minimum required: 70%.`,
+                                    {
+                                      duration: 5000,
+                                      icon: '⚠️',
+                                    }
+                                  );
+                                  setTimeout(() => {
+                                    router.push('/dashboard/profile');
+                                  }, 2000);
+                                  return;
+                                }
+                              }}
+                              className="flex items-center justify-center w-full px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+                            >
+                              View Topics
+                              <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </Link>
+                          ) : (
+                            <div className="text-sm text-gray-500 italic text-center py-2.5">
+                              Access required
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )})}

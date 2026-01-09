@@ -9,7 +9,7 @@ const { asyncHandler } = require('../middleware/errorHandler');
 class AuthController {
   /**
    * POST /auth/signup
-   * Send OTP for email verification during signup
+   * Send OTP for email verification during signup (OLD - kept for backward compatibility)
    */
   static signup = asyncHandler(async (req, res) => {
     const { email } = req.body;
@@ -17,6 +17,34 @@ class AuthController {
     const userAgent = req.get('user-agent') || '';
 
     const result = await AuthService.sendSignupOTP(email, ip, userAgent);
+
+    res.status(200).json(result);
+  });
+
+  /**
+   * POST /auth/signup-direct
+   * Direct signup without OTP (NEW)
+   */
+  static directSignup = asyncHandler(async (req, res) => {
+    const { email, name, password, phone } = req.body;
+    const ip = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent') || '';
+
+    const result = await AuthService.directSignup(email, name, password, phone, ip, userAgent);
+
+    res.status(201).json(result);
+  });
+
+  /**
+   * POST /auth/google
+   * Google OAuth authentication
+   */
+  static googleAuth = asyncHandler(async (req, res) => {
+    const { idToken } = req.body;
+    const ip = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('user-agent') || '';
+
+    const result = await AuthService.googleAuth(idToken, ip, userAgent);
 
     res.status(200).json(result);
   });

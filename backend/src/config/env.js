@@ -18,6 +18,7 @@ const env = {
   JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || 'your-access-secret-key-change-in-production',
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key-change-in-production',
   JWT_ACCESS_EXPIRY: process.env.JWT_ACCESS_EXPIRY || '15m',
+  JWT_ACCESS_EXPIRY_SECONDS: parseInt(process.env.JWT_ACCESS_EXPIRY_SECONDS || '900', 10), // 15 minutes in seconds
   JWT_REFRESH_EXPIRY: process.env.JWT_REFRESH_EXPIRY || '7d',
 
   // Email Configuration
@@ -53,7 +54,11 @@ const env = {
   // CLOUDINARY_API_SECRET=abcdefghijklmnopqrstuvwxyz123456 (alphanumeric, 30-40 chars)
   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
-  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || ''
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',
+
+  // Google OAuth Configuration
+  // Get credentials from: https://console.cloud.google.com/apis/credentials
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || ''
 };
 
 // Validate required environment variables in production

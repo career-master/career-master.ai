@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { apiService } from '@/lib/api';
@@ -41,6 +41,29 @@ export default function QuizInstructionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [accepted, setAccepted] = useState(false);
+
+  // Calculate profile completion
+  const profileCompletion = useMemo(() => {
+    if (!user) return 0;
+    const fields = [
+      user.name,
+      (user as any).phone,
+      (user as any).profile?.currentStatus,
+      (user as any).profile?.college,
+      (user as any).profile?.school,
+      (user as any).profile?.jobTitle,
+      (user as any).profile?.interests?.length > 0,
+      (user as any).profile?.learningGoals,
+      (user as any).profile?.city,
+      (user as any).profile?.country,
+      (user as any).profilePicture,
+    ];
+    const filled = fields.filter((field) => {
+      if (Array.isArray(field)) return field.length > 0;
+      return field && String(field).trim().length > 0;
+    }).length;
+    return Math.round((filled / fields.length) * 100);
+  }, [user]);
 
   useEffect(() => {
     if (!quizId || !user?.email) return;
@@ -87,6 +110,23 @@ export default function QuizInstructionsPage() {
       toast.error('Please accept the instructions to continue');
       return;
     }
+
+    // Check profile completion
+    if (profileCompletion < 70) {
+      toast.error(
+        `Please complete your profile first. Your profile is ${profileCompletion}% complete. Minimum required: 70%.`,
+        {
+          duration: 5000,
+          icon: '⚠️',
+        }
+      );
+      // Redirect to profile page
+      setTimeout(() => {
+        router.push('/dashboard/profile');
+      }, 2000);
+      return;
+    }
+
     router.push(`/dashboard/quizzes/${quizId}`);
   };
 

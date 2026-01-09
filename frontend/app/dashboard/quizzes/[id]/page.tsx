@@ -61,6 +61,38 @@ function QuizAttemptContent() {
   const [completionData, setCompletionData] = useState<any>(null);
   const [topicCompletionStatus, setTopicCompletionStatus] = useState<any>(null);
 
+  // Calculate profile completion - MUST be before any conditional returns
+  const profileCompletion = useMemo(() => {
+    if (!user) return 0;
+    const fields = [
+      user.name,
+      (user as any).phone,
+      (user as any).profile?.currentStatus,
+      (user as any).profile?.college,
+      (user as any).profile?.school,
+      (user as any).profile?.jobTitle,
+      (user as any).profile?.interests?.length > 0,
+      (user as any).profile?.learningGoals,
+      (user as any).profile?.city,
+      (user as any).profile?.country,
+      (user as any).profilePicture,
+    ];
+    const filled = fields.filter((field) => {
+      if (Array.isArray(field)) return field.length > 0;
+      return field && String(field).trim().length > 0;
+    }).length;
+    return Math.round((filled / fields.length) * 100);
+  }, [user]);
+
+  // Calculate progress percentage - MUST be before any conditional returns
+  const totalQuestions = allQuestions.length;
+  const answeredCount = answeredQuestions.size;
+  const progressPercentage = useMemo(() => {
+    if (totalQuestions === 0) return 0;
+    const percentage = (answeredCount / totalQuestions) * 100;
+    return Math.min(100, Math.max(0, percentage));
+  }, [answeredCount, totalQuestions]);
+
   // Helper functions for localStorage timer
   const getTimerKey = (userEmail: string, quizId: string) => `quiz_timer_${userEmail}_${quizId}`;
   const getEndTimeKey = (userEmail: string, quizId: string) => `quiz_endTime_${userEmail}_${quizId}`;
@@ -254,6 +286,22 @@ function QuizAttemptContent() {
   // Load quiz details
   useEffect(() => {
     if (!quizId) return;
+    
+    // Check profile completion before loading quiz
+    if (profileCompletion < 70) {
+      toast.error(
+        `Please complete your profile first. Your profile is ${profileCompletion}% complete. Minimum required: 70%.`,
+        {
+          duration: 5000,
+          icon: '⚠️',
+        }
+      );
+      setTimeout(() => {
+        router.push('/dashboard/profile');
+      }, 2000);
+      return;
+    }
+
     const loadQuiz = async () => {
       try {
         setLoading(true);
@@ -367,7 +415,7 @@ function QuizAttemptContent() {
       }
     };
     loadQuiz();
-  }, [quizId, user?.email]);
+  }, [quizId, user?.email, profileCompletion, router]);
 
   // Timer effect
   useEffect(() => {
@@ -1060,16 +1108,7 @@ function QuizAttemptContent() {
     );
   }
 
-  const totalQuestions = allQuestions.length;
-  const answeredCount = answeredQuestions.size;
   const currentQ = allQuestions[currentQuestion];
-  
-  // Calculate progress percentage safely with useMemo for performance
-  const progressPercentage = useMemo(() => {
-    if (totalQuestions === 0) return 0;
-    const percentage = (answeredCount / totalQuestions) * 100;
-    return Math.min(100, Math.max(0, percentage));
-  }, [answeredCount, totalQuestions]);
 
   return (
     <div className="min-h-screen bg-gray-50">

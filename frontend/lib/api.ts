@@ -202,6 +202,25 @@ class ApiService {
     });
   }
 
+  async directSignup(
+    email: string,
+    name: string,
+    password: string,
+    phone?: string
+  ): Promise<ApiResponse<{ user: User; tokens: AuthTokens }>> {
+    return this.request('/auth/signup-direct', {
+      method: 'POST',
+      body: JSON.stringify({ email, name, password, phone }),
+    });
+  }
+
+  async googleAuth(idToken: string): Promise<ApiResponse<{ user: User; tokens: AuthTokens }>> {
+    return this.request('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ idToken }),
+    });
+  }
+
   async verifyOtp(
     email: string,
     otp: string,
@@ -846,8 +865,11 @@ class ApiService {
   }
 
   // Topic Progress
-  async getTopicProgress(topicId: string): Promise<ApiResponse> {
-    return this.request(`/topic-progress/topic/${topicId}`, { method: 'GET' });
+  async getTopicProgress(topicId: string, cacheBuster?: number): Promise<ApiResponse> {
+    const url = cacheBuster 
+      ? `/topic-progress/topic/${topicId}?_t=${cacheBuster}`
+      : `/topic-progress/topic/${topicId}`;
+    return this.request(url, { method: 'GET' });
   }
 
   async markCheatSheetRead(topicId: string): Promise<ApiResponse> {

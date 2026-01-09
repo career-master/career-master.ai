@@ -136,6 +136,214 @@ class AuthService {
   }
 
   /**
+   * Direct signup without OTP (NEW)
+   * @param {string} email - User email
+   * @param {string} name - User name
+   * @param {string} password - User password
+   * @param {string} phone - User phone (optional)
+   * @param {string} ip - Request IP address
+   * @param {string} userAgent - Request user agent
+   * @returns {Promise<Object>} - Success response with tokens and user data
+   */
+  static async directSignup(email, name, password, phone, ip, userAgent) {
+    try {
+      // Check if user already exists
+      const existingUser = await AuthRepository.findUserByEmail(email);
+      if (existingUser) {
+        throw new ErrorHandler(409, 'User with this email already exists');
+      }
+
+      // Hash password
+      const passwordHash = await CryptoUtil.hashPassword(password);
+
+      // Create user with email verified (direct signup)
+      const user = await AuthRepository.createUser({
+        name,
+        email,
+        passwordHash,
+        phone,
+        roles: ['student'], // Default role
+      });
+
+      // Mark email as verified for direct signup
+      await AuthRepository.updateEmailVerification(user._id, true);
+
+      // Send welcome email (non-blocking)
+      EmailUtil.sendWelcomeEmail(email, name).catch(err =>
+        console.error('Error sending welcome email:', err)
+      );
+
+      // Generate tokens
+      const accessToken = TokenUtil.generateAccessToken({
+        userId: user._id.toString(),
+        email: user.email,
+        roles: user.roles
+      });
+
+      const refreshToken = TokenUtil.generateRefreshToken({
+        userId: user._id.toString(),
+        email: user.email
+      });
+
+      // Calculate refresh token expiry (7 days)
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+
+      // Create session
+      const session = await AuthRepository.createSession({
+        userId: user._id,
+        refreshToken,
+        ip,
+        userAgent,
+        expiresAt
+      });
+
+      // Remove sensitive data
+      const userResponse = user.toJSON();
+      delete userResponse.passwordHash;
+
+      return {
+        success: true,
+        message: 'Account created successfully',
+        data: {
+          user: userResponse,
+          tokens: {
+            accessToken,
+            refreshToken,
+            expiresIn: env.JWT_ACCESS_EXPIRY_SECONDS
+          }
+        }
+      };
+    } catch (error) {
+      if (error instanceof ErrorHandler) {
+        throw error;
+      }
+      throw new ErrorHandler(500, `Error in direct signup: ${error.message}`);
+    }
+  }
+
+  /**
+   * Google OAuth authentication
+   * @param {string} idToken - Google ID token
+   * @param {string} ip - Request IP address
+   * @param {string} userAgent - Request user agent
+   * @returns {Promise<Object>} - Success response with tokens and user data
+   */
+  static async googleAuth(idToken, ip, userAgent) {
+    try {
+      // Verify Google ID token
+      const { OAuth2Client } = require('google-auth-library');
+      const client = new OAuth2Client(env.GOOGLE_CLIENT_ID);
+
+      let ticket;
+      try {
+        ticket = await client.verifyIdToken({
+          idToken,
+          audience: env.GOOGLE_CLIENT_ID
+        });
+      } catch (error) {
+        throw new ErrorHandler(401, 'Invalid Google token');
+      }
+
+      const payload = ticket.getPayload();
+      if (!payload) {
+        throw new ErrorHandler(401, 'Invalid Google token payload');
+      }
+
+      const { email, name, picture, sub: googleId } = payload;
+
+      if (!email) {
+        throw new ErrorHandler(400, 'Email not provided by Google');
+      }
+
+      // Check if user exists
+      let user = await AuthRepository.findUserByEmail(email);
+
+      if (user) {
+        // User exists, log them in
+        if (user.status !== 'active') {
+          throw new ErrorHandler(403, 'Account is banned or inactive');
+        }
+
+        // Update Google ID if not set
+        if (!user.googleId) {
+          await AuthRepository.updateUser(user._id, { googleId });
+        }
+
+        // Update profile picture if available
+        if (picture && !user.profilePicture) {
+          await AuthRepository.updateUser(user._id, { profilePicture: picture });
+        }
+      } else {
+        // Create new user
+        user = await AuthRepository.createUser({
+          name: name || 'User',
+          email,
+          googleId,
+          profilePicture: picture,
+          roles: ['student'],
+          passwordHash: null // No password for Google users
+        });
+
+        // Mark email as verified (Google emails are pre-verified)
+        await AuthRepository.updateEmailVerification(user._id, true);
+
+        // Send welcome email (non-blocking)
+        EmailUtil.sendWelcomeEmail(email, name || 'User').catch(err =>
+          console.error('Error sending welcome email:', err)
+        );
+      }
+
+      // Generate tokens
+      const accessToken = TokenUtil.generateAccessToken({
+        userId: user._id.toString(),
+        email: user.email,
+        roles: user.roles
+      });
+
+      const refreshToken = TokenUtil.generateRefreshToken({
+        userId: user._id.toString(),
+        email: user.email
+      });
+
+      // Calculate refresh token expiry (7 days)
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+
+      // Create session
+      await AuthRepository.createSession({
+        userId: user._id,
+        refreshToken,
+        ip,
+        userAgent,
+        expiresAt
+      });
+
+      // Remove sensitive data
+      const userResponse = user.toJSON();
+      delete userResponse.passwordHash;
+
+      return {
+        success: true,
+        message: 'Authentication successful',
+        data: {
+          user: userResponse,
+          tokens: {
+            accessToken,
+            refreshToken,
+            expiresIn: env.JWT_ACCESS_EXPIRY_SECONDS
+          }
+        }
+      };
+    } catch (error) {
+      if (error instanceof ErrorHandler) {
+        throw error;
+      }
+      throw new ErrorHandler(500, `Error in Google authentication: ${error.message}`);
+    }
+  }
+
+  /**
    * Login user with email and password
    * @param {string} email - User email
    * @param {string} password - User password
