@@ -79,7 +79,7 @@ class TopicProgressService {
       quizId,
       attemptId,
       completedAt: new Date(),
-      score: attempt.score || 0,
+      score: attempt.marksObtained || 0,
       percentage: attempt.percentage || 0
     };
 
@@ -116,14 +116,34 @@ class TopicProgressService {
       return;
     }
 
-    // Check requirements: cheatsheet read + required quizzes passed
+    // Check requirements: cheatsheet read + all quizzes in all quiz sets completed
     const cheatsheetRead = progress.cheatSheetRead || false;
-    const requiredQuizzes = topic.requiredQuizzesToUnlock || 2;
+    
+    // Get all quiz sets for this topic
+    const quizSets = await QuizSet.find({ topicId, isActive: true });
+    
+    if (quizSets.length === 0) {
+      // No quiz sets, only require cheatsheet to be read
+      if (cheatsheetRead) {
+        await TopicProgressRepository.completeTopic(studentId, topicId);
+      }
+      return;
+    }
 
-    // Count passed quizzes (percentage >= passing threshold, typically 60%)
-    const passedQuizzes = progress.completedQuizzes.filter(q => q.percentage >= 60).length;
+    // Get all quiz IDs from all quiz sets
+    const allQuizIds = quizSets.map(qs => qs.quizId.toString());
+    
+    // Get completed quiz IDs (passed with >= 60%)
+    const completedQuizIds = new Set(
+      progress.completedQuizzes
+        .filter(q => q.percentage >= 60)
+        .map(q => q.quizId.toString())
+    );
 
-    if (cheatsheetRead && passedQuizzes >= requiredQuizzes) {
+    // Check if all quizzes in all quiz sets are completed
+    const allQuizzesCompleted = allQuizIds.every(quizId => completedQuizIds.has(quizId));
+
+    if (cheatsheetRead && allQuizzesCompleted) {
       await TopicProgressRepository.completeTopic(studentId, topicId);
     }
   }

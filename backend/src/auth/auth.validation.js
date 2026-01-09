@@ -35,13 +35,37 @@ const otpSchema = z
   .regex(/^\d+$/, 'OTP must contain only digits');
 
 /**
- * Signup validation schema
+ * Signup validation schema (OLD - OTP based, kept for backward compatibility)
  * POST /auth/signup
  * Only requires email - sends OTP for verification
  */
 const signupSchema = z.object({
   body: z.object({
     email: emailSchema
+  })
+});
+
+/**
+ * Direct signup validation schema (NEW - without OTP)
+ * POST /auth/signup-direct
+ * Creates account directly without OTP verification
+ */
+const directSignupSchema = z.object({
+  body: z.object({
+    email: emailSchema,
+    name: nameSchema,
+    password: passwordSchema,
+    phone: phoneSchema
+  })
+});
+
+/**
+ * Google OAuth validation schema
+ * POST /auth/google
+ */
+const googleAuthSchema = z.object({
+  body: z.object({
+    idToken: z.string().min(1, 'Google ID token is required')
   })
 });
 
@@ -219,6 +243,8 @@ const validate = (schema) => {
 
 module.exports = {
   signupSchema,
+  directSignupSchema,
+  googleAuthSchema,
   verifyOtpSchema,
   loginSchema,
   refreshTokenSchema,

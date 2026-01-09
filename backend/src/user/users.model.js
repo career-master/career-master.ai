@@ -39,8 +39,21 @@ const userSchema = new mongoose.Schema(
     },
     passwordHash: {
       type: String,
-      required: [true, 'Password hash is required'],
+      required: function() {
+        // Password is required only if user doesn't have Google ID
+        return !this.googleId;
+      },
       select: false // Don't return password by default
+    },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true, // Allow multiple null values
+      select: false
+    },
+    profilePicture: {
+      type: String,
+      trim: true
     },
     batches: {
       type: [String],

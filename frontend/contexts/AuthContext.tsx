@@ -11,6 +11,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string) => Promise<void>;
+  directSignup: (email: string, name: string, password: string, phone?: string) => Promise<void>;
+  googleSignIn: () => Promise<void>;
   verifyOtp: (email: string, otp: string, name: string, password: string, phone?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -170,6 +172,109 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const directSignup = async (email: string, name: string, password: string, phone?: string) => {
+    try {
+      const response = await apiService.directSignup(email, name, password, phone);
+      if (response.success && response.data) {
+        const { user, tokens } = response.data;
+        authUtils.saveTokens(tokens);
+        authUtils.saveUser(user);
+        setUser(user);
+        router.push('/dashboard');
+      } else {
+        throw new Error(response.error?.message || 'Signup failed');
+      }
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const googleSignIn = async () => {
+    try {
+      if (typeof window === 'undefined') {
+        throw new Error('Google sign in is only available in the browser');
+      }
+
+      const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+      if (!googleClientId) {
+        throw new Error('Google Client ID is not configured. Please set NEXT_PUBLIC_GOOGLE_CLIENT_ID in your environment variables.');
+      }
+
+      // Load Google Identity Services
+      await new Promise<void>((resolve, reject) => {
+        if ((window as any).google?.accounts?.id) {
+          resolve();
+          return;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = () => {
+          if ((window as any).google?.accounts?.id) {
+            resolve();
+          } else {
+            reject(new Error('Failed to load Google Identity Services'));
+          }
+        };
+        script.onerror = () => reject(new Error('Failed to load Google Identity Services'));
+        document.head.appendChild(script);
+      });
+
+      // Use a promise-based approach for the callback
+      return new Promise<void>((resolve, reject) => {
+        (window as any).google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: async (response: any) => {
+            try {
+              const apiResponse = await apiService.googleAuth(response.credential);
+              if (apiResponse.success && apiResponse.data) {
+                const { user, tokens } = apiResponse.data;
+                authUtils.saveTokens(tokens);
+                authUtils.saveUser(user);
+                setUser(user);
+                router.push('/dashboard');
+                resolve();
+              } else {
+                reject(new Error(apiResponse.error?.message || 'Google authentication failed'));
+              }
+            } catch (error: any) {
+              reject(error);
+            }
+          },
+        });
+
+        // Create a temporary button container and render Google button
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.position = 'fixed';
+        buttonContainer.style.left = '-9999px';
+        document.body.appendChild(buttonContainer);
+
+        (window as any).google.accounts.id.renderButton(buttonContainer, {
+          theme: 'outline',
+          size: 'large',
+          width: 400,
+          text: 'signin_with',
+          type: 'standard',
+        });
+
+        // Find and click the button
+        setTimeout(() => {
+          const button = buttonContainer.querySelector('div[role="button"]') as HTMLElement;
+          if (button) {
+            button.click();
+          } else {
+            document.body.removeChild(buttonContainer);
+            reject(new Error('Failed to initialize Google sign-in button'));
+          }
+        }, 100);
+      });
+    } catch (error: any) {
+      throw error;
+    }
+  };
+
   const verifyOtp = async (
     email: string,
     otp: string,
@@ -231,6 +336,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!user,
         login,
         signup,
+        directSignup,
+        googleSignIn,
         verifyOtp,
         logout,
         refreshUser,
