@@ -246,10 +246,26 @@ class QuizAttemptService {
 
       // Record quiz completion for topic progress (if quiz is part of a topic)
       try {
-        await TopicProgressService.recordQuizCompletion(userId, quizId, attempt._id.toString());
+        const progressResult = await TopicProgressService.recordQuizCompletion(userId, quizId, attempt._id.toString());
+        if (progressResult) {
+          console.log('Quiz completion recorded successfully for topic progress:', {
+            quizId,
+            attemptId: attempt._id.toString(),
+            topicId: progressResult.topicId?.toString(),
+            completedQuizzesCount: progressResult.completedQuizzes?.length || 0
+          });
+        } else {
+          console.log('Quiz not linked to any topic via QuizSet, skipping topic progress recording:', quizId);
+        }
       } catch (progressError) {
         // Log but don't fail the quiz submission if topic progress tracking fails
-        console.error('Error recording topic progress:', progressError);
+        console.error('Error recording topic progress:', {
+          error: progressError.message,
+          stack: progressError.stack,
+          quizId,
+          attemptId: attempt._id.toString(),
+          userId
+        });
       }
 
       return attempt;
