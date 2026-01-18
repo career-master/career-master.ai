@@ -1007,7 +1007,7 @@ export default function DashboardProfilePage() {
                         }, 0);
                     const categoryTotalCount = Array.isArray(options)
                       ? options.length
-                      : Object.values(options).reduce((sum, subOpts) => sum + (subOpts as string[]).length, 0);
+                      : Object.values(options).reduce((sum: number, subOpts) => sum + (subOpts as string[]).length, 0);
                     
                     return (
                       <div key={category} className="border rounded-lg overflow-hidden bg-white shadow-sm">
