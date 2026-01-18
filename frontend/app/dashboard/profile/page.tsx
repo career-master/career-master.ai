@@ -403,7 +403,7 @@ export default function DashboardProfilePage() {
     }
     
     const searchLower = courseSearch.toLowerCase();
-    const filtered: typeof courseCategories = {};
+    const filtered: Record<string, any> = {};
     
     Object.entries(courseCategories).forEach(([category, options]) => {
       if (category.toLowerCase().includes(searchLower)) {
@@ -473,15 +473,15 @@ export default function DashboardProfilePage() {
             <p className="text-xs text-gray-500 mt-2">
               Complete at least 70% of your profile to attempt quizzes
             </p>
-          )}
-        </div>
+            )}
+          </div>
 
         {/* Tabs */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
           <div className="border-b border-gray-200">
             <nav className="flex -mb-px overflow-x-auto">
               {(['personal', 'contact', 'address', 'academic', 'courses'] as ProfileTab[]).map((tab) => (
-                <button
+                      <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   className={`px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
@@ -491,10 +491,10 @@ export default function DashboardProfilePage() {
                   }`}
                 >
                   {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
+                      </button>
               ))}
             </nav>
-          </div>
+                    </div>
 
           <div className="p-6">
             {activeTab === 'personal' && (
@@ -511,46 +511,46 @@ export default function DashboardProfilePage() {
                     </div>
                   )}
                   <div>
-                    <label className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer transition-colors">
+                  <label className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer transition-colors">
                       {uploadingPicture ? 'Uploading...' : 'Upload Picture'}
                       <input type="file" className="hidden" accept="image/*" onChange={handlePictureUpload} disabled={uploadingPicture} />
-                    </label>
-                    <p className="text-xs text-gray-500 mt-1">PNG, JPG, GIF (MAX. 10MB)</p>
-                  </div>
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">PNG, JPG, GIF (MAX. 10MB)</p>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">First Name (as per DOB certificate) *</label>
-                    <input
+                  <input
                       type="text"
                       className="w-full border rounded-lg px-3 py-2"
                       value={form.firstName}
                       onChange={(e) => setForm(prev => ({ ...prev, firstName: e.target.value }))}
-                      required
-                    />
-                  </div>
-                  <div>
+                    required
+                  />
+                </div>
+                <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
-                    <input
+                  <input
                       type="text"
                       className="w-full border rounded-lg px-3 py-2"
                       value={form.lastName}
                       onChange={(e) => setForm(prev => ({ ...prev, lastName: e.target.value }))}
                       required
-                    />
-                  </div>
-                  <div>
+                  />
+                </div>
+                <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
-                    <input
+                  <input
                       type="date"
                       className="w-full border rounded-lg px-3 py-2"
                       value={form.dateOfBirth}
                       onChange={(e) => setForm(prev => ({ ...prev, dateOfBirth: e.target.value }))}
                       required
-                    />
-                  </div>
-                  <div>
+                  />
+                </div>
+                <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
                     <select
                       className="w-full border rounded-lg px-3 py-2"
@@ -567,14 +567,14 @@ export default function DashboardProfilePage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Father/Mother/Guardian Name *</label>
-                    <input
+                  <input
                       type="text"
                       className="w-full border rounded-lg px-3 py-2"
                       value={form.guardianName}
                       onChange={(e) => setForm(prev => ({ ...prev, guardianName: e.target.value }))}
                       required
-                    />
-                  </div>
+                  />
+                </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Relation *</label>
                     <select
@@ -588,7 +588,7 @@ export default function DashboardProfilePage() {
                       <option value="mother">Mother</option>
                       <option value="guardian">Guardian</option>
                     </select>
-                  </div>
+              </div>
                 </div>
               </div>
             )}
@@ -597,10 +597,10 @@ export default function DashboardProfilePage() {
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-gray-900">Contact Details</h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Email ID *</label>
-                    <input
+                  <input
                       type="email"
                       className="w-full border rounded-lg px-3 py-2 bg-gray-100"
                       value={form.email}
@@ -609,42 +609,42 @@ export default function DashboardProfilePage() {
                     {user.verification?.emailVerified && (
                       <span className="text-xs text-green-600 mt-1 block">✓ Verified</span>
                     )}
-                  </div>
+                </div>
                   
-                  <div>
+                <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number *</label>
-                    <input
+                  <input
                       type="tel"
                       className="w-full border rounded-lg px-3 py-2"
                       value={form.phone}
                       onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
                       placeholder="+91 9876543210"
                       required
-                    />
-                  </div>
+                  />
+                </div>
                   
-                  <div>
+                <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Alternate Mobile Number</label>
-                    <input
+                  <input
                       type="tel"
                       className="w-full border rounded-lg px-3 py-2"
                       value={form.alternateMobile}
                       onChange={(e) => setForm(prev => ({ ...prev, alternateMobile: e.target.value }))}
                       placeholder="+91 9876543210"
-                    />
-                  </div>
+                  />
+                </div>
                   
-                  <div>
+                <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp Number</label>
                     <div className="flex items-center gap-2 mb-2">
-                      <input
+                  <input
                         type="checkbox"
                         checked={form.whatsappSameAsMobile}
                         onChange={(e) => setForm(prev => ({ ...prev, whatsappSameAsMobile: e.target.checked }))}
                         className="w-4 h-4"
                       />
                       <span className="text-sm text-gray-600">Same as mobile number</span>
-                    </div>
+                </div>
                     <input
                       type="tel"
                       className="w-full border rounded-lg px-3 py-2"
@@ -653,7 +653,7 @@ export default function DashboardProfilePage() {
                       placeholder="+91 9876543210"
                       disabled={form.whatsappSameAsMobile}
                     />
-                  </div>
+              </div>
                 </div>
               </div>
             )}
@@ -666,34 +666,34 @@ export default function DashboardProfilePage() {
                 <div className="border rounded-lg p-4">
                   <h4 className="font-semibold text-gray-900 mb-4">Present / Current Address</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
+              <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">House No / Street</label>
                       <input
                         type="text"
                         className="w-full border rounded-lg px-3 py-2"
                         value={form.presentHouseNo}
                         onChange={(e) => setForm(prev => ({ ...prev, presentHouseNo: e.target.value }))}
-                      />
-                    </div>
-                    <div>
+                />
+              </div>
+                <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Area / Locality</label>
-                      <input
+                  <input
                         type="text"
                         className="w-full border rounded-lg px-3 py-2"
                         value={form.presentArea}
                         onChange={(e) => setForm(prev => ({ ...prev, presentArea: e.target.value }))}
-                      />
-                    </div>
-                    <div>
+                  />
+                </div>
+                <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">City / Town *</label>
-                      <input
+                  <input
                         type="text"
                         className="w-full border rounded-lg px-3 py-2"
                         value={form.presentCity}
                         onChange={(e) => setForm(prev => ({ ...prev, presentCity: e.target.value }))}
                         required
-                      />
-                    </div>
+                  />
+                </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">District</label>
                       <input
@@ -702,7 +702,7 @@ export default function DashboardProfilePage() {
                         value={form.presentDistrict}
                         onChange={(e) => setForm(prev => ({ ...prev, presentDistrict: e.target.value }))}
                       />
-                    </div>
+              </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">State *</label>
                       <input
@@ -712,7 +712,7 @@ export default function DashboardProfilePage() {
                         onChange={(e) => setForm(prev => ({ ...prev, presentState: e.target.value }))}
                         required
                       />
-                    </div>
+              </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">PIN Code *</label>
                       <input
@@ -722,8 +722,8 @@ export default function DashboardProfilePage() {
                         onChange={(e) => setForm(prev => ({ ...prev, presentPinCode: e.target.value }))}
                         required
                       />
-                    </div>
-                    <div>
+                </div>
+                <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Country *</label>
                       <input
                         type="text"
@@ -733,8 +733,8 @@ export default function DashboardProfilePage() {
                         required
                       />
                     </div>
-                  </div>
                 </div>
+              </div>
 
                 {/* Permanent Address */}
                 <div className="border rounded-lg p-4">
@@ -746,10 +746,10 @@ export default function DashboardProfilePage() {
                       className="w-4 h-4"
                     />
                     <label className="text-sm font-medium text-gray-700">Same as Present Address</label>
-                  </div>
+                </div>
                   <h4 className="font-semibold text-gray-900 mb-4">Permanent Address</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
+                <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">House No / Street</label>
                       <input
                         type="text"
@@ -758,8 +758,8 @@ export default function DashboardProfilePage() {
                         onChange={(e) => setForm(prev => ({ ...prev, permanentHouseNo: e.target.value }))}
                         disabled={form.sameAsPresentAddress}
                       />
-                    </div>
-                    <div>
+                </div>
+                <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Area / Locality</label>
                       <input
                         type="text"
@@ -768,8 +768,8 @@ export default function DashboardProfilePage() {
                         onChange={(e) => setForm(prev => ({ ...prev, permanentArea: e.target.value }))}
                         disabled={form.sameAsPresentAddress}
                       />
-                    </div>
-                    <div>
+                </div>
+                <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">City / Town *</label>
                       <input
                         type="text"
@@ -779,8 +779,8 @@ export default function DashboardProfilePage() {
                         disabled={form.sameAsPresentAddress}
                         required
                       />
-                    </div>
-                    <div>
+                </div>
+                <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">District</label>
                       <input
                         type="text"
@@ -789,8 +789,8 @@ export default function DashboardProfilePage() {
                         onChange={(e) => setForm(prev => ({ ...prev, permanentDistrict: e.target.value }))}
                         disabled={form.sameAsPresentAddress}
                       />
-                    </div>
-                    <div>
+                </div>
+                <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">State *</label>
                       <input
                         type="text"
@@ -800,8 +800,8 @@ export default function DashboardProfilePage() {
                         disabled={form.sameAsPresentAddress}
                         required
                       />
-                    </div>
-                    <div>
+                </div>
+                <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">PIN Code *</label>
                       <input
                         type="text"
@@ -811,8 +811,8 @@ export default function DashboardProfilePage() {
                         disabled={form.sameAsPresentAddress}
                         required
                       />
-                    </div>
-                    <div>
+                </div>
+                <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Country *</label>
                       <input
                         type="text"
@@ -822,8 +822,8 @@ export default function DashboardProfilePage() {
                         disabled={form.sameAsPresentAddress}
                         required
                       />
-                    </div>
-                  </div>
+                </div>
+                </div>
                 </div>
               </div>
             )}
@@ -833,7 +833,7 @@ export default function DashboardProfilePage() {
                 <h3 className="text-lg font-semibold text-gray-900">Academic / Qualification Details</h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+                <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Current Qualification *</label>
                     <select
                       className="w-full border rounded-lg px-3 py-2"
@@ -885,9 +885,9 @@ export default function DashboardProfilePage() {
                       <option value="phd">PhD</option>
                       <option value="other">Other</option>
                     </select>
-                  </div>
+                </div>
                   
-                  <div>
+                <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">School/College/Institution Name *</label>
                     <input
                       type="text"
@@ -896,7 +896,7 @@ export default function DashboardProfilePage() {
                       onChange={(e) => setForm(prev => ({ ...prev, institutionName: e.target.value }))}
                       required
                     />
-                  </div>
+                </div>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">University</label>
@@ -906,8 +906,8 @@ export default function DashboardProfilePage() {
                       value={form.university}
                       onChange={(e) => setForm(prev => ({ ...prev, university: e.target.value }))}
                     />
-                  </div>
-                  
+        </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Year of Study</label>
                     <select
@@ -920,7 +920,7 @@ export default function DashboardProfilePage() {
                         <option key={year} value={year.toString()}>{year}</option>
                       ))}
                     </select>
-                  </div>
+              </div>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Expected Passing Year</label>
@@ -931,8 +931,8 @@ export default function DashboardProfilePage() {
                       onChange={(e) => setForm(prev => ({ ...prev, expectedPassingYear: e.target.value }))}
                       min="1900"
                       max="2100"
-                    />
-                  </div>
+                />
+              </div>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Grade Type</label>
@@ -944,8 +944,8 @@ export default function DashboardProfilePage() {
                       <option value="percentage">Percentage</option>
                       <option value="cgpa">CGPA</option>
                     </select>
-                  </div>
-                  
+            </div>
+
                   {form.gradeType === 'percentage' ? (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Percentage</label>
@@ -971,10 +971,10 @@ export default function DashboardProfilePage() {
                         max="10"
                         step="0.01"
                       />
-                    </div>
-                  )}
                 </div>
+              )}
               </div>
+            </div>
             )}
 
             {activeTab === 'courses' && (
@@ -984,7 +984,7 @@ export default function DashboardProfilePage() {
                   <p className="text-sm text-gray-600 mb-4">Select the courses you want to practice. Quizzes will be shown based on your selections.</p>
                   
                   {/* Search Bar */}
-                  <div className="mb-4">
+            <div className="mb-4">
                     <input
                       type="text"
                       placeholder="Search courses..."
@@ -992,8 +992,8 @@ export default function DashboardProfilePage() {
                       value={courseSearch}
                       onChange={(e) => setCourseSearch(e.target.value)}
                     />
-                  </div>
-                </div>
+              </div>
+              </div>
                 
                 <div className="space-y-3 max-h-[600px] overflow-y-auto">
                   {Object.entries(filteredCourseCategories).map(([category, options]) => {
@@ -1021,14 +1021,14 @@ export default function DashboardProfilePage() {
                               <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                               </svg>
-                            </div>
+            </div>
                             <h4 className="font-semibold text-gray-900 text-left">{category}</h4>
                             {categorySelectedCount > 0 && (
                               <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
                                 {categorySelectedCount}/{categoryTotalCount} selected
-                              </span>
+                </span>
                             )}
-                          </div>
+              </div>
                           <span className="text-sm text-gray-500">{categoryTotalCount} courses</span>
                         </button>
                         
@@ -1061,7 +1061,7 @@ export default function DashboardProfilePage() {
                                     </label>
                                   );
                                 })}
-                              </div>
+              </div>
                             ) : (
                               <div className="space-y-4">
                                 {Object.entries(options).map(([subCategory, subOptions]) => {
@@ -1078,7 +1078,7 @@ export default function DashboardProfilePage() {
                                             {subSelectedCount} selected
                                           </span>
                                         )}
-                                      </div>
+            </div>
                                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                                         {(subOptions as string[]).map((option) => {
                                           const courseId = `${category}_${subCategory}_${option}`;
@@ -1100,23 +1100,23 @@ export default function DashboardProfilePage() {
                                               />
                                               <span className={`text-sm font-medium ${isSelected ? 'text-purple-900' : 'text-gray-700'}`}>
                                                 {option}
-                                              </span>
+                </span>
                                             </label>
                                           );
                                         })}
-                                      </div>
-                                    </div>
+              </div>
+              </div>
                                   );
                                 })}
-                              </div>
+            </div>
                             )}
                           </div>
                         )}
                       </div>
                     );
                   })}
-                </div>
-                
+          </div>
+
                 {/* Selected Courses Summary */}
                 <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-lg p-4 sticky bottom-0">
                   <div className="flex items-center justify-between">
@@ -1129,7 +1129,7 @@ export default function DashboardProfilePage() {
                           Your quizzes will be filtered based on these selections
                         </p>
                       )}
-                    </div>
+              </div>
                     {form.selectedCourses.length > 0 && (
                       <button
                         onClick={() => setForm(prev => ({ ...prev, selectedCourses: [] }))}
@@ -1138,12 +1138,12 @@ export default function DashboardProfilePage() {
                         Clear All
                       </button>
                     )}
-                  </div>
-                </div>
+            </div>
               </div>
+            </div>
             )}
-          </div>
-        </div>
+              </div>
+            </div>
 
         {/* Save Button */}
         <div className="flex justify-end gap-3 mt-6">
@@ -1154,12 +1154,12 @@ export default function DashboardProfilePage() {
           >
             {saving ? 'Saving...' : 'Save Profile'}
           </button>
-        </div>
+          </div>
 
         {error && (
           <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
             {error}
-          </div>
+        </div>
         )}
         {success && (
           <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
