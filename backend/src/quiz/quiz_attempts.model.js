@@ -66,6 +66,38 @@ const quizAttemptSchema = new mongoose.Schema(
       enum: ['pass', 'fail'],
       default: 'fail'
     },
+    // Difficulty breakdown: track performance by difficulty level
+    difficultyBreakdown: {
+      easy: {
+        total: { type: Number, default: 0 },
+        correct: { type: Number, default: 0 },
+        marksObtained: { type: Number, default: 0 },
+        totalMarks: { type: Number, default: 0 }
+      },
+      medium: {
+        total: { type: Number, default: 0 },
+        correct: { type: Number, default: 0 },
+        marksObtained: { type: Number, default: 0 },
+        totalMarks: { type: Number, default: 0 }
+      },
+      hard: {
+        total: { type: Number, default: 0 },
+        correct: { type: Number, default: 0 },
+        marksObtained: { type: Number, default: 0 },
+        totalMarks: { type: Number, default: 0 }
+      }
+    },
+    // Store topicId and subjectId for filtering and analytics
+    topicId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Topic',
+      required: false
+    },
+    subjectId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Subject',
+      required: false
+    },
     submittedAt: {
       type: Date,
       default: Date.now

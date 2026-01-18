@@ -37,6 +37,7 @@ export default function SubjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
+  const [subjectProgress, setSubjectProgress] = useState<any>(null);
 
   const profileCompletion = useMemo(() => {
     if (!user) return 0;
@@ -73,9 +74,10 @@ export default function SubjectDetailPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [subjectsRes, topicsRes] = await Promise.all([
+      const [subjectsRes, topicsRes, progressRes] = await Promise.all([
         apiService.getSubjects({ page: 1, limit: 100, isActive: true }),
         apiService.getTopics(subjectId, true),
+        apiService.getSubjectProgress(subjectId).catch(() => ({ success: false, data: null })),
       ]);
 
       if (subjectsRes.success && subjectsRes.data?.items) {
@@ -93,6 +95,10 @@ export default function SubjectDetailPage() {
 
       if (topicsRes.success && Array.isArray(topicsRes.data)) {
         setTopics(topicsRes.data);
+      }
+
+      if (progressRes.success && progressRes.data) {
+        setSubjectProgress(progressRes.data);
       }
     } catch (err: any) {
       console.error(err);
@@ -174,7 +180,7 @@ export default function SubjectDetailPage() {
           {subject.description && (
                 <p className="text-lg text-gray-600 mb-4">{subject.description}</p>
           )}
-              <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-3 flex-wrap mb-4">
             {subject.category && (
                   <span className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg font-medium">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,6 +203,27 @@ export default function SubjectDetailPage() {
               </span>
             )}
               </div>
+              
+              {/* Progress Bar */}
+              {subjectProgress && subjectProgress.topics && Array.isArray(subjectProgress.topics) && subjectProgress.topics.length > 0 && (
+                <div className="mt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">Overall Progress</span>
+                    <span className="text-sm font-semibold text-purple-600">
+                      {subjectProgress.completedTopics || 0}/{subjectProgress.totalTopics || 0} topics completed
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-purple-500 to-blue-500 h-full rounded-full transition-all duration-500 ease-out"
+                      style={{
+                        width: `${subjectProgress.progressPercentage || 0}%`,
+                        minWidth: '4px'
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -261,26 +288,80 @@ export default function SubjectDetailPage() {
           </div>
         ) : (
             <div className="divide-y divide-gray-200">
-            {topics.map((topic, index) => (
-              <div
-                key={topic._id}
-                className={`block p-6 transition-colors group ${hasAccess ? 'hover:bg-gray-50' : 'opacity-80'}`}
-              >
+            {topics.map((topic, index) => {
+              const topicProgress = subjectProgress?.topics?.find((p: any) => p.topicId?._id === topic._id || p.topicId === topic._id);
+              const isCompleted = topicProgress?.isCompleted || false;
+              const progressPercent = topicProgress ? (() => {
+                if (isCompleted) return 100;
+                const cheatsheetRead = topicProgress.cheatSheetRead ? 1 : 0;
+                const completedQuizzes = topicProgress.completedQuizzes?.length || 0;
+                // Estimate: cheatsheet = 50%, quizzes = 50%
+                return Math.min(100, (cheatsheetRead * 50) + (completedQuizzes > 0 ? 50 : 0));
+              })() : 0;
+
+              return (
+                <div
+                  key={topic._id}
+                  className={`block p-6 transition-all group ${hasAccess ? 'hover:bg-gray-50 hover:shadow-sm' : 'opacity-80'} ${isCompleted ? 'bg-green-50/30' : ''}`}
+                >
                   <div className="flex items-start gap-4">
-                    {/* Number Badge */}
-                    <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 text-white rounded-lg flex items-center justify-center font-bold text-lg shadow-sm">
-                        {index + 1}
+                    {/* Number Badge with Completion Indicator */}
+                    <div className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center font-bold text-lg shadow-sm transition-all ${
+                      isCompleted 
+                        ? 'bg-gradient-to-br from-green-500 to-emerald-500 text-white' 
+                        : 'bg-gradient-to-br from-purple-500 to-blue-500 text-white'
+                    }`}>
+                      {isCompleted ? (
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        index + 1
+                      )}
                     </div>
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-purple-600 transition-colors">
-                            {topic.title}
-                          </h3>
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="text-xl font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
+                              {topic.title}
+                            </h3>
+                            {isCompleted && (
+                              <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                                Completed
+                              </span>
+                            )}
+                          </div>
                     {topic.description && (
                             <p className="text-sm text-gray-600 line-clamp-2 mb-3">{topic.description}</p>
+                          )}
+
+                          {/* Progress Bar */}
+                          {topicProgress && (
+                            <div className="mb-3">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs text-gray-500">Progress</span>
+                                <span className="text-xs font-medium text-gray-700">{progressPercent}%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-500 ease-out ${
+                                    isCompleted 
+                                      ? 'bg-gradient-to-r from-green-500 to-emerald-500' 
+                                      : 'bg-gradient-to-r from-purple-500 to-blue-500'
+                                  }`}
+                                  style={{
+                                    width: `${progressPercent}%`,
+                                    minWidth: progressPercent > 0 ? '4px' : '0'
+                                  }}
+                                />
+                              </div>
+                            </div>
                           )}
 
                           {/* Metadata */}
@@ -325,9 +406,9 @@ export default function SubjectDetailPage() {
                                 return;
                               }
                             }}
-                            className="flex items-center text-purple-600 text-sm font-medium group-hover:text-purple-700"
+                            className="flex items-center text-purple-600 text-sm font-medium group-hover:text-purple-700 transition-colors"
                           >
-                            View
+                            {isCompleted ? 'Review' : 'Start'}
                             <svg className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
@@ -344,7 +425,8 @@ export default function SubjectDetailPage() {
                     </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
         </div>

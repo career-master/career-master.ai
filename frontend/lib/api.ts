@@ -466,10 +466,26 @@ class ApiService {
     return response.blob();
   }
 
-  // Get all user quiz attempts (for reports)
-  async getUserQuizAttempts(quizId?: string): Promise<ApiResponse> {
+  // Get all user quiz attempts (for reports) with filters
+  async getUserQuizAttempts(filters?: {
+    quizId?: string;
+    subjectId?: string;
+    topicId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    minScore?: number;
+    maxScore?: number;
+    difficulty?: 'easy' | 'medium' | 'hard';
+  }): Promise<ApiResponse> {
     const params = new URLSearchParams();
-    if (quizId) params.append('quizId', quizId);
+    if (filters?.quizId) params.append('quizId', filters.quizId);
+    if (filters?.subjectId) params.append('subjectId', filters.subjectId);
+    if (filters?.topicId) params.append('topicId', filters.topicId);
+    if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom);
+    if (filters?.dateTo) params.append('dateTo', filters.dateTo);
+    if (filters?.minScore !== undefined) params.append('minScore', String(filters.minScore));
+    if (filters?.maxScore !== undefined) params.append('maxScore', String(filters.maxScore));
+    if (filters?.difficulty) params.append('difficulty', filters.difficulty);
     
     const query = params.toString();
     return this.request(`/reports/user-quiz-attempts${query ? `?${query}` : ''}`, {
@@ -921,6 +937,14 @@ class ApiService {
       ? `/topic-progress/topic/${topicId}?_t=${cacheBuster}`
       : `/topic-progress/topic/${topicId}`;
     return this.request(url, { method: 'GET' });
+  }
+
+  async getSubjectProgress(subjectId: string): Promise<ApiResponse> {
+    return this.request(`/topic-progress/subject/${subjectId}`, { method: 'GET' });
+  }
+
+  async getStudentProgress(): Promise<ApiResponse> {
+    return this.request('/topic-progress', { method: 'GET' });
   }
 
   async markCheatSheetRead(topicId: string): Promise<ApiResponse> {

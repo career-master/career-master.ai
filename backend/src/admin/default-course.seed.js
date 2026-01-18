@@ -9,6 +9,10 @@ const { QUESTION_TYPES } = require('../quiz/question-types.config');
 /**
  * Default Course Seed
  * Creates a default "General Knowledge" course with topic, quiz, and cheatsheet
+ * 
+ * IMPORTANT: All quizzes created by this seed MUST be linked to topics via QuizSet.
+ * The General Knowledge quiz is linked to ALL topics in the subject to ensure
+ * users can access it from any subtopic.
  */
 class DefaultCourseSeed {
   /**
@@ -754,7 +758,8 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
             options: ['Sydney', 'Melbourne', 'Canberra', 'Perth'],
             correctOptionIndex: 2,
             marks: 1,
-            negativeMarks: 0
+            negativeMarks: 0,
+            difficulty: 'easy'
           },
           {
             questionType: QUESTION_TYPES.MULTIPLE_CHOICE_SINGLE,
@@ -762,7 +767,8 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
             options: ['George Orwell', 'Aldous Huxley', 'Ray Bradbury', 'J.D. Salinger'],
             correctOptionIndex: 0,
             marks: 1,
-            negativeMarks: 0
+            negativeMarks: 0,
+            difficulty: 'easy'
           },
           {
             questionType: QUESTION_TYPES.MULTIPLE_CHOICE_SINGLE,
@@ -770,7 +776,8 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
             options: ['Go', 'Gd', 'Au', 'Ag'],
             correctOptionIndex: 2,
             marks: 1,
-            negativeMarks: 0
+            negativeMarks: 0,
+            difficulty: 'medium'
           },
           {
             questionType: QUESTION_TYPES.MULTIPLE_CHOICE_SINGLE,
@@ -778,7 +785,8 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
             options: ['1943', '1944', '1945', '1946'],
             correctOptionIndex: 2,
             marks: 1,
-            negativeMarks: 0
+            negativeMarks: 0,
+            difficulty: 'easy'
           },
           {
             questionType: QUESTION_TYPES.MULTIPLE_CHOICE_SINGLE,
@@ -786,7 +794,8 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
             options: ['Earth', 'Saturn', 'Jupiter', 'Neptune'],
             correctOptionIndex: 2,
             marks: 1,
-            negativeMarks: 0
+            negativeMarks: 0,
+            difficulty: 'easy'
           },
           {
             questionType: QUESTION_TYPES.MULTIPLE_CHOICE_SINGLE,
@@ -794,7 +803,8 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
             options: ['Vincent van Gogh', 'Pablo Picasso', 'Leonardo da Vinci', 'Michelangelo'],
             correctOptionIndex: 2,
             marks: 1,
-            negativeMarks: 0
+            negativeMarks: 0,
+            difficulty: 'easy'
           },
           {
             questionType: QUESTION_TYPES.MULTIPLE_CHOICE_SINGLE,
@@ -802,7 +812,8 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
             options: ['0', '1', '2', '3'],
             correctOptionIndex: 2,
             marks: 1,
-            negativeMarks: 0
+            negativeMarks: 0,
+            difficulty: 'easy'
           },
           {
             questionType: QUESTION_TYPES.MULTIPLE_CHOICE_SINGLE,
@@ -810,15 +821,17 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
             options: ['Atlantic Ocean', 'Indian Ocean', 'Arctic Ocean', 'Pacific Ocean'],
             correctOptionIndex: 3,
             marks: 1,
-            negativeMarks: 0
+            negativeMarks: 0,
+            difficulty: 'easy'
           },
           {
             questionType: QUESTION_TYPES.MULTIPLE_CHOICE_SINGLE,
             questionText: 'What is the speed of light in vacuum (approximately)?',
             options: ['300,000 km/s', '150,000 km/s', '450,000 km/s', '600,000 km/s'],
             correctOptionIndex: 0,
-            marks: 1,
-            negativeMarks: 0
+            marks: 2,
+            negativeMarks: 0.5,
+            difficulty: 'hard'
           },
           {
             questionType: QUESTION_TYPES.MULTIPLE_CHOICE_SINGLE,
@@ -826,7 +839,8 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
             options: ['Marie Curie', 'Alexander Fleming', 'Louis Pasteur', 'Robert Koch'],
             correctOptionIndex: 1,
             marks: 1,
-            negativeMarks: 0
+            negativeMarks: 0,
+            difficulty: 'medium'
           },
           {
             questionType: QUESTION_TYPES.MULTIPLE_CHOICE_SINGLE,
@@ -834,7 +848,8 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
             options: ['Amazon River', 'Nile River', 'Yangtze River', 'Mississippi River'],
             correctOptionIndex: 1,
             marks: 1,
-            negativeMarks: 0
+            negativeMarks: 0,
+            difficulty: 'medium'
           },
           {
             questionType: QUESTION_TYPES.MULTIPLE_CHOICE_SINGLE,
@@ -842,7 +857,8 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
             options: ['Asia', 'Africa', 'Australia', 'South America'],
             correctOptionIndex: 1,
             marks: 1,
-            negativeMarks: 0
+            negativeMarks: 0,
+            difficulty: 'easy'
           },
           {
             questionType: QUESTION_TYPES.MULTIPLE_CHOICE_SINGLE,
@@ -850,7 +866,8 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
             options: ['Gold', 'Iron', 'Diamond', 'Platinum'],
             correctOptionIndex: 2,
             marks: 1,
-            negativeMarks: 0
+            negativeMarks: 0,
+            difficulty: 'easy'
           },
           {
             questionType: QUESTION_TYPES.MULTIPLE_CHOICE_SINGLE,
@@ -858,7 +875,8 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
             options: ['Charles Dickens', 'William Shakespeare', 'Jane Austen', 'Mark Twain'],
             correctOptionIndex: 1,
             marks: 1,
-            negativeMarks: 0
+            negativeMarks: 0,
+            difficulty: 'easy'
           },
           {
             questionType: QUESTION_TYPES.MULTIPLE_CHOICE_SINGLE,
@@ -866,7 +884,8 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
             options: ['Osaka', 'Kyoto', 'Tokyo', 'Yokohama'],
             correctOptionIndex: 2,
             marks: 1,
-            negativeMarks: 0
+            negativeMarks: 0,
+            difficulty: 'easy'
           },
           {
             questionType: QUESTION_TYPES.MULTIPLE_CHOICE_SINGLE,
@@ -874,7 +893,8 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
             options: ['5', '6', '7', '8'],
             correctOptionIndex: 2,
             marks: 1,
-            negativeMarks: 0
+            negativeMarks: 0,
+            difficulty: 'easy'
           },
           {
             questionType: QUESTION_TYPES.MULTIPLE_CHOICE_SINGLE,
@@ -882,7 +902,8 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
             options: ['H2O', 'CO2', 'O2', 'NaCl'],
             correctOptionIndex: 0,
             marks: 1,
-            negativeMarks: 0
+            negativeMarks: 0,
+            difficulty: 'easy'
           },
           {
             questionType: QUESTION_TYPES.MULTIPLE_CHOICE_SINGLE,
@@ -890,7 +911,8 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
             options: ['Buzz Aldrin', 'Neil Armstrong', 'Michael Collins', 'Yuri Gagarin'],
             correctOptionIndex: 1,
             marks: 1,
-            negativeMarks: 0
+            negativeMarks: 0,
+            difficulty: 'easy'
           },
           {
             questionType: QUESTION_TYPES.MULTIPLE_CHOICE_SINGLE,
@@ -898,7 +920,8 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
             options: ['African Elephant', 'Blue Whale', 'Giraffe', 'Polar Bear'],
             correctOptionIndex: 1,
             marks: 1,
-            negativeMarks: 0
+            negativeMarks: 0,
+            difficulty: 'easy'
           },
           {
             questionType: QUESTION_TYPES.MULTIPLE_CHOICE_SINGLE,
@@ -906,7 +929,8 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
             options: ['Monaco', 'Vatican City', 'San Marino', 'Liechtenstein'],
             correctOptionIndex: 1,
             marks: 1,
-            negativeMarks: 0
+            negativeMarks: 0,
+            difficulty: 'easy'
           }
         ],
         createdBy: createdBy
@@ -919,20 +943,44 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
       console.log('✅ Created quiz: General Knowledge Quiz - 20 Questions');
 
       // 4. Create Quiz Sets (Link quiz to ALL topics so users can access it from any subtopic)
+      // CRITICAL: Every quiz MUST be linked to at least one topic via QuizSet
+      let quizSetsCreated = 0;
       for (let i = 0; i < createdTopics.length; i++) {
         const topic = createdTopics[i].topic;
-        const quizSet = new QuizSet({
+        
+        // Check if QuizSet already exists
+        const existingQuizSet = await QuizSet.findOne({
           topicId: topic._id,
-          quizId: savedQuiz._id,
-          setName: 'General Knowledge Assessment',
-          order: 1,
-          isActive: true,
-          assignedBy: createdBy
+          quizId: savedQuiz._id
         });
+        
+        if (!existingQuizSet) {
+          const quizSet = new QuizSet({
+            topicId: topic._id,
+            quizId: savedQuiz._id,
+            setName: 'General Knowledge Assessment',
+            order: 1,
+            isActive: true,
+            assignedBy: createdBy
+          });
 
-        await quizSet.save();
-        console.log(`✅ Created quiz set: Linked quiz to topic "${topic.title}"`);
+          await quizSet.save();
+          console.log(`✅ Created quiz set: Linked quiz to topic "${topic.title}"`);
+          quizSetsCreated++;
+        } else {
+          console.log(`ℹ️  Quiz set already exists for topic "${topic.title}"`);
+        }
       }
+      
+      // Verify at least one QuizSet was created
+      if (quizSetsCreated === 0 && createdTopics.length > 0) {
+        const existingCount = await QuizSet.countDocuments({ quizId: savedQuiz._id, isActive: true });
+        if (existingCount === 0) {
+          throw new Error(`Failed to create QuizSet for quiz "${savedQuiz.title}". Quiz must be linked to at least one topic.`);
+        }
+      }
+      
+      console.log(`✅ Quiz linked to ${createdTopics.length} topic(s) via QuizSet`);
 
       // 5. Create Cheatsheets (Theory Content) for each topic
       for (const { topic, theory } of createdTopics) {

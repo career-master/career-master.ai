@@ -232,12 +232,17 @@ class QuizReportService {
   /**
    * Get user's quiz attempts list
    * @param {string} userId
-   * @param {string} quizId
+   * @param {Object} filters - Filter object with quizId, subjectId, topicId, etc.
    * @returns {Promise<Object>}
    */
-  static async getUserQuizAttempts(userId, quizId = null) {
+  static async getUserQuizAttempts(userId, filters = {}) {
     try {
-      const attempts = await QuizReportRepository.getUserQuizAttempts(userId, quizId);
+      // Extract quizId from filters if it exists, otherwise use null
+      const quizId = filters && typeof filters === 'object' && !Array.isArray(filters) 
+        ? (filters.quizId || null)
+        : (typeof filters === 'string' ? filters : null);
+      
+      const attempts = await QuizReportRepository.getUserQuizAttempts(userId, quizId, filters);
       return {
         success: true,
         data: attempts

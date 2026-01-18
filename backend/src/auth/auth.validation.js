@@ -168,9 +168,61 @@ const logoutAllSchema = z.object({
 const updateCurrentUserSchema = z.object({
   body: z.object({
     name: nameSchema.optional(),
-    phone: phoneSchema,
+    phone: phoneSchema.optional(),
+    profilePicture: z.string().url().optional().or(z.literal('')),
     profile: z
       .object({
+        // Personal Details
+        firstName: z.string().max(100).trim().optional(),
+        lastName: z.string().max(100).trim().optional(),
+        dateOfBirth: z.date().optional(),
+        gender: z.enum(['male', 'female', 'other', 'prefer_not_to_say']).optional(),
+        guardianName: z.string().max(200).trim().optional(),
+        guardianRelation: z.enum(['father', 'mother', 'guardian']).optional(),
+        
+        // Contact Details
+        alternateMobile: z.string().max(20).trim().optional(),
+        whatsappNumber: z.string().max(20).trim().optional(),
+        whatsappSameAsMobile: z.boolean().optional(),
+        
+        // Address Details
+        presentAddress: z.object({
+          houseNo: z.string().max(100).trim().optional(),
+          street: z.string().max(200).trim().optional(),
+          area: z.string().max(200).trim().optional(),
+          city: z.string().max(100).trim().optional(),
+          district: z.string().max(100).trim().optional(),
+          state: z.string().max(100).trim().optional(),
+          pinCode: z.string().max(10).trim().optional(),
+          country: z.string().max(100).trim().optional(),
+        }).optional(),
+        
+        permanentAddress: z.object({
+          houseNo: z.string().max(100).trim().optional(),
+          street: z.string().max(200).trim().optional(),
+          area: z.string().max(200).trim().optional(),
+          city: z.string().max(100).trim().optional(),
+          district: z.string().max(100).trim().optional(),
+          state: z.string().max(100).trim().optional(),
+          pinCode: z.string().max(10).trim().optional(),
+          country: z.string().max(100).trim().optional(),
+        }).optional(),
+        sameAsPresentAddress: z.boolean().optional(),
+        
+        // Academic Details
+        currentQualification: z.string().optional(),
+        institutionName: z.string().max(300).trim().optional(),
+        university: z.string().max(200).trim().optional(),
+        yearOfStudy: z.number().int().min(1).max(10).optional(),
+        expectedPassingYear: z.number().int().min(1900).max(2100).optional(),
+        percentage: z.number().min(0).max(100).optional(),
+        cgpa: z.number().min(0).max(10).optional(),
+        gradeType: z.enum(['percentage', 'cgpa']).optional(),
+        
+        // Course Preferences
+        selectedCourses: z.array(z.string()).optional(),
+        
+        // Legacy fields
         college: z.string().max(200).trim().optional(),
         school: z.string().max(200).trim().optional(),
         jobTitle: z.string().max(200).trim().optional(),

@@ -186,7 +186,16 @@ class ReportsController {
   static async getUserQuizAttempts(req, res, next) {
     try {
       const userId = req.user?._id || req.user?.userId;
-      const { quizId } = req.query;
+      const { 
+        quizId, 
+        subjectId, 
+        topicId, 
+        dateFrom, 
+        dateTo, 
+        minScore, 
+        maxScore, 
+        difficulty 
+      } = req.query;
 
       if (!userId) {
         return res.status(401).json({
@@ -195,9 +204,19 @@ class ReportsController {
         });
       }
 
-      console.log(`Getting quiz attempts for user: ${userId}, quizId: ${quizId || 'all'}`);
+      const filters = {};
+      if (quizId) filters.quizId = quizId;
+      if (subjectId) filters.subjectId = subjectId;
+      if (topicId) filters.topicId = topicId;
+      if (dateFrom) filters.dateFrom = dateFrom;
+      if (dateTo) filters.dateTo = dateTo;
+      if (minScore !== undefined) filters.minScore = parseFloat(minScore);
+      if (maxScore !== undefined) filters.maxScore = parseFloat(maxScore);
+      if (difficulty) filters.difficulty = difficulty;
 
-      const result = await QuizReportService.getUserQuizAttempts(userId, quizId || null);
+      console.log(`Getting quiz attempts for user: ${userId}`, filters);
+
+      const result = await QuizReportService.getUserQuizAttempts(userId, filters);
 
       console.log(`Returning ${result.data?.length || 0} quiz attempts`);
 

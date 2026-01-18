@@ -279,9 +279,10 @@ class QuizReportRepository {
    * Get all quiz attempts for a user with basic info
    * @param {string} userId
    * @param {string} quizId - Optional filter by quiz
+   * @param {Object} filters - Additional filters (subjectId, topicId, dateFrom, dateTo, minScore, maxScore, difficulty)
    * @returns {Promise<Array>}
    */
-  static async getUserQuizAttempts(userId, quizId = null) {
+  static async getUserQuizAttempts(userId, quizId = null, filters = {}) {
     try {
       // Convert userId to ObjectId if it's a string
       const userIdObj = mongoose.Types.ObjectId.isValid(userId) 
@@ -289,33 +290,90 @@ class QuizReportRepository {
         : userId;
 
       const matchCriteria = { userId: userIdObj };
-      if (quizId) {
-        const quizIdObj = mongoose.Types.ObjectId.isValid(quizId) 
-          ? new mongoose.Types.ObjectId(quizId) 
-          : quizId;
-        matchCriteria.quizId = quizIdObj;
+      
+      // Handle quizId - ensure it's a valid ObjectId string, not an object
+      if (quizId && typeof quizId === 'string' && quizId.trim() !== '') {
+        if (mongoose.Types.ObjectId.isValid(quizId)) {
+          matchCriteria.quizId = new mongoose.Types.ObjectId(quizId);
+        }
+      } else if (quizId && typeof quizId === 'object' && !Array.isArray(quizId)) {
+        // If quizId is an object (like {}), ignore it
+        console.warn('Invalid quizId provided (object), ignoring filter');
       }
 
-      console.log('Fetching quiz attempts with criteria:', matchCriteria);
+      // Apply additional filters
+      if (filters && typeof filters === 'object' && !Array.isArray(filters)) {
+        if (filters.subjectId && mongoose.Types.ObjectId.isValid(filters.subjectId)) {
+          matchCriteria.subjectId = new mongoose.Types.ObjectId(filters.subjectId);
+        }
+        if (filters.topicId && mongoose.Types.ObjectId.isValid(filters.topicId)) {
+          matchCriteria.topicId = new mongoose.Types.ObjectId(filters.topicId);
+        }
+        if (filters.dateFrom || filters.dateTo) {
+          matchCriteria.submittedAt = {};
+          if (filters.dateFrom) {
+            matchCriteria.submittedAt.$gte = new Date(filters.dateFrom);
+          }
+          if (filters.dateTo) {
+            matchCriteria.submittedAt.$lte = new Date(filters.dateTo);
+          }
+        }
+        if (filters.minScore !== undefined || filters.maxScore !== undefined) {
+          matchCriteria.percentage = {};
+          if (filters.minScore !== undefined) {
+            matchCriteria.percentage.$gte = parseFloat(filters.minScore);
+          }
+          if (filters.maxScore !== undefined) {
+            matchCriteria.percentage.$lte = parseFloat(filters.maxScore);
+          }
+        }
+        if (filters.difficulty) {
+          // Note: difficulty is stored in questions, so this would need aggregation
+          // For now, we'll skip this filter or implement it via aggregation
+        }
+      }
+
+      console.log('Fetching quiz attempts with criteria:', JSON.stringify(matchCriteria, null, 2));
 
       const attempts = await QuizAttempt.find(matchCriteria)
         .populate('quizId', 'title description')
+        .populate('subjectId', 'name')
+        .populate('topicId', 'title')
         .sort({ submittedAt: -1, createdAt: -1 })
         .lean();
 
       console.log(`Found ${attempts.length} quiz attempts for user ${userId}`);
 
-      const mappedAttempts = attempts.map(attempt => {
+      // Apply score filters if needed (after fetching, since percentage is calculated)
+      let filteredAttempts = attempts;
+      if (filters && typeof filters === 'object') {
+        if (filters.minScore !== undefined || filters.maxScore !== undefined) {
+          // Already applied in query, but double-check
+          filteredAttempts = attempts.filter(attempt => {
+            const percentage = attempt.percentage || 0;
+            if (filters.minScore !== undefined && percentage < filters.minScore) return false;
+            if (filters.maxScore !== undefined && percentage > filters.maxScore) return false;
+            return true;
+          });
+        }
+      }
+
+      const mappedAttempts = filteredAttempts.map(attempt => {
         const attemptData = {
           attemptId: attempt._id?.toString(),
           quizId: attempt.quizId?._id?.toString() || attempt.quizId?.toString(),
           quizTitle: attempt.quizId?.title || 'Unknown Quiz',
+          subjectId: attempt.subjectId?._id?.toString() || attempt.subjectId?.toString() || null,
+          subjectName: attempt.subjectId?.name || null,
+          topicId: attempt.topicId?._id?.toString() || attempt.topicId?.toString() || null,
+          topicTitle: attempt.topicId?.title || null,
           submittedAt: attempt.submittedAt || attempt.createdAt,
           marksObtained: attempt.marksObtained || 0,
           totalMarks: attempt.totalMarks || 0,
           percentage: attempt.percentage || 0,
           result: attempt.result || 'fail',
-          timeSpentInSeconds: attempt.timeSpentInSeconds || 0
+          timeSpentInSeconds: attempt.timeSpentInSeconds || 0,
+          difficultyBreakdown: attempt.difficultyBreakdown || null
         };
         return attemptData;
       });
