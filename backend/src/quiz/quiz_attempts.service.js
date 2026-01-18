@@ -2,6 +2,8 @@ const QuizAttemptRepository = require('./quiz_attempts.repository');
 const QuizRepository = require('./quiz.repository');
 const User = require('../user/users.model');
 const TopicProgressService = require('../topic-progress/topic-progress.service');
+const QuizSet = require('../quiz-sets/quiz-sets.model');
+const Topic = require('../topics/topics.model');
 const { ErrorHandler } = require('../middleware/errorHandler');
 
 /**
@@ -70,10 +72,22 @@ class QuizAttemptService {
       let unattemptedAnswers = 0;
       let totalMarks = 0;
 
+      // Difficulty breakdown tracking
+      const difficultyBreakdown = {
+        easy: { total: 0, correct: 0, marksObtained: 0, totalMarks: 0 },
+        medium: { total: 0, correct: 0, marksObtained: 0, totalMarks: 0 },
+        hard: { total: 0, correct: 0, marksObtained: 0, totalMarks: 0 }
+      };
+
       allQuestions.forEach((question, questionIndex) => {
         const marks = question.marks || 1;
         const negativeMarks = question.negativeMarks || 0;
+        const difficulty = question.difficulty || 'medium';
         totalMarks += marks;
+
+        // Track difficulty totals
+        difficultyBreakdown[difficulty].total++;
+        difficultyBreakdown[difficulty].totalMarks += marks;
 
         const userAnswer = answers[questionIndex];
         
@@ -202,9 +216,14 @@ class QuizAttemptService {
         if (isCorrect) {
           marksObtained += marks;
           correctAnswers++;
+          // Track difficulty-specific correct answers
+          difficultyBreakdown[difficulty].correct++;
+          difficultyBreakdown[difficulty].marksObtained += marks;
         } else {
           marksObtained -= negativeMarks;
           incorrectAnswers++;
+          // Deduct negative marks from difficulty breakdown
+          difficultyBreakdown[difficulty].marksObtained = Math.max(0, difficultyBreakdown[difficulty].marksObtained - negativeMarks);
         }
       });
 
@@ -228,6 +247,24 @@ class QuizAttemptService {
         }
       });
 
+      // Get topicId and subjectId from QuizSet (get first active quiz set)
+      let topicId = null;
+      let subjectId = null;
+      try {
+        const mongoose = require('mongoose');
+        const quizIdObj = typeof quizId === 'string' ? new mongoose.Types.ObjectId(quizId) : quizId;
+        const quizSet = await QuizSet.findOne({ quizId: quizIdObj, isActive: true }).populate('topicId');
+        if (quizSet && quizSet.topicId) {
+          topicId = quizSet.topicId._id || quizSet.topicId;
+          const topic = await Topic.findById(topicId);
+          if (topic && topic.subjectId) {
+            subjectId = topic.subjectId;
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch topic/subject for quiz attempt:', err.message);
+      }
+
       // Create attempt
       const attempt = await QuizAttemptRepository.createAttempt({
         quizId,
@@ -241,7 +278,10 @@ class QuizAttemptService {
         incorrectAnswers,
         unattemptedAnswers,
         percentage: Math.round(percentage * 100) / 100, // Round to 2 decimal places
-        result
+        result,
+        difficultyBreakdown,
+        topicId,
+        subjectId
       });
 
       // Record quiz completion for topic progress (if quiz is part of a topic)

@@ -19,6 +19,7 @@ export default function DashboardProfilePage() {
   const [success, setSuccess] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [courseSearch, setCourseSearch] = useState('');
+  const selectedCoursesRef = useRef<string[]>([]);
 
   const [form, setForm] = useState({
     // Personal Details
@@ -92,6 +93,17 @@ export default function DashboardProfilePage() {
   useEffect(() => {
     if (user) {
       const profile = user.profile || {};
+      // Always use saved courses from user if they exist (even if empty array)
+      // Only fall back to ref if user data doesn't have the field at all
+      const savedCourses = profile.selectedCourses !== undefined && Array.isArray(profile.selectedCourses)
+        ? profile.selectedCourses
+        : (selectedCoursesRef.current.length > 0 ? selectedCoursesRef.current : []);
+      
+      // Update ref to track current selection
+      if (Array.isArray(savedCourses)) {
+        selectedCoursesRef.current = savedCourses;
+      }
+      
       setForm({
         firstName: profile.firstName || '',
         lastName: profile.lastName || '',
@@ -135,7 +147,7 @@ export default function DashboardProfilePage() {
         cgpa: profile.cgpa?.toString() || '',
         gradeType: profile.gradeType || 'percentage',
         
-        selectedCourses: profile.selectedCourses || [],
+        selectedCourses: savedCourses,
         
         name: user.name || '',
         college: profile.college || '',
@@ -255,7 +267,7 @@ export default function DashboardProfilePage() {
           cgpa: form.cgpa ? parseFloat(form.cgpa) : undefined,
           gradeType: form.gradeType,
           
-          selectedCourses: form.selectedCourses,
+          selectedCourses: Array.isArray(form.selectedCourses) ? form.selectedCourses : [],
           
           // Legacy fields
           college: form.college.trim() || undefined,
@@ -275,7 +287,12 @@ export default function DashboardProfilePage() {
       }
       setSuccess('Profile updated successfully');
       toast.success('Profile updated successfully');
+      
+      // Refresh user data
       await refreshUser();
+      
+      // Preserve selectedCourses in case refreshUser doesn't immediately return updated data
+      // The useEffect will update it when user data is available
     } catch (err: any) {
       setError(err.message || 'Failed to update profile');
       toast.error(err.message || 'Failed to update profile');
@@ -376,12 +393,17 @@ export default function DashboardProfilePage() {
   };
 
   const toggleCourse = (courseId: string) => {
-    setForm(prev => ({
-      ...prev,
-      selectedCourses: prev.selectedCourses.includes(courseId)
+    setForm(prev => {
+      const newCourses = prev.selectedCourses.includes(courseId)
         ? prev.selectedCourses.filter(id => id !== courseId)
-        : [...prev.selectedCourses, courseId]
-    }));
+        : [...prev.selectedCourses, courseId];
+      // Update ref to track current selection
+      selectedCoursesRef.current = newCourses;
+      return {
+        ...prev,
+        selectedCourses: newCourses
+      };
+    });
   };
 
   const toggleCategory = (category: string) => {

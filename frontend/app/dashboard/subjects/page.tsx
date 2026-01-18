@@ -147,6 +147,18 @@ export default function SubjectsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <style jsx global>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -239,24 +251,32 @@ export default function SubjectsPage() {
                   </span>
                 </div>
 
-                {/* Subjects Grid - Neat Row and Column Layout */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5 lg:gap-6 w-full">
-                  {categorySubjects.map((subject) => {
+                {/* Subjects Grid - Cards Side by Side */}
+                <div 
+                  className="grid gap-4 md:gap-6 w-full"
+                  style={{
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))'
+                  }}
+                >
+                  {categorySubjects.map((subject, index) => {
                     const needsRequest = requiresRequest(subject);
                     const hasSubjectAccess = hasAccess(subject);
                     
                     return (
                     <div
                       key={subject._id}
-                      className="group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden flex flex-col h-full"
+                      className="group bg-white rounded-xl border border-gray-200 shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col h-full min-w-0"
+                      style={{
+                        animation: `fadeInUp 0.5s ease-out ${index * 0.1}s both`
+                      }}
                     >
-                      {/* Thumbnail */}
+                      {/* Thumbnail - Top */}
                       <div className="h-48 bg-gradient-to-br from-purple-500 to-blue-500 relative overflow-hidden flex-shrink-0">
                         {subject.thumbnail ? (
                           <img
                             src={subject.thumbnail}
                             alt={subject.title}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                             onError={(e) => {
                               // Fallback to gradient if image fails to load
                               const target = e.target as HTMLImageElement;
@@ -287,38 +307,36 @@ export default function SubjectsPage() {
                         )}
                       </div>
 
-                      {/* Content */}
+                      {/* Content - Bottom */}
                       <div className="p-5 flex flex-col flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-purple-600 transition-colors line-clamp-2">
-                          {subject.title}
-                        </h3>
-                        {subject.description && (
-                          <p className="text-sm text-gray-600 line-clamp-3 mb-4 flex-1">{subject.description}</p>
-                        )}
-
-                        {/* Badges */}
-                        <div className="flex items-center gap-2 flex-wrap mb-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <h3 className="text-lg font-bold text-gray-900 group-hover:text-purple-600 transition-colors line-clamp-2 flex-1">
+                            {subject.title}
+                          </h3>
                           {subject.level && (
                             <span
-                              className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                              className={`text-xs px-2.5 py-1 rounded-full font-semibold ml-2 flex-shrink-0 ${
                                 subject.level === 'beginner'
-                                  ? 'bg-green-100 text-green-700'
+                                  ? 'bg-green-100 text-green-700 border border-green-200'
                                   : subject.level === 'intermediate'
-                                  ? 'bg-yellow-100 text-yellow-700'
-                                  : 'bg-red-100 text-red-700'
+                                  ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                                  : 'bg-red-100 text-red-700 border border-red-200'
                               }`}
                             >
                               {subject.level}
                             </span>
                           )}
                         </div>
+                        {subject.description && (
+                          <p className="text-sm text-gray-600 line-clamp-3 mb-4 flex-1 leading-relaxed">{subject.description}</p>
+                        )}
 
                         {/* CTA */}
-                        <div className="mt-auto pt-4">
+                        <div className="mt-auto pt-4 border-t border-gray-100">
                           {needsRequest ? (
                             <button
                               onClick={(e) => handleRequestAccess(subject, e)}
-                              className="w-full px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+                              className="w-full px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-200 text-sm font-semibold shadow-md hover:shadow-lg transform hover:scale-105"
                             >
                               Request Access
                             </button>
@@ -342,10 +360,10 @@ export default function SubjectsPage() {
                                   return;
                                 }
                               }}
-                              className="flex items-center justify-center w-full px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+                              className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-200 text-sm font-semibold shadow-md hover:shadow-lg transform hover:scale-105"
                             >
                               View Topics
-                              <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                               </svg>
                             </Link>

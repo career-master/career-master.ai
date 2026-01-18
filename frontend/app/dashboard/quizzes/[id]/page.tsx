@@ -20,6 +20,7 @@ interface QuizQuestion {
   hotspotRegions?: Array<{ x: number; y: number; width: number; height: number; label?: string }>;
   marks?: number;
   negativeMarks?: number;
+  difficulty?: 'easy' | 'medium' | 'hard';
 }
 
 interface QuizData {
@@ -1234,9 +1235,23 @@ function QuizAttemptContent() {
                   <h2 className="text-2xl font-semibold text-gray-900">
                     Question {currentQuestion + 1} of {totalQuestions}
                   </h2>
-                  <span className="text-sm text-gray-500">
-                    {currentQ.marks || 1} mark{currentQ.marks !== 1 ? 's' : ''}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    {/* Difficulty Badge */}
+                    {currentQ.difficulty && (
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        currentQ.difficulty === 'easy'
+                          ? 'bg-green-100 text-green-700 border border-green-300'
+                          : currentQ.difficulty === 'medium'
+                          ? 'bg-yellow-100 text-yellow-700 border border-yellow-300'
+                          : 'bg-red-100 text-red-700 border border-red-300'
+                      }`}>
+                        {currentQ.difficulty === 'easy' ? 'Easy' : currentQ.difficulty === 'medium' ? 'Medium' : 'Hard'}
+                      </span>
+                    )}
+                    <span className="text-sm text-gray-500">
+                      {currentQ.marks || 1} mark{currentQ.marks !== 1 ? 's' : ''}
+                    </span>
+                  </div>
                 </div>
                 <div className="prose max-w-none">
                   <p className="text-lg mb-6 text-gray-800 whitespace-pre-wrap">{currentQ.questionText}</p>

@@ -11,12 +11,21 @@ interface QuizAttempt {
   attemptId: string;
   quizId: string;
   quizTitle: string;
+  subjectId?: string;
+  subjectTitle?: string;
+  topicId?: string;
+  topicTitle?: string;
   submittedAt: string;
   marksObtained: number;
   totalMarks: number;
   percentage: number;
   result: string;
   timeSpentInSeconds: number;
+  difficultyBreakdown?: {
+    easy: { total: number; correct: number; marksObtained: number; totalMarks: number };
+    medium: { total: number; correct: number; marksObtained: number; totalMarks: number };
+    hard: { total: number; correct: number; marksObtained: number; totalMarks: number };
+  };
 }
 
 export default function ReportsPage() {
@@ -24,7 +33,22 @@ export default function ReportsPage() {
   const router = useRouter();
   const [attempts, setAttempts] = useState<QuizAttempt[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [topics, setTopics] = useState<any[]>([]);
+  
+  // Filters
+  const [filters, setFilters] = useState<{
+    quizId?: string;
+    subjectId?: string;
+    topicId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    minScore?: number;
+    maxScore?: number;
+    difficulty?: 'easy' | 'medium' | 'hard';
+  }>({});
+  const [showFilters, setShowFilters] = useState(false);
+  
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const totalPages = Math.ceil(attempts.length / pageSize);
@@ -32,12 +56,35 @@ export default function ReportsPage() {
   const endIdx = Math.min(startIdx + pageSize, attempts.length);
   const paginatedAttempts = attempts.slice(startIdx, endIdx);
 
+  // Load subjects and topics for filters
+  useEffect(() => {
+    const loadFilterData = async () => {
+      try {
+        const [subjectsRes, topicsRes] = await Promise.all([
+          apiService.getSubjects({ page: 1, limit: 100, isActive: true }),
+          apiService.getTopics(undefined, true)
+        ]);
+        if (subjectsRes.success && subjectsRes.data?.items) {
+          setSubjects(subjectsRes.data.items);
+        }
+        if (topicsRes.success && Array.isArray(topicsRes.data)) {
+          setTopics(topicsRes.data);
+        }
+      } catch (error) {
+        console.error('Failed to load filter data:', error);
+      }
+    };
+    if (user) {
+      loadFilterData();
+    }
+  }, [user]);
+
   useEffect(() => {
     const loadAttempts = async () => {
       try {
         setLoading(true);
-        console.log('Loading quiz attempts for user:', user?.email);
-        const res = await apiService.getUserQuizAttempts(selectedQuizId || undefined);
+        console.log('Loading quiz attempts for user:', user?.email, 'with filters:', filters);
+        const res = await apiService.getUserQuizAttempts(filters);
         console.log('Quiz attempts response:', res);
         
         if (res && res.success && res.data) {
@@ -61,7 +108,27 @@ export default function ReportsPage() {
     } else {
       setAttempts([]);
     }
-  }, [user, selectedQuizId]);
+  }, [user, filters]);
+  
+  const handleFilterChange = (key: string, value: any) => {
+    setFilters(prev => {
+      const updated = { ...prev };
+      if (value === '' || value === null || value === undefined) {
+        delete updated[key as keyof typeof updated];
+      } else {
+        (updated as any)[key] = value;
+      }
+      return updated;
+    });
+    setPage(1); // Reset to first page when filters change
+  };
+  
+  const clearFilters = () => {
+    setFilters({});
+    setPage(1);
+  };
+  
+  const hasActiveFilters = Object.keys(filters).length > 0;
 
   const handleDownloadPDF = async (attemptId: string) => {
     try {
@@ -120,14 +187,150 @@ export default function ReportsPage() {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Quiz Reports: {attempts.length} {attempts.length === 1 ? 'Attempt' : 'Attempts'}
-          </h1>
-          <p className="text-gray-600 text-sm">
-            View detailed reports with correct answers for each quiz attempt. Download PDF or Excel reports.
-          </p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              Quiz Reports: {attempts.length} {attempts.length === 1 ? 'Attempt' : 'Attempts'}
+            </h1>
+            <p className="text-gray-600 text-sm">
+              View detailed reports with correct answers for each quiz attempt. Download PDF or Excel reports.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            Filters
+            {hasActiveFilters && (
+              <span className="bg-white text-purple-600 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
+                {Object.keys(filters).length}
+              </span>
+            )}
+          </button>
         </div>
+
+        {/* Filters Panel */}
+        {showFilters && (
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-200">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Subject Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+                <select
+                  value={filters.subjectId || ''}
+                  onChange={(e) => handleFilterChange('subjectId', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white"
+                >
+                  <option value="">All Subjects</option>
+                  {subjects.map((subject) => (
+                    <option key={subject._id} value={subject._id}>
+                      {subject.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Topic Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Topic</label>
+                <select
+                  value={filters.topicId || ''}
+                  onChange={(e) => handleFilterChange('topicId', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white"
+                  disabled={!filters.subjectId}
+                >
+                  <option value="">All Topics</option>
+                  {topics
+                    .filter((topic) => !filters.subjectId || topic.subjectId === filters.subjectId)
+                    .map((topic) => (
+                      <option key={topic._id} value={topic._id}>
+                        {topic.title}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Date From */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Date From</label>
+                <input
+                  type="date"
+                  value={filters.dateFrom || ''}
+                  onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white"
+                />
+              </div>
+
+              {/* Date To */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Date To</label>
+                <input
+                  type="date"
+                  value={filters.dateTo || ''}
+                  onChange={(e) => handleFilterChange('dateTo', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white"
+                />
+              </div>
+
+              {/* Min Score */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Min Score (%)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={filters.minScore ?? ''}
+                  onChange={(e) => handleFilterChange('minScore', e.target.value ? parseFloat(e.target.value) : undefined)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white"
+                  placeholder="0"
+                />
+              </div>
+
+              {/* Max Score */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Max Score (%)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={filters.maxScore ?? ''}
+                  onChange={(e) => handleFilterChange('maxScore', e.target.value ? parseFloat(e.target.value) : undefined)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white"
+                  placeholder="100"
+                />
+              </div>
+
+              {/* Difficulty Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Difficulty</label>
+                <select
+                  value={filters.difficulty || ''}
+                  onChange={(e) => handleFilterChange('difficulty', e.target.value || undefined)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white"
+                >
+                  <option value="">All Difficulties</option>
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+
+              {/* Clear Filters */}
+              <div className="flex items-end">
+                <button
+                  onClick={clearFilters}
+                  disabled={!hasActiveFilters}
+                  className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="bg-white rounded-xl shadow-lg p-6">
 
@@ -158,8 +361,10 @@ export default function ReportsPage() {
                     <tr className="border-b border-gray-200 bg-gray-50">
                       <th className="py-3 px-4 text-sm font-bold text-gray-900">S.NO</th>
                       <th className="py-3 px-4 text-sm font-bold text-gray-900">Quiz Name</th>
+                      <th className="py-3 px-4 text-sm font-bold text-gray-900">Subject/Topic</th>
                       <th className="py-3 px-4 text-sm font-bold text-gray-900">Marks</th>
                       <th className="py-3 px-4 text-sm font-bold text-gray-900">Percentage</th>
+                      <th className="py-3 px-4 text-sm font-bold text-gray-900">Difficulty</th>
                       <th className="py-3 px-4 text-sm font-bold text-gray-900">Time Taken</th>
                       <th className="py-3 px-4 text-sm font-bold text-gray-900">Result</th>
                       <th className="py-3 px-4 text-sm font-bold text-gray-900">Actions</th>
@@ -170,10 +375,57 @@ export default function ReportsPage() {
                       <tr key={attempt.attemptId} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                         <td className="py-3 px-4 font-semibold text-gray-900">{startIdx + idx + 1}</td>
                         <td className="py-3 px-4 text-gray-900 font-medium">{attempt.quizTitle}</td>
+                        <td className="py-3 px-4 text-gray-900 text-sm">
+                          {attempt.subjectTitle && (
+                            <div className="mb-1">
+                              <span className="text-gray-500">Subject:</span> {attempt.subjectTitle}
+                            </div>
+                          )}
+                          {attempt.topicTitle && (
+                            <div>
+                              <span className="text-gray-500">Topic:</span> {attempt.topicTitle}
+                            </div>
+                          )}
+                          {!attempt.subjectTitle && !attempt.topicTitle && (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
                         <td className="py-3 px-4 text-gray-900">
                           {attempt.marksObtained}/{attempt.totalMarks}
                         </td>
                         <td className="py-3 px-4 text-gray-900 font-semibold">{attempt.percentage.toFixed(1)}%</td>
+                        <td className="py-3 px-4">
+                          {attempt.difficultyBreakdown ? (
+                            <div className="flex flex-col gap-1 text-xs">
+                              {attempt.difficultyBreakdown.easy.total > 0 && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded">
+                                  <span>Easy:</span>
+                                  <span className="font-semibold">
+                                    {attempt.difficultyBreakdown.easy.correct}/{attempt.difficultyBreakdown.easy.total}
+                                  </span>
+                                </span>
+                              )}
+                              {attempt.difficultyBreakdown.medium.total > 0 && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded">
+                                  <span>Med:</span>
+                                  <span className="font-semibold">
+                                    {attempt.difficultyBreakdown.medium.correct}/{attempt.difficultyBreakdown.medium.total}
+                                  </span>
+                                </span>
+                              )}
+                              {attempt.difficultyBreakdown.hard.total > 0 && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded">
+                                  <span>Hard:</span>
+                                  <span className="font-semibold">
+                                    {attempt.difficultyBreakdown.hard.correct}/{attempt.difficultyBreakdown.hard.total}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
                         <td className="py-3 px-4 text-gray-900">
                           {Math.floor(attempt.timeSpentInSeconds / 60)}m {attempt.timeSpentInSeconds % 60}s
                         </td>

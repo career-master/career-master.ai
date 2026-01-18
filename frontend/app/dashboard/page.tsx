@@ -60,12 +60,14 @@ function SubjectSuggestions({ user }: { user: any }) {
     const loadSubjects = async () => {
       try {
         setLoading(true);
-        // Fetch more subjects to ensure we have enough after filtering
+        // Fetch subjects - backend already filters based on user's selectedCourses and batches
         const res = await apiService.getSubjects({ page: 1, limit: 20, isActive: true });
         if (res.success && res.data?.items) {
           const userBatches = (user as any)?.batches || [];
+          const userSelectedCourses = (user as any)?.profile?.selectedCourses || [];
           
-          // Filter subjects based on user's batches
+          // Backend already filters by selectedCourses, but we can further prioritize here
+          // Filter subjects based on user's batches and preferences
           const filtered = res.data.items.filter((subject: any) => {
             // Check if subject has no batches assigned (null, undefined, or empty array)
             const hasNoBatches = !subject.batches || 
@@ -84,18 +86,26 @@ function SubjectSuggestions({ user }: { user: any }) {
             return false;
           });
           
-          // Show all subjects (including those requiring approval) - let user see what's available
-          // But prioritize accessible subjects
+          // Prioritize subjects that match user's selected courses
           const sorted = filtered.sort((a: any, b: any) => {
             const aUnassigned = !a.batches || (Array.isArray(a.batches) && a.batches.length === 0);
             const bUnassigned = !b.batches || (Array.isArray(b.batches) && b.batches.length === 0);
             const aHasAccess = aUnassigned || userBatches.some((batch: string) => a.batches?.includes(batch));
             const bHasAccess = bUnassigned || userBatches.some((batch: string) => b.batches?.includes(batch));
             
-            // Accessible subjects first
+            // Check if subject matches user's selected courses
+            const aMatchesCourses = userSelectedCourses.length === 0 || 
+              !a.courseCategories || a.courseCategories.length === 0 ||
+              a.courseCategories.some((cat: string) => userSelectedCourses.includes(cat));
+            const bMatchesCourses = userSelectedCourses.length === 0 || 
+              !b.courseCategories || b.courseCategories.length === 0 ||
+              b.courseCategories.some((cat: string) => userSelectedCourses.includes(cat));
+            
+            // Prioritize: 1) Matches courses, 2) Has access, 3) Unassigned
+            if (aMatchesCourses && !bMatchesCourses) return -1;
+            if (!aMatchesCourses && bMatchesCourses) return 1;
             if (aHasAccess && !bHasAccess) return -1;
             if (!aHasAccess && bHasAccess) return 1;
-            // Then unassigned
             if (aUnassigned && !bUnassigned) return -1;
             if (!aUnassigned && bUnassigned) return 1;
             return 0;
@@ -799,11 +809,22 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {/* Best AI Recommended Courses */}
+            {/* Best AI Recommended Courses - Based on User Preferences */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="md:col-span-2">
                 <div className="flex justify-between items-center mb-4">
-                  <h4 className="text-xl font-bold text-gray-900">Best AI Recommended Courses for You</h4>
+                  <div>
+                    <h4 className="text-xl font-bold text-gray-900">
+                      {((user as any)?.profile?.selectedCourses?.length > 0) 
+                        ? 'Recommended Courses Based on Your Preferences' 
+                        : 'Best AI Recommended Courses for You'}
+                    </h4>
+                    {((user as any)?.profile?.selectedCourses?.length > 0) && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        Showing subjects matching your selected courses
+                      </p>
+                    )}
+                  </div>
                   <Link href="/dashboard/subjects" className="text-sm text-purple-600 hover:underline font-semibold">
                     View All
                   </Link>

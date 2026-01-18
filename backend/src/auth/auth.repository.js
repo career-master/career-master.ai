@@ -112,9 +112,42 @@ class AuthRepository {
    */
   static async updateUser(userId, updateData) {
     try {
+      // Handle nested profile object - need to use dot notation for nested fields
+      const updateQuery = {};
+      
+      // Handle top-level fields
+      if (updateData.name !== undefined) updateQuery.name = updateData.name;
+      if (updateData.phone !== undefined) updateQuery.phone = updateData.phone;
+      if (updateData.profilePicture !== undefined) updateQuery.profilePicture = updateData.profilePicture;
+      
+      // Handle nested profile object - use dot notation for proper MongoDB update
+      if (updateData.profile) {
+        Object.keys(updateData.profile).forEach(key => {
+          const value = updateData.profile[key];
+          // Check if value is defined (including empty arrays and empty objects)
+          if (value !== undefined) {
+            // Handle nested objects like presentAddress, permanentAddress
+            if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
+              // Only process if object has at least one defined property
+              const hasDefinedProperties = Object.values(value).some(v => v !== undefined);
+              if (hasDefinedProperties) {
+                Object.keys(value).forEach(nestedKey => {
+                  if (value[nestedKey] !== undefined) {
+                    updateQuery[`profile.${key}.${nestedKey}`] = value[nestedKey];
+                  }
+                });
+              }
+            } else {
+              // Handle arrays (including empty arrays) and primitives - save them directly
+              updateQuery[`profile.${key}`] = value;
+            }
+          }
+        });
+      }
+      
       const user = await User.findByIdAndUpdate(
         userId,
-        { $set: updateData },
+        { $set: updateQuery },
         { new: true, runValidators: true }
       );
 

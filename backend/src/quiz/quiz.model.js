@@ -199,6 +199,13 @@ const questionSchema = new mongoose.Schema(
       min: 0,
       default: 0
     },
+    // Difficulty level: easy (conceptual recall), medium (applied understanding), hard (scenario/problem solving)
+    difficulty: {
+      type: String,
+      enum: ['easy', 'medium', 'hard'],
+      default: 'medium',
+      required: true
+    },
     // Additional metadata
     metadata: {
       type: mongoose.Schema.Types.Mixed,

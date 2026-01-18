@@ -59,6 +59,28 @@ async function startServer() {
       // Continue even if course seeding fails
     }
 
+    // Seed comprehensive quizzes (Technology, Maths, Science, etc.)
+    console.log('🔄 Seeding comprehensive quizzes...');
+    try {
+      const ComprehensiveQuizzesSeed = require('./src/admin/comprehensive-quizzes.seed');
+      await ComprehensiveQuizzesSeed.seedComprehensiveQuizzes();
+      console.log('✅ All default quizzes are linked to topics via QuizSet');
+    } catch (error) {
+      console.warn('⚠️  Warning: Could not seed comprehensive quizzes:', error.message);
+      // Continue even if comprehensive seeding fails
+    }
+    
+    // Optional: Verify all quizzes are linked to topics (can be enabled for debugging)
+    // Uncomment the following lines to run verification after seeding:
+    /*
+    try {
+      const QuizTopicLinkVerifier = require('./src/admin/verify-quiz-topic-links');
+      await QuizTopicLinkVerifier.verifyAllQuizzesLinked();
+    } catch (error) {
+      console.warn('⚠️  Warning: Could not verify quiz-topic links:', error.message);
+    }
+    */
+
     // Start Express server
     const PORT = env.PORT;
     app.listen(PORT, () => {
