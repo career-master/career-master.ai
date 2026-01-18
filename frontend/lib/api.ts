@@ -33,6 +33,56 @@ export interface User {
   roles: string[];
   status: string;
   profile?: {
+    // Personal Details
+    firstName?: string;
+    lastName?: string;
+    dateOfBirth?: string | Date;
+    gender?: string;
+    guardianName?: string;
+    guardianRelation?: string;
+    
+    // Contact Details
+    alternateMobile?: string;
+    whatsappNumber?: string;
+    whatsappSameAsMobile?: boolean;
+    
+    // Address Details
+    presentAddress?: {
+      houseNo?: string;
+      street?: string;
+      area?: string;
+      city?: string;
+      district?: string;
+      state?: string;
+      pinCode?: string;
+      country?: string;
+    };
+    permanentAddress?: {
+      houseNo?: string;
+      street?: string;
+      area?: string;
+      city?: string;
+      district?: string;
+      state?: string;
+      pinCode?: string;
+      country?: string;
+    };
+    sameAsPresentAddress?: boolean;
+    
+    // Academic Details
+    currentQualification?: string;
+    institutionName?: string;
+    university?: string;
+    yearOfStudy?: number;
+    expectedPassingYear?: number;
+    percentage?: number;
+    cgpa?: number;
+    gradeType?: string;
+    
+    // Course Preferences
+    selectedCourses?: string[];
+    
+    // Legacy fields
     college?: string;
     school?: string;
     jobTitle?: string;
@@ -42,8 +92,9 @@ export interface User {
     city?: string;
     country?: string;
   };
-  verification: {
-    emailVerified: boolean;
+  verification?: {
+    emailVerified?: boolean;
+    phoneVerified?: boolean;
   };
   createdAt: string;
   updatedAt: string;

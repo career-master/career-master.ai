@@ -36,17 +36,19 @@ class SubjectController {
     const limit = parseInt(req.query.limit, 10) || 10;
     const { isActive, category, level } = req.query;
 
-    // Get user batches and roles for filtering
+    // Get user batches, roles, and selected courses for filtering
     const User = require('../user/users.model');
     const userId = req.user?.userId || req.user?.id || req.user?._id;
     let userBatches = [];
     let userRoles = [];
+    let userSelectedCourses = [];
 
     if (userId) {
-      const user = await User.findById(userId).select('batches roles').lean();
+      const user = await User.findById(userId).select('batches roles profile.selectedCourses').lean();
       if (user) {
         userBatches = user.batches || [];
         userRoles = user.roles || [];
+        userSelectedCourses = user.profile?.selectedCourses || [];
       }
     }
 
@@ -56,7 +58,7 @@ class SubjectController {
       isActive,
       category,
       level
-    }, userBatches, userRoles);
+    }, userBatches, userRoles, userSelectedCourses);
 
     res.status(200).json({
       success: true,

@@ -81,19 +81,45 @@ class TopicProgressRepository {
    * @param {string} topicId
    * @returns {Promise<Object|null>}
    */
-  static async markCheatSheetRead(studentId, topicId) {
+  static async markCheatSheetRead(studentId, topicId, subjectId) {
     try {
-      return await TopicProgress.findOneAndUpdate(
-        { studentId, topicId },
-        {
-          $set: {
-            cheatSheetRead: true,
-            cheatSheetReadAt: new Date()
-          }
-        },
-        { new: true, upsert: true }
-      );
+      // First check if document exists
+      let progress = await TopicProgress.findOne({ studentId, topicId });
+      
+      if (progress) {
+        // Update existing document
+        progress.cheatSheetRead = true;
+        progress.cheatSheetReadAt = new Date();
+        if (subjectId && !progress.subjectId) {
+          progress.subjectId = subjectId;
+        }
+        const saved = await progress.save();
+        // Refresh from database to ensure we have the latest data
+        return await TopicProgress.findById(saved._id);
+      } else {
+        // Create new document with all required fields
+        if (!subjectId) {
+          throw new ErrorHandler(400, 'Subject ID is required when creating new topic progress');
+        }
+        progress = new TopicProgress({
+          studentId,
+          topicId,
+          subjectId,
+          isUnlocked: false,
+          cheatSheetRead: true,
+          cheatSheetReadAt: new Date(),
+          completedQuizzes: [],
+          totalQuizzesCompleted: 0,
+          isCompleted: false
+        });
+        const saved = await progress.save();
+        // Refresh from database to ensure we have the latest data
+        return await TopicProgress.findById(saved._id);
+      }
     } catch (error) {
+      if (error instanceof ErrorHandler) {
+        throw error;
+      }
       throw new ErrorHandler(500, `Error marking cheatsheet as read: ${error.message}`);
     }
   }
@@ -105,17 +131,55 @@ class TopicProgressRepository {
    * @param {Object} quizCompletion
    * @returns {Promise<Object|null>}
    */
-  static async addCompletedQuiz(studentId, topicId, quizCompletion) {
+  static async addCompletedQuiz(studentId, topicId, quizCompletion, subjectId) {
     try {
-      return await TopicProgress.findOneAndUpdate(
-        { studentId, topicId },
-        {
-          $push: { completedQuizzes: quizCompletion },
-          $inc: { totalQuizzesCompleted: 1 }
-        },
-        { new: true, upsert: true }
-      );
+      // First check if document exists
+      let progress = await TopicProgress.findOne({ studentId, topicId });
+      
+      if (progress) {
+        // Update existing document - ensure completedQuizzes is an array
+        if (!Array.isArray(progress.completedQuizzes)) {
+          progress.completedQuizzes = [];
+        }
+        // Check if this exact quiz+attempt combo is already recorded
+        const existingIndex = progress.completedQuizzes.findIndex(
+          q => q.quizId.toString() === quizCompletion.quizId.toString() && 
+               q.attemptId.toString() === quizCompletion.attemptId.toString()
+        );
+        if (existingIndex === -1) {
+          // Not already recorded, add it
+          progress.completedQuizzes.push(quizCompletion);
+          progress.totalQuizzesCompleted = (progress.totalQuizzesCompleted || 0) + 1;
+        }
+        if (subjectId && !progress.subjectId) {
+          progress.subjectId = subjectId;
+        }
+        const saved = await progress.save();
+        // Refresh from database to ensure we have the latest data
+        return await TopicProgress.findById(saved._id);
+      } else {
+        // Create new document with all required fields
+        if (!subjectId) {
+          throw new ErrorHandler(400, 'Subject ID is required when creating new topic progress');
+        }
+        progress = new TopicProgress({
+          studentId,
+          topicId,
+          subjectId,
+          isUnlocked: false,
+          cheatSheetRead: false,
+          completedQuizzes: [quizCompletion],
+          totalQuizzesCompleted: 1,
+          isCompleted: false
+        });
+        const saved = await progress.save();
+        // Refresh from database to ensure we have the latest data
+        return await TopicProgress.findById(saved._id);
+      }
     } catch (error) {
+      if (error instanceof ErrorHandler) {
+        throw error;
+      }
       throw new ErrorHandler(500, `Error adding completed quiz: ${error.message}`);
     }
   }

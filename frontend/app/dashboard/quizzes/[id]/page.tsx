@@ -56,6 +56,7 @@ function QuizAttemptContent() {
   const [hasShownTimeAlert, setHasShownTimeAlert] = useState(false);
   const submitLock = useRef(false);
   const [allQuestions, setAllQuestions] = useState<QuizQuestion[]>([]);
+  const [optionOrders, setOptionOrders] = useState<Record<number, number[]>>({}); // Store shuffled option order for each question
   const [showSubmitConfirmModal, setShowSubmitConfirmModal] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [completionData, setCompletionData] = useState<any>(null);
@@ -104,6 +105,7 @@ function QuizAttemptContent() {
   const getAnsweredQuestionsKey = (userEmail: string, quizId: string) => `quiz_answered_${userEmail}_${quizId}`;
   const getSkippedQuestionsKey = (userEmail: string, quizId: string) => `quiz_skipped_${userEmail}_${quizId}`;
   const getQuestionOrderKey = (userEmail: string, quizId: string) => `quiz_qorder_${userEmail}_${quizId}`;
+  const getOptionOrderKey = (userEmail: string, quizId: string, questionIndex: number) => `quiz_optorder_${userEmail}_${quizId}_q${questionIndex}`;
   const getReturnUrlKey = (userEmail: string, quizId: string) => `quiz_return_url_${userEmail}_${quizId}`;
 
   // Check if user enabled time limit for this quiz
@@ -186,6 +188,11 @@ function QuizAttemptContent() {
     if (!user?.email) return;
     const orderKey = getQuestionOrderKey(user.email, quizId);
     localStorage.removeItem(orderKey);
+    // Also clear all option orders for this quiz
+    allQuestions.forEach((_, qIndex) => {
+      const optOrderKey = getOptionOrderKey(user.email, quizId, qIndex);
+      localStorage.removeItem(optOrderKey);
+    });
   };
 
   // Helper functions for localStorage answers
@@ -397,6 +404,42 @@ function QuizAttemptContent() {
             }
           });
           
+          // Shuffle options for each question that has options (multiple choice, true/false)
+          const newOptionOrders: Record<number, number[]> = {};
+          orderedQuestions.forEach((q, index) => {
+            if (q.options && q.options.length > 0) {
+              const optOrderKey = userEmail ? getOptionOrderKey(userEmail, quizId, index) : null;
+              let shuffledOrder: number[] | null = null;
+              
+              // Try to load stored option order if it's an active attempt
+              if (isActiveAttempt && optOrderKey) {
+                try {
+                  const stored = localStorage.getItem(optOrderKey);
+                  if (stored) {
+                    const parsed = JSON.parse(stored);
+                    if (Array.isArray(parsed) && parsed.length === q.options.length) {
+                      shuffledOrder = parsed.map((n: any) => Number(n)).filter((n: number) => Number.isInteger(n) && n >= 0 && n < q.options!.length);
+                    }
+                  }
+                } catch (err) {
+                  console.warn(`Failed to parse stored option order for question ${index}`, err);
+                }
+              }
+              
+              // If no stored order or not an active attempt, create new shuffled order
+              if (!shuffledOrder || shuffledOrder.length !== q.options.length) {
+                shuffledOrder = q.options.map((_, optIdx) => optIdx).sort(() => Math.random() - 0.5);
+                // Store the shuffled order
+                if (optOrderKey) {
+                  localStorage.setItem(optOrderKey, JSON.stringify(shuffledOrder));
+                }
+              }
+              
+              newOptionOrders[index] = shuffledOrder;
+            }
+          });
+          
+          setOptionOrders(newOptionOrders);
           setAnswers(initialAnswers);
           setAnsweredQuestions(initialAnswered);
           setSkippedQuestions(initialSkipped);
@@ -644,12 +687,40 @@ function QuizAttemptContent() {
       }
 
       // Convert answers to the format expected by backend
+      // Map shuffled option indices back to original indices
       const formattedAnswers: Record<string, any> = {};
       Object.keys(answers).forEach((key) => {
         const qIndex = parseInt(key);
         const answer = answers[qIndex];
         if (answer !== null && answer !== undefined) {
-          formattedAnswers[qIndex.toString()] = answer;
+          const question = allQuestions[qIndex];
+          const shuffledOrder = optionOrders[qIndex];
+          
+          // If options were shuffled, map the answer back to original indices
+          if (shuffledOrder && question.options && question.options.length > 0) {
+            if (Array.isArray(answer)) {
+              // Multiple choice multiple: map each shuffled index to original index
+              const mappedAnswer = answer.map((shuffledIdx: number) => {
+                if (typeof shuffledIdx === 'number' && shuffledIdx >= 0 && shuffledIdx < shuffledOrder.length) {
+                  return shuffledOrder[shuffledIdx];
+                }
+                return shuffledIdx;
+              });
+              formattedAnswers[qIndex.toString()] = mappedAnswer;
+            } else if (typeof answer === 'number') {
+              // Single choice: map shuffled index to original index
+              if (answer >= 0 && answer < shuffledOrder.length) {
+                formattedAnswers[qIndex.toString()] = shuffledOrder[answer];
+              } else {
+                formattedAnswers[qIndex.toString()] = answer;
+              }
+            } else {
+              formattedAnswers[qIndex.toString()] = answer;
+            }
+          } else {
+            // No shuffling, use answer as-is
+            formattedAnswers[qIndex.toString()] = answer;
+          }
         }
       });
 
@@ -662,7 +733,7 @@ function QuizAttemptContent() {
       if (res.success && res.data) {
         clearStoredTimer();
         clearStoredAnswers(); // Clear answers after successful submission
-        clearQuestionOrder(); // Allow reshuffle on next attempt
+        clearQuestionOrder(); // Allow reshuffle on next attempt (also clears option orders)
         clearActiveAttempt(); // End active attempt so next try reshuffles
         setSubmitted(true);
         toast.success('Quiz submitted successfully!');
@@ -757,13 +828,16 @@ function QuizAttemptContent() {
     switch (questionType) {
       case 'multiple_choice_single':
       case 'true_false':
+        // Get shuffled option order for this question
+        const shuffledOrder = optionOrders[qIndex] || (question.options?.map((_, idx) => idx) || []);
         return (
           <div className="space-y-3">
-            {question.options?.map((option, optIndex) => {
-              const selected = currentAnswer === optIndex;
+            {shuffledOrder.map((originalIndex, shuffledIndex) => {
+              const option = question.options![originalIndex];
+              const selected = currentAnswer === shuffledIndex;
               return (
                 <label
-                  key={optIndex}
+                  key={shuffledIndex}
                   className={`flex items-center p-4 rounded-lg border cursor-pointer transition-colors ${
                     selected
                       ? 'border-purple-500 bg-purple-50'
@@ -773,12 +847,12 @@ function QuizAttemptContent() {
                   <input
                     type="radio"
                     name={`question-${qIndex}`}
-                    value={optIndex}
+                    value={shuffledIndex}
                     checked={selected}
-                    onChange={() => handleAnswerChange(qIndex, optIndex)}
+                    onChange={() => handleAnswerChange(qIndex, shuffledIndex)}
                     className="hidden"
                   />
-                  <span className="text-gray-900">{String.fromCharCode(65 + optIndex)}. {option}</span>
+                  <span className="text-gray-900">{String.fromCharCode(65 + shuffledIndex)}. {option}</span>
                 </label>
               );
             })}
@@ -786,13 +860,16 @@ function QuizAttemptContent() {
         );
 
       case 'multiple_choice_multiple':
+        // Get shuffled option order for this question
+        const shuffledOrderMultiple = optionOrders[qIndex] || (question.options?.map((_, idx) => idx) || []);
         return (
           <div className="space-y-3">
-            {question.options?.map((option, optIndex) => {
-              const selected = Array.isArray(currentAnswer) && currentAnswer.includes(optIndex);
+            {shuffledOrderMultiple.map((originalIndex, shuffledIndex) => {
+              const option = question.options![originalIndex];
+              const selected = Array.isArray(currentAnswer) && currentAnswer.includes(shuffledIndex);
               return (
                 <label
-                  key={optIndex}
+                  key={shuffledIndex}
                   className={`flex items-center p-4 rounded-lg border cursor-pointer transition-colors ${
                     selected
                       ? 'border-purple-500 bg-purple-50'
@@ -805,13 +882,13 @@ function QuizAttemptContent() {
                     onChange={() => {
                       const current = Array.isArray(currentAnswer) ? currentAnswer : [];
                       const newAnswer = selected
-                        ? current.filter((i: number) => i !== optIndex)
-                        : [...current, optIndex];
+                        ? current.filter((i: number) => i !== shuffledIndex)
+                        : [...current, shuffledIndex];
                       handleAnswerChange(qIndex, newAnswer.length > 0 ? newAnswer : null);
                     }}
                     className="hidden"
                   />
-                  <span className="text-gray-900">{String.fromCharCode(65 + optIndex)}. {option}</span>
+                  <span className="text-gray-900">{String.fromCharCode(65 + shuffledIndex)}. {option}</span>
                 </label>
               );
             })}

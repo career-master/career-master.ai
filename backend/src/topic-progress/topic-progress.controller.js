@@ -11,7 +11,13 @@ class TopicProgressController {
    * Mark cheatsheet as viewed
    */
   static markCheatSheetRead = asyncHandler(async (req, res) => {
-    const userId = req.user?.id || req.user?._id;
+    const userId = req.user?.userId || req.user?.id || req.user?._id;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Student ID is required. Please ensure you are authenticated.'
+      });
+    }
     const { topicId } = req.body;
 
     const progress = await TopicProgressService.markCheatSheetRead(userId, topicId);
@@ -28,7 +34,13 @@ class TopicProgressController {
    * Record quiz completion (called after quiz submission)
    */
   static recordQuizCompletion = asyncHandler(async (req, res) => {
-    const userId = req.user?.id || req.user?._id;
+    const userId = req.user?.userId || req.user?.id || req.user?._id;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Student ID is required. Please ensure you are authenticated.'
+      });
+    }
     const { quizId, attemptId } = req.body;
 
     const progress = await TopicProgressService.recordQuizCompletion(userId, quizId, attemptId);
@@ -45,7 +57,13 @@ class TopicProgressController {
    * Get topic progress for current user
    */
   static getTopicProgress = asyncHandler(async (req, res) => {
-    const userId = req.user?.id || req.user?._id;
+    const userId = req.user?.userId || req.user?.id || req.user?._id;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Student ID is required. Please ensure you are authenticated.'
+      });
+    }
     const progress = await TopicProgressService.getTopicProgress(userId, req.params.topicId);
 
     res.status(200).json({
@@ -59,7 +77,13 @@ class TopicProgressController {
    * Get subject progress for current user
    */
   static getSubjectProgress = asyncHandler(async (req, res) => {
-    const userId = req.user?.id || req.user?._id;
+    const userId = req.user?.userId || req.user?.id || req.user?._id;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Student ID is required. Please ensure you are authenticated.'
+      });
+    }
     const progress = await TopicProgressService.getSubjectProgress(userId, req.params.subjectId);
 
     res.status(200).json({
@@ -73,7 +97,13 @@ class TopicProgressController {
    * Get all progress for current user
    */
   static getStudentProgress = asyncHandler(async (req, res) => {
-    const userId = req.user?.id || req.user?._id;
+    const userId = req.user?.userId || req.user?.id || req.user?._id;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Student ID is required. Please ensure you are authenticated.'
+      });
+    }
     const progress = await TopicProgressService.getStudentProgress(userId);
 
     res.status(200).json({

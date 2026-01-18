@@ -313,6 +313,10 @@ const quizSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: false
+    },
+    courseCategories: {
+      type: [String], // Array of course category IDs (e.g., "Maths_10", "JEE MAIN", "Technology_Programming Languages_JavaScript")
+      default: []
     }
   },
   {

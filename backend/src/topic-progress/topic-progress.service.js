@@ -21,9 +21,9 @@ class TopicProgressService {
       throw new ErrorHandler(404, 'Topic not found');
     }
 
-    const progress = await TopicProgressRepository.markCheatSheetRead(studentId, topicId);
+    const progress = await TopicProgressRepository.markCheatSheetRead(studentId, topicId, topic.subjectId);
     
-    // Update subjectId if not set
+    // Update subjectId if not set (shouldn't happen, but as a safeguard)
     if (!progress.subjectId) {
       progress.subjectId = topic.subjectId;
       await progress.save();
@@ -42,17 +42,31 @@ class TopicProgressService {
    * @param {string} attemptId
    */
   static async recordQuizCompletion(studentId, quizId, attemptId) {
-    // Find which topic this quiz belongs to
-    const quizSet = await QuizSet.findOne({ quizId });
-    if (!quizSet) {
-      // Quiz not part of any topic, skip
+    // Convert quizId to ObjectId for proper querying
+    const mongoose = require('mongoose');
+    let quizIdQuery = quizId;
+    try {
+      if (typeof quizId === 'string') {
+        quizIdQuery = new mongoose.Types.ObjectId(quizId);
+      }
+    } catch (err) {
+      console.error(`Invalid quizId format: ${quizId}`, err);
       return null;
     }
 
-    const topicId = quizSet.topicId;
-    const topic = await Topic.findById(topicId);
-    if (!topic) {
-      throw new ErrorHandler(404, 'Topic not found');
+    // Find all topics this quiz belongs to (quiz can be in multiple topics)
+    const quizSets = await QuizSet.find({ quizId: quizIdQuery, isActive: true });
+    console.log(`Finding QuizSets for quiz ${quizId}:`, {
+      quizId,
+      quizIdQuery: quizIdQuery.toString(),
+      quizSetsFound: quizSets?.length || 0,
+      topicIds: quizSets?.map(qs => qs.topicId?.toString()) || []
+    });
+    
+    if (!quizSets || quizSets.length === 0) {
+      // Quiz not part of any topic, skip
+      console.log(`Quiz ${quizId} is not linked to any topic via QuizSet (searched with ${quizIdQuery.toString()})`);
+      return null;
     }
 
     // Get quiz attempt to get score
@@ -61,43 +75,77 @@ class TopicProgressService {
       throw new ErrorHandler(404, 'Quiz attempt not found');
     }
 
-    // Check if this quiz was already recorded
-    const existingProgress = await TopicProgressRepository.getTopicProgress(studentId, topicId);
-    if (existingProgress) {
-      const alreadyRecorded = existingProgress.completedQuizzes.some(
-        q => q.quizId.toString() === quizId && q.attemptId.toString() === attemptId
-      );
-      if (alreadyRecorded) {
-        // Already recorded, just check completion
-        await this.checkTopicCompletion(studentId, topicId);
-        return existingProgress;
+    // Record completion for all topics that have this quiz
+    const progressResults = [];
+    for (const quizSet of quizSets) {
+      const topicId = quizSet.topicId;
+      const topic = await Topic.findById(topicId);
+      if (!topic) {
+        console.warn(`Topic ${topicId} not found for quiz set ${quizSet._id}`);
+        continue;
       }
+
+      // Check if this quiz was already recorded for this topic
+      const existingProgress = await TopicProgressRepository.getTopicProgress(studentId, topicId);
+      if (existingProgress) {
+        const alreadyRecorded = existingProgress.completedQuizzes.some(
+          q => q.quizId.toString() === quizId && q.attemptId.toString() === attemptId
+        );
+        if (alreadyRecorded) {
+          // Already recorded for this topic, just check completion
+          await this.checkTopicCompletion(studentId, topicId);
+          progressResults.push(existingProgress);
+          continue;
+        }
+      }
+
+      // Add completed quiz - ensure IDs are properly formatted
+      const mongoose = require('mongoose');
+      const quizCompletion = {
+        quizId: typeof quizId === 'string' ? new mongoose.Types.ObjectId(quizId) : quizId,
+        attemptId: typeof attemptId === 'string' ? new mongoose.Types.ObjectId(attemptId) : attemptId,
+        completedAt: new Date(),
+        score: attempt.marksObtained || 0,
+        percentage: attempt.percentage || 0
+      };
+
+      const progress = await TopicProgressRepository.addCompletedQuiz(studentId, topicId, quizCompletion, topic.subjectId);
+      
+      console.log(`Quiz completion recorded for topic ${topicId}:`, {
+        quizId,
+        attemptId,
+        topicId,
+        completedQuizzesCount: progress?.completedQuizzes?.length || 0,
+        percentage: attempt.percentage
+      });
+      
+      // Update subjectId if not set (shouldn't happen, but as a safeguard)
+      if (!progress.subjectId) {
+        progress.subjectId = topic.subjectId;
+        await progress.save();
+      }
+
+      // Check if topic should be completed
+      await this.checkTopicCompletion(studentId, topicId);
+
+      // Check if next topics should be unlocked
+      await this.checkAndUnlockNextTopics(studentId, topic.subjectId, topicId);
+
+      progressResults.push(progress);
     }
 
-    // Add completed quiz
-    const quizCompletion = {
+    // Return the first progress result (or null if none)
+    console.log(`Quiz completion recording completed for quiz ${quizId}:`, {
       quizId,
       attemptId,
-      completedAt: new Date(),
-      score: attempt.marksObtained || 0,
-      percentage: attempt.percentage || 0
-    };
-
-    const progress = await TopicProgressRepository.addCompletedQuiz(studentId, topicId, quizCompletion);
+      topicsRecorded: progressResults.length,
+      progressResults: progressResults.map(p => ({
+        topicId: p.topicId?.toString(),
+        completedQuizzesCount: p.completedQuizzes?.length || 0
+      }))
+    });
     
-    // Update subjectId if not set
-    if (!progress.subjectId) {
-      progress.subjectId = topic.subjectId;
-      await progress.save();
-    }
-
-    // Check if topic should be completed
-    await this.checkTopicCompletion(studentId, topicId);
-
-    // Check if next topics should be unlocked
-    await this.checkAndUnlockNextTopics(studentId, topic.subjectId, topicId);
-
-    return progress;
+    return progressResults.length > 0 ? progressResults[0] : null;
   }
 
   /**
