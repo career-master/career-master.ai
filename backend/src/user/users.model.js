@@ -14,10 +14,73 @@ const userSchema = new mongoose.Schema(
       maxlength: [100, 'Name cannot exceed 100 characters']
     },
     profile: {
+      // Personal Details
+      firstName: { type: String, trim: true, maxlength: 100 },
+      lastName: { type: String, trim: true, maxlength: 100 },
+      dateOfBirth: { type: Date },
+      gender: { type: String, enum: ['male', 'female', 'other', 'prefer_not_to_say'], trim: true },
+      guardianName: { type: String, trim: true, maxlength: 200 },
+      guardianRelation: { type: String, enum: ['father', 'mother', 'guardian'], trim: true },
+      
+      // Contact Details
+      alternateMobile: { type: String, trim: true, maxlength: 20 },
+      whatsappNumber: { type: String, trim: true, maxlength: 20 },
+      whatsappSameAsMobile: { type: Boolean, default: false },
+      
+      // Present Address
+      presentAddress: {
+        houseNo: { type: String, trim: true, maxlength: 100 },
+        street: { type: String, trim: true, maxlength: 200 },
+        area: { type: String, trim: true, maxlength: 200 },
+        city: { type: String, trim: true, maxlength: 100 },
+        district: { type: String, trim: true, maxlength: 100 },
+        state: { type: String, trim: true, maxlength: 100 },
+        pinCode: { type: String, trim: true, maxlength: 10 },
+        country: { type: String, trim: true, maxlength: 100 }
+      },
+      
+      // Permanent Address
+      permanentAddress: {
+        houseNo: { type: String, trim: true, maxlength: 100 },
+        street: { type: String, trim: true, maxlength: 200 },
+        area: { type: String, trim: true, maxlength: 200 },
+        city: { type: String, trim: true, maxlength: 100 },
+        district: { type: String, trim: true, maxlength: 100 },
+        state: { type: String, trim: true, maxlength: 100 },
+        pinCode: { type: String, trim: true, maxlength: 10 },
+        country: { type: String, trim: true, maxlength: 100 }
+      },
+      sameAsPresentAddress: { type: Boolean, default: false },
+      
+      // Academic Details
+      currentQualification: { 
+        type: String, 
+        enum: [
+          'school_3', 'school_4', 'school_5', 'school_6', 'school_7', 'school_8', 'school_9', 'school_10',
+          'inter_mpc', 'inter_bipc', 'inter_cec', 'inter_others',
+          'diploma_ece', 'diploma_eee', 'diploma_cse', 'diploma_mech', 'diploma_civil', 'diploma_others',
+          'ug_btech', 'ug_bsc', 'ug_ba', 'ug_bcom', 'ug_bba', 'ug_others',
+          'pg_mtech', 'pg_msc', 'pg_ma', 'pg_mcom', 'pg_mba', 'pg_others',
+          'phd', 'other'
+        ],
+        trim: true
+      },
+      institutionName: { type: String, trim: true, maxlength: 300 },
+      university: { type: String, trim: true, maxlength: 200 },
+      yearOfStudy: { type: Number, min: 1, max: 10 },
+      expectedPassingYear: { type: Number, min: 1900, max: 2100 },
+      percentage: { type: Number, min: 0, max: 100 },
+      cgpa: { type: Number, min: 0, max: 10 },
+      gradeType: { type: String, enum: ['percentage', 'cgpa'], default: 'percentage' },
+      
+      // Course Preferences (selected courses user wants to practice)
+      selectedCourses: { type: [String], default: [] }, // Array of course IDs or course names
+      
+      // Legacy fields (keeping for backward compatibility)
       college: { type: String, trim: true, maxlength: 200 },
       school: { type: String, trim: true, maxlength: 200 },
       jobTitle: { type: String, trim: true, maxlength: 200 },
-      currentStatus: { type: String, trim: true, maxlength: 100 }, // e.g., student, working professional
+      currentStatus: { type: String, trim: true, maxlength: 100 },
       interests: { type: [String], default: [] },
       learningGoals: { type: String, trim: true, maxlength: 1000 },
       city: { type: String, trim: true, maxlength: 100 },
@@ -81,9 +144,30 @@ const userSchema = new mongoose.Schema(
         type: Boolean,
         default: false
       },
+      emailOtp: {
+        type: String,
+        select: false
+      },
+      emailOtpExpiry: {
+        type: Date,
+        select: false
+      },
+      phoneVerified: {
+        type: Boolean,
+        default: false
+      },
+      phoneOtp: {
+        type: String,
+        select: false
+      },
+      phoneOtpExpiry: {
+        type: Date,
+        select: false
+      },
+      // Legacy OTP fields (keeping for backward compatibility)
       otp: {
         type: String,
-        select: false // Don't return OTP by default
+        select: false
       },
       otpExpiry: {
         type: Date,

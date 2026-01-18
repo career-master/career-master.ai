@@ -89,8 +89,9 @@ class SubjectService {
    * @param {Object} options
    * @param {Array<string>} userBatches - User's batch codes (optional, for filtering)
    * @param {Array<string>} userRoles - User's roles (optional, admins see all)
+   * @param {Array<string>} userSelectedCourses - User's selected course categories (optional, for filtering)
    */
-  static async getSubjectsPaginated(options = {}, userBatches = [], userRoles = []) {
+  static async getSubjectsPaginated(options = {}, userBatches = [], userRoles = [], userSelectedCourses = []) {
     const { page = 1, limit = 10, isActive, category, level } = options;
     const filter = {};
 
@@ -109,26 +110,50 @@ class SubjectService {
       ['super_admin', 'technical_admin', 'content_admin', 'institution_admin'].includes(role)
     );
 
-    // If not admin, allow:
-    // - Subjects with no batches (available to all)
-    // - Subjects where user is in one of the batches
-    // - Subjects that require approval (so users can see and request)
+    // Build filter conditions
+    const filterConditions = [];
+
+    // If not admin, filter by batches
     if (!isAdmin) {
       if (userBatches && userBatches.length > 0) {
-        filter.$or = [
+        filterConditions.push(
           { batches: { $exists: false } }, // No batches field
           { batches: { $size: 0 } }, // Empty batches array
           { batches: { $in: userBatches } }, // User is in one of the batches
           { requiresApproval: true } // Show approval-required subjects for requesting access
-        ];
+        );
       } else {
-        // User has no batches, show unassigned subjects and approval-required subjects
-        filter.$or = [
+        filterConditions.push(
           { batches: { $exists: false } },
           { batches: { $size: 0 } },
           { requiresApproval: true }
-        ];
+        );
       }
+    }
+
+    // Filter by user's selected courses if they have selected any
+    // If user has selected courses, show subjects that match those courses OR have no course categories
+    if (userSelectedCourses && userSelectedCourses.length > 0) {
+      const courseFilter = {
+        $or: [
+          { courseCategories: { $size: 0 } }, // Subjects with no course categories (available to all)
+          { courseCategories: { $in: userSelectedCourses } } // Subjects matching user's selected courses
+        ]
+      };
+      
+      if (filterConditions.length > 0) {
+        // Combine with batch filter
+        filter.$and = [
+          { $or: filterConditions },
+          courseFilter
+        ];
+      } else {
+        // Only course filter
+        Object.assign(filter, courseFilter);
+      }
+    } else if (filterConditions.length > 0) {
+      // Only batch filter, no course filter
+      filter.$or = filterConditions;
     }
 
     return await SubjectRepository.getSubjectsPaginated({ filter, page, limit });

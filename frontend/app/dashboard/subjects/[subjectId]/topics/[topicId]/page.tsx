@@ -110,14 +110,36 @@ export default function TopicDetailPage() {
 
   // Completed quiz IDs set for quick lookup (only passed quizzes with >= 60%)
   const completedQuizIds = useMemo(() => {
+    const allQuizzes = progress?.completedQuizzes || [];
+    const passedQuizzes = allQuizzes.filter((q) => {
+      const percentage = typeof q.percentage === 'number' ? q.percentage : parseFloat(q.percentage) || 0;
+      return percentage >= 60;
+    });
+    
+    const allQuizzesDebug = allQuizzes.map(q => {
+      const percentage = typeof q.percentage === 'number' ? q.percentage : parseFloat(q.percentage) || 0;
+      return {
+        quizId: String(typeof q.quizId === 'string' ? q.quizId : (q.quizId?._id || q.quizId)),
+        percentage: percentage,
+        percentageRaw: q.percentage,
+        percentageType: typeof q.percentage,
+        score: q.score,
+        passed: percentage >= 60
+      };
+    });
+    
+    console.log('CompletedQuizIds calculation:', {
+      totalCompletedQuizzes: allQuizzes.length,
+      passedQuizzes: passedQuizzes.length,
+      allQuizzes: allQuizzesDebug,
+      threshold: 60
+    });
+    
     return new Set(
-      (progress?.completedQuizzes || [])
-        .filter((q) => q.percentage >= 60) // Only count passed quizzes
-        .map((q) => {
-          const id = typeof q.quizId === 'string' ? q.quizId : (q.quizId?._id || q.quizId);
-          return id ? String(id) : null;
-        })
-        .filter(Boolean) as string[]
+      passedQuizzes.map((q) => {
+        const id = typeof q.quizId === 'string' ? q.quizId : (q.quizId?._id || q.quizId);
+        return id ? String(id) : null;
+      }).filter(Boolean) as string[]
     );
   }, [progress?.completedQuizzes]);
 
@@ -128,7 +150,8 @@ export default function TopicDetailPage() {
       const quizId = typeof q.quizId === 'string' ? q.quizId : (q.quizId?._id || q.quizId);
       if (quizId) {
         const idStr = String(quizId);
-        if (q.percentage >= 60) {
+        const percentage = typeof q.percentage === 'number' ? q.percentage : parseFloat(q.percentage) || 0;
+        if (percentage >= 60) {
           statusMap.set(idStr, 'completed');
         } else {
           statusMap.set(idStr, 'attempted');
@@ -156,16 +179,46 @@ export default function TopicDetailPage() {
       const existing = groups.get(setName) || { setName, quizzes: [], completed: 0, attempted: 0, total: 0 };
       existing.quizzes.push({ quizId: quizIdStr, duration, title });
       existing.total += 1;
-      if (completedQuizIds.has(quizIdStr)) {
+      // Check both completed and attempted sets
+      const isCompleted = completedQuizIds.has(quizIdStr);
+      const isAttempted = attemptedQuizIds.has(quizIdStr);
+      
+      if (isCompleted) {
         existing.completed += 1;
         existing.attempted += 1;
-      } else if (attemptedQuizIds.has(quizIdStr)) {
+      } else if (isAttempted) {
         existing.attempted += 1;
       }
+      
+      // Debug logging for each quiz
+      if (isCompleted || isAttempted) {
+        console.log(`Quiz ${quizIdStr} in set "${setName}":`, {
+          isCompleted,
+          isAttempted,
+          completedQuizIds: Array.from(completedQuizIds),
+          attemptedQuizIds: Array.from(attemptedQuizIds)
+        });
+      }
+      
       groups.set(setName, existing);
     });
 
-    return Array.from(groups.values());
+    const result = Array.from(groups.values());
+    
+    // Debug: Log final grouped sets calculation
+    console.log('Grouped sets result:', {
+      sets: result.map(set => ({
+        setName: set.setName,
+        total: set.total,
+        completed: set.completed,
+        attempted: set.attempted,
+        quizzes: set.quizzes.map(q => q.quizId)
+      })),
+      completedQuizIds: Array.from(completedQuizIds),
+      attemptedQuizIds: Array.from(attemptedQuizIds)
+    });
+
+    return result;
   }, [quizSets, completedQuizIds, attemptedQuizIds]);
 
   const completedSetsCount = useMemo(
@@ -175,20 +228,42 @@ export default function TopicDetailPage() {
 
   // Overall topic progress (cheatsheet + per set)
   const progressPercentage = useMemo(() => {
-    if (!progress) return 0;
+    if (!progress) {
+      console.log('Progress percentage: 0 (no progress data)');
+      return 0;
+    }
 
     // If no quiz sets, progress is 100% if cheatsheet is read, 0% otherwise
     if (!groupedSets.length) {
-      return progress.cheatSheetRead ? 100 : 0;
+      const result = progress.cheatSheetRead ? 100 : 0;
+      console.log('Progress percentage:', result, '(no quiz sets, cheatsheet read:', progress.cheatSheetRead, ')');
+      return result;
     }
 
     const totalItems = 1 + groupedSets.length; // 1 for cheatsheet + each set
     let completed = 0;
 
     if (progress.cheatSheetRead) completed++;
-    completed += groupedSets.filter((set) => set.total > 0 && set.completed >= set.total).length;
+    const completedSets = groupedSets.filter((set) => set.total > 0 && set.completed >= set.total);
+    completed += completedSets.length;
 
-    return Math.round((completed / totalItems) * 100);
+    const result = Math.round((completed / totalItems) * 100);
+    
+    console.log('Progress percentage calculation:', {
+      totalItems,
+      completed,
+      cheatsheetRead: progress.cheatSheetRead,
+      groupedSets: groupedSets.map(set => ({
+        setName: set.setName,
+        total: set.total,
+        completed: set.completed,
+        isComplete: set.total > 0 && set.completed >= set.total
+      })),
+      completedSets: completedSets.length,
+      result
+    });
+
+    return result;
   }, [progress, groupedSets]);
 
   // Reading progress (cheatsheet scroll)
@@ -331,21 +406,70 @@ export default function TopicDetailPage() {
       }
 
       if (quizSetsRes.success && Array.isArray(quizSetsRes.data)) {
+        console.log('QuizSets loaded:', quizSetsRes.data.length, quizSetsRes.data.map(qs => ({
+          quizId: typeof qs.quizId === 'string' ? qs.quizId : qs.quizId?._id,
+          quizIdStr: String(typeof qs.quizId === 'string' ? qs.quizId : qs.quizId?._id),
+          setName: qs.setName
+        })));
         setQuizSets(quizSetsRes.data);
+      } else {
+        console.warn('QuizSets not loaded:', quizSetsRes);
       }
 
       if (progressRes.success && progressRes.data) {
         const progressData = progressRes.data as TopicProgress;
         setProgress(progressData);
         setCheatsheetViewed(progressData.cheatSheetRead || false);
-        // Force a re-render to update progress calculations
+        
+        // Check if any quizzes have percentage >= 60 - use quizSets from the API response, not state
+        const currentQuizSets = quizSetsRes.success && Array.isArray(quizSetsRes.data) ? quizSetsRes.data : quizSets;
+        const allQuizzesForDebug = (progressData.completedQuizzes || []).map(q => {
+          const percentage = typeof q.percentage === 'number' ? q.percentage : parseFloat(String(q.percentage)) || 0;
+          const quizId = typeof q.quizId === 'string' ? q.quizId : (q.quizId?._id || q.quizId);
+          return {
+            quizId: String(quizId),
+            percentage: percentage,
+            percentageRaw: q.percentage,
+            percentageType: typeof q.percentage,
+            score: q.score,
+            passed: percentage >= 60
+          };
+        });
+        const passedQuizzes = allQuizzesForDebug.filter(q => q.passed);
+        
         console.log('Progress updated:', {
           cheatSheetRead: progressData.cheatSheetRead,
           completedQuizzes: progressData.completedQuizzes?.length || 0,
-          quizzes: progressData.completedQuizzes?.map(q => ({
-            quizId: typeof q.quizId === 'string' ? q.quizId : (q.quizId?._id || q.quizId),
-            percentage: q.percentage
-          }))
+          allQuizzesWithPercentages: allQuizzesForDebug,
+          passedQuizzes: passedQuizzes.length,
+          passedQuizzesDetails: passedQuizzes,
+          quizSetsLoaded: currentQuizSets.length,
+          quizSetIds: currentQuizSets.map(qs => {
+            const id = typeof qs.quizId === 'string' ? qs.quizId : qs.quizId?._id;
+            return id ? String(id) : null;
+          }).filter(Boolean)
+        });
+        
+        // Debug: Check if completed quiz IDs match quiz set IDs
+        const completedIds = new Set(
+          (progressData.completedQuizzes || [])
+            .filter((q) => q.percentage >= 60)
+            .map((q) => {
+              const id = typeof q.quizId === 'string' ? q.quizId : (q.quizId?._id || q.quizId);
+              return id ? String(id) : null;
+            })
+            .filter(Boolean)
+        );
+        const quizSetIds = new Set(
+          quizSets.map(qs => {
+            const id = typeof qs.quizId === 'string' ? qs.quizId : qs.quizId?._id;
+            return id ? String(id) : null;
+          }).filter(Boolean)
+        );
+        console.log('Debug - Quiz ID matching:', {
+          completedQuizIds: Array.from(completedIds),
+          quizSetIds: Array.from(quizSetIds),
+          matches: Array.from(completedIds).filter(id => quizSetIds.has(id))
         });
       } else {
         // Initialize with default progress if none exists

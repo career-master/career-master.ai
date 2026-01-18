@@ -52,7 +52,8 @@ class DefaultCourseSeed {
           isActive: true,
           requiresApproval: false, // Make it accessible to all
           createdBy: createdBy,
-          order: 1
+          order: 1,
+          courseCategories: [] // Empty array means available to all users regardless of course selection
         });
 
         savedSubject = await subject.save();
@@ -911,6 +912,9 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
         createdBy: createdBy
       });
 
+      // Add course categories - empty array means available to all users
+      quiz.courseCategories = [];
+      
       const savedQuiz = await quiz.save();
       console.log('✅ Created quiz: General Knowledge Quiz - 20 Questions');
 

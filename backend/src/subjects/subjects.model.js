@@ -51,6 +51,10 @@ const subjectSchema = new mongoose.Schema(
     order: {
       type: Number,
       default: 0 // For ordering subjects
+    },
+    courseCategories: {
+      type: [String], // Array of course category IDs (e.g., "Maths_10", "JEE MAIN", "Technology_Programming Languages_JavaScript")
+      default: []
     }
   },
   {

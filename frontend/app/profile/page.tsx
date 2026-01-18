@@ -5,17 +5,73 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
+import { toast } from 'react-hot-toast';
+
+type ProfileTab = 'personal' | 'contact' | 'address' | 'academic' | 'courses';
 
 export default function ProfilePage() {
   const { user, loading, refreshUser, isAuthenticated } = useAuth();
   const router = useRouter();
-  const [profileOpen, setProfileOpen] = useState(false);
-  const profileRef = useRef<HTMLDivElement | null>(null);
+  const [activeTab, setActiveTab] = useState<ProfileTab>('personal');
+  const [saving, setSaving] = useState(false);
+  const [uploadingPicture, setUploadingPicture] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
 
   const [form, setForm] = useState({
-    name: '',
+    // Personal Details
+    firstName: '',
+    lastName: '',
+    dateOfBirth: '',
+    gender: '',
+    guardianName: '',
+    guardianRelation: '',
+    profilePicture: '',
+    
+    // Contact Details
     email: '',
     phone: '',
+    alternateMobile: '',
+    whatsappNumber: '',
+    whatsappSameAsMobile: false,
+    
+    // Present Address
+    presentHouseNo: '',
+    presentStreet: '',
+    presentArea: '',
+    presentCity: '',
+    presentDistrict: '',
+    presentState: '',
+    presentPinCode: '',
+    presentCountry: '',
+    
+    // Permanent Address
+    permanentHouseNo: '',
+    permanentStreet: '',
+    permanentArea: '',
+    permanentCity: '',
+    permanentDistrict: '',
+    permanentState: '',
+    permanentPinCode: '',
+    permanentCountry: '',
+    sameAsPresentAddress: false,
+    
+    // Academic Details
+    currentQualification: '',
+    institutionName: '',
+    university: '',
+    yearOfStudy: '',
+    expectedPassingYear: '',
+    percentage: '',
+    cgpa: '',
+    gradeType: 'percentage',
+    
+    // Course Preferences
+    selectedCourses: [] as string[],
+    
+    // Legacy fields
+    name: '',
     college: '',
     school: '',
     jobTitle: '',
@@ -24,15 +80,7 @@ export default function ProfilePage() {
     learningGoals: '',
     city: '',
     country: '',
-    profilePicture: '',
   });
-  const [isEditing, setIsEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [uploadingPicture, setUploadingPicture] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [stats, setStats] = useState<any>(null);
-  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -40,79 +88,92 @@ export default function ProfilePage() {
     }
   }, [loading, isAuthenticated, router]);
 
-  // Close profile dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
-        setProfileOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   useEffect(() => {
     if (user) {
+      const profile = user.profile || {};
       setForm({
-        name: user.name || '',
+        firstName: profile.firstName || '',
+        lastName: profile.lastName || '',
+        dateOfBirth: profile.dateOfBirth ? new Date(profile.dateOfBirth).toISOString().split('T')[0] : '',
+        gender: profile.gender || '',
+        guardianName: profile.guardianName || '',
+        guardianRelation: profile.guardianRelation || '',
+        profilePicture: user.profilePicture || '',
+        
         email: user.email || '',
         phone: user.phone || '',
-        college: user.profile?.college || '',
-        school: user.profile?.school || '',
-        jobTitle: user.profile?.jobTitle || '',
-        currentStatus: user.profile?.currentStatus || '',
-        interests: (user.profile?.interests || []).join(', '),
-        learningGoals: user.profile?.learningGoals || '',
-        city: user.profile?.city || '',
-        country: user.profile?.country || '',
-        profilePicture: user.profilePicture || '',
+        alternateMobile: profile.alternateMobile || '',
+        whatsappNumber: profile.whatsappNumber || '',
+        whatsappSameAsMobile: profile.whatsappSameAsMobile || false,
+        
+        presentHouseNo: profile.presentAddress?.houseNo || '',
+        presentStreet: profile.presentAddress?.street || '',
+        presentArea: profile.presentAddress?.area || '',
+        presentCity: profile.presentAddress?.city || '',
+        presentDistrict: profile.presentAddress?.district || '',
+        presentState: profile.presentAddress?.state || '',
+        presentPinCode: profile.presentAddress?.pinCode || '',
+        presentCountry: profile.presentAddress?.country || '',
+        
+        permanentHouseNo: profile.permanentAddress?.houseNo || '',
+        permanentStreet: profile.permanentAddress?.street || '',
+        permanentArea: profile.permanentAddress?.area || '',
+        permanentCity: profile.permanentAddress?.city || '',
+        permanentDistrict: profile.permanentAddress?.district || '',
+        permanentState: profile.permanentAddress?.state || '',
+        permanentPinCode: profile.permanentAddress?.pinCode || '',
+        permanentCountry: profile.permanentAddress?.country || '',
+        sameAsPresentAddress: profile.sameAsPresentAddress || false,
+        
+        currentQualification: profile.currentQualification || '',
+        institutionName: profile.institutionName || '',
+        university: profile.university || '',
+        yearOfStudy: profile.yearOfStudy?.toString() || '',
+        expectedPassingYear: profile.expectedPassingYear?.toString() || '',
+        percentage: profile.percentage?.toString() || '',
+        cgpa: profile.cgpa?.toString() || '',
+        gradeType: profile.gradeType || 'percentage',
+        
+        selectedCourses: profile.selectedCourses || [],
+        
+        name: user.name || '',
+        college: profile.college || '',
+        school: profile.school || '',
+        jobTitle: profile.jobTitle || '',
+        currentStatus: profile.currentStatus || '',
+        interests: (profile.interests || []).join(', '),
+        learningGoals: profile.learningGoals || '',
+        city: profile.city || '',
+        country: profile.country || '',
       });
+      
     }
   }, [user]);
 
-  // Fetch dashboard stats
+  // Copy present address to permanent when checkbox is checked
   useEffect(() => {
-    const loadStats = async () => {
-      try {
-        setStatsLoading(true);
-        const res = await apiService.getUserDashboardStats();
-        if (res.success && res.data) {
-          setStats(res.data);
-        }
-      } catch (error) {
-        console.error('Failed to load dashboard stats:', error);
-      } finally {
-        setStatsLoading(false);
-      }
-    };
-
-    if (user) {
-      loadStats();
+    if (form.sameAsPresentAddress) {
+      setForm(prev => ({
+        ...prev,
+        permanentHouseNo: prev.presentHouseNo,
+        permanentStreet: prev.presentStreet,
+        permanentArea: prev.presentArea,
+        permanentCity: prev.presentCity,
+        permanentDistrict: prev.presentDistrict,
+        permanentState: prev.presentState,
+        permanentPinCode: prev.presentPinCode,
+        permanentCountry: prev.presentCountry,
+      }));
     }
-  }, [user]);
+  }, [form.sameAsPresentAddress, form.presentHouseNo, form.presentStreet, form.presentArea, form.presentCity, form.presentDistrict, form.presentState, form.presentPinCode, form.presentCountry]);
 
-  // Calculate profile completion percentage
-  const profileCompletion = useMemo(() => {
-    const fields = [
-      form.name.trim(),
-      form.phone.trim(),
-      form.currentStatus.trim(),
-      form.college.trim(),
-      form.school.trim(),
-      form.jobTitle.trim(),
-      form.interests.trim(),
-      form.learningGoals.trim(),
-      form.city.trim(),
-      form.country.trim(),
-      form.profilePicture.trim(),
-    ];
-    const filledFields = fields.filter(field => field.length > 0).length;
-    return Math.round((filledFields / fields.length) * 100);
-  }, [form]);
+  // Copy mobile to WhatsApp when checkbox is checked
+  useEffect(() => {
+    if (form.whatsappSameAsMobile) {
+      setForm(prev => ({ ...prev, whatsappNumber: prev.phone }));
+    }
+  }, [form.whatsappSameAsMobile, form.phone]);
 
-  const isSavingDisabled = useMemo(() => {
-    return saving || !form.name.trim();
-  }, [saving, form.name]);
 
   const handlePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -129,42 +190,80 @@ export default function ProfilePage() {
       const res = await apiService.uploadImage(file, 'career-master/profile-pictures');
       if (res.success && res.data?.url) {
         setForm((prev) => ({ ...prev, profilePicture: res.data.url }));
-        // Auto-save profile picture
-        const payload: any = {
-          profilePicture: res.data.url,
-        };
-        await apiService.updateCurrentUser(payload);
-        await refreshUser();
-        setSuccess('Profile picture updated successfully');
+        toast.success('Profile picture uploaded');
       } else {
         throw new Error('Failed to upload image');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to upload profile picture');
+      toast.error(err.message || 'Failed to upload profile picture');
     } finally {
       setUploadingPicture(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
+  const handleSave = async () => {
     try {
       setSaving(true);
+      setError('');
+      setSuccess('');
+      
       const payload: any = {
-        name: form.name.trim(),
+        name: form.firstName && form.lastName ? `${form.firstName} ${form.lastName}`.trim() : form.name || user?.name,
         phone: form.phone.trim() || undefined,
         profilePicture: form.profilePicture.trim() || undefined,
         profile: {
+          firstName: form.firstName.trim() || undefined,
+          lastName: form.lastName.trim() || undefined,
+          dateOfBirth: form.dateOfBirth ? new Date(form.dateOfBirth) : undefined,
+          gender: form.gender || undefined,
+          guardianName: form.guardianName.trim() || undefined,
+          guardianRelation: form.guardianRelation || undefined,
+          
+          alternateMobile: form.alternateMobile.trim() || undefined,
+          whatsappNumber: form.whatsappNumber.trim() || undefined,
+          whatsappSameAsMobile: form.whatsappSameAsMobile,
+          
+          presentAddress: {
+            houseNo: form.presentHouseNo.trim() || undefined,
+            street: form.presentStreet.trim() || undefined,
+            area: form.presentArea.trim() || undefined,
+            city: form.presentCity.trim() || undefined,
+            district: form.presentDistrict.trim() || undefined,
+            state: form.presentState.trim() || undefined,
+            pinCode: form.presentPinCode.trim() || undefined,
+            country: form.presentCountry.trim() || undefined,
+          },
+          
+          permanentAddress: {
+            houseNo: form.permanentHouseNo.trim() || undefined,
+            street: form.permanentStreet.trim() || undefined,
+            area: form.permanentArea.trim() || undefined,
+            city: form.permanentCity.trim() || undefined,
+            district: form.permanentDistrict.trim() || undefined,
+            state: form.permanentState.trim() || undefined,
+            pinCode: form.permanentPinCode.trim() || undefined,
+            country: form.permanentCountry.trim() || undefined,
+          },
+          sameAsPresentAddress: form.sameAsPresentAddress,
+          
+          currentQualification: form.currentQualification || undefined,
+          institutionName: form.institutionName.trim() || undefined,
+          university: form.university.trim() || undefined,
+          yearOfStudy: form.yearOfStudy ? parseInt(form.yearOfStudy) : undefined,
+          expectedPassingYear: form.expectedPassingYear ? parseInt(form.expectedPassingYear) : undefined,
+          percentage: form.percentage ? parseFloat(form.percentage) : undefined,
+          cgpa: form.cgpa ? parseFloat(form.cgpa) : undefined,
+          gradeType: form.gradeType,
+          
+          selectedCourses: form.selectedCourses,
+          
+          // Legacy fields
           college: form.college.trim() || undefined,
           school: form.school.trim() || undefined,
           jobTitle: form.jobTitle.trim() || undefined,
           currentStatus: form.currentStatus.trim() || undefined,
-          interests: form.interests
-            .split(',')
-            .map((i) => i.trim())
-            .filter(Boolean),
+          interests: form.interests.split(',').map(i => i.trim()).filter(Boolean),
           learningGoals: form.learningGoals.trim() || undefined,
           city: form.city.trim() || undefined,
           country: form.country.trim() || undefined,
@@ -176,13 +275,114 @@ export default function ProfilePage() {
         throw new Error(res.error?.message || res.message || 'Failed to update profile');
       }
       setSuccess('Profile updated successfully');
+      toast.success('Profile updated successfully');
       await refreshUser();
-      setIsEditing(false);
     } catch (err: any) {
       setError(err.message || 'Failed to update profile');
+      toast.error(err.message || 'Failed to update profile');
     } finally {
       setSaving(false);
     }
+  };
+
+  // Calculate profile completion
+  const profileCompletion = useMemo(() => {
+    const requiredFields = [
+      form.firstName,
+      form.lastName,
+      form.dateOfBirth,
+      form.gender,
+      form.guardianName,
+      form.guardianRelation,
+      form.phone,
+      form.presentCity,
+      form.presentState,
+      form.presentPinCode,
+      form.presentCountry,
+      form.currentQualification,
+      form.institutionName,
+    ];
+    
+    const optionalFields = [
+      form.profilePicture,
+      form.email, // Email is always present from auth
+      form.alternateMobile,
+      form.whatsappNumber,
+      form.presentHouseNo,
+      form.presentStreet,
+      form.presentArea,
+      form.presentDistrict,
+      form.permanentCity,
+      form.permanentState,
+      form.permanentPinCode,
+      form.university,
+      form.yearOfStudy,
+      form.expectedPassingYear,
+      form.percentage || form.cgpa,
+      form.selectedCourses.length > 0,
+    ];
+    
+    const filledRequired = requiredFields.filter(field => {
+      if (typeof field === 'boolean') return field;
+      if (Array.isArray(field)) return field.length > 0;
+      return field && String(field).trim().length > 0;
+    }).length;
+    
+    const filledOptional = optionalFields.filter(field => {
+      if (typeof field === 'boolean') return field;
+      if (Array.isArray(field)) return field.length > 0;
+      return field && String(field).trim().length > 0;
+    }).length;
+    
+    // Calculate completion: 70% weight on required fields, 30% on optional
+    const requiredScore = (filledRequired / requiredFields.length) * 70;
+    const optionalScore = (filledOptional / optionalFields.length) * 30;
+    return Math.round(requiredScore + optionalScore);
+  }, [form]);
+
+  // Course categories and options
+  const courseCategories = {
+    'Maths': ['3', '4', '5', '6', '7', '8', '9', '10', 'Inter'],
+    'Physics': ['3', '4', '5', '6', '7', '8', '9', '10', 'Inter'],
+    'Social': ['3', '4', '5', '6', '7', '8', '9', '10', 'Inter'],
+    'Olympiad Exams': ['NTSE', 'NLSTSE', 'INO', 'SOF', 'IMO', 'NSO', 'IEO', 'IGKO', 'ICSO', 'UCO', 'UIEO', 'SILVERZONE', 'IOM', 'IOS', 'IOEL', 'NIMO', 'NBO'],
+    'National Level (All-India) Government Exams': ['UPSC', 'SSC'],
+    'Public Sector Bank (PSB) Exams': ['IBPS PO', 'IBPS SO', 'IBPS CLERK', 'IBPS RRB', 'SBI PO', 'SBI SO', 'SBI CLERK', 'SBI APPRENTICE'],
+    'Public Sector Finance Exams': ['RBI', 'NABARD', 'LIC'],
+    'National Level Entrance Exams': {
+      'Engineering & Technology': ['JEE MAIN', 'JEE ADVANCED', 'BITSAT', 'VITEEE', 'SRMJEEE'],
+      'Medical & Health Sciences': ['NEET UG', 'NEET PG'],
+      'Management & Commerce': ['IPMAT'],
+      'Law': ['CLAT', 'AILET'],
+      'Design & Architecture': ['NID DAT', 'NIFT', 'NATA'],
+      'General': ['CUET UG', 'CUET PG'],
+    },
+    'Telangana Entrance Exams': {
+      'Professional Courses': ['TSEAMCET', 'TS PGECET', 'TSCHE', 'TS LAWCET', 'TS PGLCET', 'TS ICET', 'TS EDCET', 'TS DEECET'],
+      'Class 6-10 Entrance Exams': ['TS Model Schools Entrance Exam', 'Kakatiya Mentoring Schools Entrance Test', 'Telangana Social Welfare Residential Schools Entrance', 'Telangana Tribal Welfare Residential Schools Entrance', 'Jawahar Navodaya Vidyalaya (JNV) Selection Test'],
+      'Class 11/Intermediate Entrance Exams': ['TS Residential Junior Colleges Entrance Exam', 'TS Social Welfare Residential Junior Colleges', 'TS Tribal Welfare Residential Junior Colleges'],
+      'Specialized Schools': ['TS Sports School Entrance Test', 'Gurukul Schools Entrance Exam'],
+    },
+    'National Level Entrance Tests': ['Jawahar Navodaya Vidyalaya Selection Test (JNVST)', 'Sainik School Entrance Exam', 'Rashtriya Indian Military College (RIMC)', 'Atomic Energy Central Schools (AECS)', 'JEE (Main) Preparation Tests', 'Kishore Vaigyanik Protsahan Yojana (KVPY)'],
+    'Scholarship & Ability Tests': ['NMMS', 'GeoGenius', 'ISTSE', 'Ramanujan Math Talent Search Exam'],
+    'Technology': {
+      'Programming Languages': ['JavaScript', 'Python', 'Java', 'C++', 'C#', 'Go', 'Rust', 'Swift', 'Kotlin'],
+      'Full Stack': ['MERN Stack', 'MEAN Stack', 'LAMP Stack', 'Django', 'Ruby on Rails'],
+      'Databases': ['MySQL', 'PostgreSQL', 'MongoDB', 'Redis', 'Oracle'],
+      'Mobile Development': ['React Native', 'Flutter', 'iOS Development', 'Android Development'],
+      'AI': ['Machine Learning', 'Deep Learning', 'NLP', 'Computer Vision'],
+      'Testing': ['Selenium', 'Jest', 'Cypress', 'JUnit'],
+      'Cloud Computing': ['AWS', 'Azure', 'GCP', 'Docker', 'Kubernetes'],
+    },
+  };
+
+  const toggleCourse = (courseId: string) => {
+    setForm(prev => ({
+      ...prev,
+      selectedCourses: prev.selectedCourses.includes(courseId)
+        ? prev.selectedCourses.filter(id => id !== courseId)
+        : [...prev.selectedCourses, courseId]
+    }));
   };
 
   if (!user) {
@@ -195,529 +395,634 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Top bar to mirror dashboard with quick actions and profile dropdown */}
       <header className="bg-gradient-to-r from-[#6f42c1] to-[#e83e8c] text-white py-4 shadow">
-        <div className="max-w-6xl mx-auto px-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 flex items-center justify-between">
           <h1 className="text-xl font-semibold">Profile</h1>
-          <div className="flex items-center gap-3 relative">
-            {/* Quick actions */}
-            <div className="hidden md:flex items-center gap-2">
-              <Link
-                href="/dashboard"
-                className="px-3 py-2 text-xs font-semibold bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors backdrop-blur-sm"
-              >
-                Dashboard
-              </Link>
-              <Link
-                href="/dashboard/reports"
-                className="px-3 py-2 text-xs font-semibold bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors backdrop-blur-sm"
-              >
-                Reports
-              </Link>
-              <Link
-                href="/dashboard/subjects"
-                className="px-3 py-2 text-xs font-semibold bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors backdrop-blur-sm"
-              >
-                Subjects
-              </Link>
-            </div>
-            {/* Profile dropdown */}
-            <div className="relative" ref={profileRef}>
-              <button
-                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors backdrop-blur-sm relative z-20"
-                onClick={() => setProfileOpen((prev) => !prev)}
-              >
-                <div className="w-8 h-8 bg-white/30 rounded-full flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <span className="text-white font-medium">{user?.name || user?.email?.split('@')[0] || 'User'}</span>
-                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-              </button>
-              {profileOpen && (
-                <div
-                  className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-40"
-                  onMouseDown={(e) => e.stopPropagation()}
-                >
-                  <div className="px-4 py-2 border-b border-gray-100">
-                    <div className="text-sm font-semibold text-gray-800">{user?.name}</div>
-                    <div className="text-xs text-gray-500 truncate">{user?.email}</div>
-                    <div className="text-[11px] text-gray-400 truncate">{user?.roles?.join(', ') || 'Student'}</div>
-                  </div>
-                  <Link href="/settings" className="block px-4 py-2 text-gray-700 hover:bg-gray-100">
-                    Settings
-                  </Link>
-                  <hr className="my-2" />
-                  <button onClick={() => router.push('/dashboard')} className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">
-                    Dashboard
-                  </button>
-                  <button onClick={() => router.push('/dashboard/reports')} className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">
-                    Reports
-                  </button>
-                  <button onClick={() => router.push('/dashboard/subjects')} className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">
-                    Subjects
-                  </button>
-                  <hr className="my-2" />
-                  <button onClick={() => router.push('/login')} className="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100">
-                    Logout
-                  </button>
-                </div>
-              )}
-            </div>
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard" className="px-3 py-2 text-xs font-semibold bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors">
+              Dashboard
+            </Link>
           </div>
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Profile View/Edit */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6 lg:col-span-2">
-          <div className="flex items-center justify-between mb-2">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Profile Completion Card */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">Profile</h2>
-              <p className="text-sm text-gray-600">
-                {isEditing ? 'Update your details. Email cannot be changed.' : 'View your profile information.'}
-              </p>
+              <h2 className="text-lg font-semibold text-gray-900">Profile Completion</h2>
+              <p className="text-sm text-gray-600">Complete your profile to unlock all features</p>
             </div>
-            {!isEditing && (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                Edit Profile
-              </button>
-            )}
-          </div>
-
-          {isEditing ? (
-            <form onSubmit={handleSubmit} className="space-y-6">
-
-          {/* Profile Picture Upload */}
-          <div className="flex items-center gap-4 pb-4 border-b border-gray-200">
-            <div className="relative">
-              {form.profilePicture ? (
-                <div className="relative">
-                  <img
-                    src={form.profilePicture}
-                    alt="Profile"
-                    className="w-24 h-24 rounded-full object-cover border-4 border-purple-200"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setForm((prev) => ({ ...prev, profilePicture: '' }))}
-                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                    title="Remove picture"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold text-3xl border-4 border-purple-200">
-                  {form.name?.[0]?.toUpperCase() || form.email?.[0]?.toUpperCase() || 'U'}
-                </div>
-              )}
-            </div>
-            <div className="flex-1">
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Profile Picture</label>
-              <label className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer transition-colors">
-                {uploadingPicture ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    {form.profilePicture ? 'Change Picture' : 'Upload Picture'}
-                  </>
-                )}
-                <input
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handlePictureUpload}
-                  disabled={uploadingPicture}
-                />
-              </label>
-              <p className="text-xs text-gray-500 mt-1">PNG, JPG, GIF (MAX. 10MB)</p>
+            <div className="text-right">
+              <div className="text-3xl font-bold text-purple-600">{profileCompletion}%</div>
+              <div className="text-xs text-gray-500">Complete</div>
             </div>
           </div>
-
-          {/* Basic Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700">Full Name</label>
-              <input
-                className="mt-1 w-full border rounded-lg px-3 py-2 text-gray-900"
-                value={form.name}
-                onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                required
-                minLength={2}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Email (read-only)</label>
-              <input
-                className="mt-1 w-full border rounded-lg px-3 py-2 text-gray-500 bg-gray-100 cursor-not-allowed"
-                value={form.email}
-                readOnly
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Phone</label>
-              <input
-                className="mt-1 w-full border rounded-lg px-3 py-2 text-gray-900"
-                value={form.phone}
-                onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
-                placeholder="+1 234 567 8900"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Current Status</label>
-              <input
-                className="mt-1 w-full border rounded-lg px-3 py-2 text-gray-900"
-                value={form.currentStatus}
-                onChange={(e) => setForm((prev) => ({ ...prev, currentStatus: e.target.value }))}
-                placeholder="Student, Working professional, etc."
-              />
-            </div>
-          </div>
-
-          {/* Education / Work */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700">College</label>
-              <input
-                className="mt-1 w-full border rounded-lg px-3 py-2 text-gray-900"
-                value={form.college}
-                onChange={(e) => setForm((prev) => ({ ...prev, college: e.target.value }))}
-                placeholder="College/University"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">School</label>
-              <input
-                className="mt-1 w-full border rounded-lg px-3 py-2 text-gray-900"
-                value={form.school}
-                onChange={(e) => setForm((prev) => ({ ...prev, school: e.target.value }))}
-                placeholder="School (if applicable)"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Job Title</label>
-              <input
-                className="mt-1 w-full border rounded-lg px-3 py-2 text-gray-900"
-                value={form.jobTitle}
-                onChange={(e) => setForm((prev) => ({ ...prev, jobTitle: e.target.value }))}
-                placeholder="Software Engineer, Teacher, etc."
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Interests (comma separated)</label>
-              <input
-                className="mt-1 w-full border rounded-lg px-3 py-2 text-gray-900"
-                value={form.interests}
-                onChange={(e) => setForm((prev) => ({ ...prev, interests: e.target.value }))}
-                placeholder="AI, Web Dev, Math"
-              />
-            </div>
-          </div>
-
-          {/* Goals */}
-          <div>
-            <label className="text-sm font-medium text-gray-700">Learning Goals</label>
-            <textarea
-              className="mt-1 w-full border rounded-lg px-3 py-2 text-gray-900"
-              rows={3}
-              value={form.learningGoals}
-              onChange={(e) => setForm((prev) => ({ ...prev, learningGoals: e.target.value }))}
-              placeholder="Tell us what you want to learn or improve."
+          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                profileCompletion === 100 ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
+                profileCompletion >= 70 ? 'bg-gradient-to-r from-blue-500 to-purple-500' :
+                profileCompletion >= 40 ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
+                'bg-gradient-to-r from-red-400 to-pink-500'
+              }`}
+              style={{ width: `${profileCompletion}%` }}
             />
           </div>
-
-          {/* Location */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700">City</label>
-              <input
-                className="mt-1 w-full border rounded-lg px-3 py-2 text-gray-900"
-                value={form.city}
-                onChange={(e) => setForm((prev) => ({ ...prev, city: e.target.value }))}
-                placeholder="City"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Country</label>
-              <input
-                className="mt-1 w-full border rounded-lg px-3 py-2 text-gray-900"
-                value={form.country}
-                onChange={(e) => setForm((prev) => ({ ...prev, country: e.target.value }))}
-                placeholder="Country"
-              />
-            </div>
-          </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-3 pt-4 border-t border-gray-200">
-                <button
-                  type="submit"
-                  disabled={isSavingDisabled}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-60"
-                >
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsEditing(false);
-                    setError('');
-                    setSuccess('');
-                    // Reset form to user data
-                    if (user) {
-                      setForm({
-                        name: user.name || '',
-                        email: user.email || '',
-                        phone: user.phone || '',
-                        college: user.profile?.college || '',
-                        school: user.profile?.school || '',
-                        jobTitle: user.profile?.jobTitle || '',
-                        currentStatus: user.profile?.currentStatus || '',
-                        interests: (user.profile?.interests || []).join(', '),
-                        learningGoals: user.profile?.learningGoals || '',
-                        city: user.profile?.city || '',
-                        country: user.profile?.country || '',
-                        profilePicture: user.profilePicture || '',
-                      });
-                    }
-                  }}
-                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                >
-                  Cancel
-                </button>
-                {success && <span className="text-green-600 text-sm">{success}</span>}
-                {error && <span className="text-red-600 text-sm">{error}</span>}
-              </div>
-            </form>
-          ) : (
-            /* View Mode */
-            <div className="space-y-6">
-              {/* Profile Picture */}
-              <div className="flex items-center gap-4 pb-4 border-b border-gray-200">
-                <div className="relative">
-                  {form.profilePicture ? (
-                    <img
-                      src={form.profilePicture}
-                      alt="Profile"
-                      className="w-24 h-24 rounded-full object-cover border-4 border-purple-200"
-                    />
-                  ) : (
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold text-3xl border-4 border-purple-200">
-                      {form.name?.[0]?.toUpperCase() || form.email?.[0]?.toUpperCase() || 'U'}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{form.name || 'Your name'}</h3>
-                  <p className="text-sm text-gray-600">{form.email}</p>
-                  <p className="text-xs text-gray-500">{form.currentStatus || 'Status not set'}</p>
-                </div>
-              </div>
-
-              {/* Profile Details in View Mode */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Full Name</label>
-                  <p className="mt-1 text-sm text-gray-900">{form.name || '—'}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email</label>
-                  <p className="mt-1 text-sm text-gray-900">{form.email || '—'}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Phone</label>
-                  <p className="mt-1 text-sm text-gray-900">{form.phone || '—'}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Current Status</label>
-                  <p className="mt-1 text-sm text-gray-900">{form.currentStatus || '—'}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">College</label>
-                  <p className="mt-1 text-sm text-gray-900">{form.college || '—'}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">School</label>
-                  <p className="mt-1 text-sm text-gray-900">{form.school || '—'}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Job Title</label>
-                  <p className="mt-1 text-sm text-gray-900">{form.jobTitle || '—'}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Interests</label>
-                  <p className="mt-1 text-sm text-gray-900">{form.interests || '—'}</p>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Learning Goals</label>
-                  <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{form.learningGoals || '—'}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">City</label>
-                  <p className="mt-1 text-sm text-gray-900">{form.city || '—'}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Country</label>
-                  <p className="mt-1 text-sm text-gray-900">{form.country || '—'}</p>
-                </div>
-              </div>
-            </div>
+          {profileCompletion < 70 && (
+            <p className="text-xs text-gray-500 mt-2">
+              Complete at least 70% of your profile to attempt quizzes
+            </p>
           )}
         </div>
 
-        {/* Live summary with progress */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
-            {/* Profile Completion Progress */}
-            <div className="pb-4 border-b border-gray-200">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-gray-700">Profile Completion</h3>
-                <span className="text-lg font-bold text-purple-600">{profileCompletion}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    profileCompletion === 100
-                      ? 'bg-gradient-to-r from-green-500 to-emerald-500'
-                      : profileCompletion >= 70
-                      ? 'bg-gradient-to-r from-blue-500 to-purple-500'
-                      : profileCompletion >= 40
-                      ? 'bg-gradient-to-r from-yellow-500 to-orange-500'
-                      : 'bg-gradient-to-r from-red-400 to-pink-500'
+        {/* Tabs */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
+          <div className="border-b border-gray-200">
+            <nav className="flex -mb-px overflow-x-auto">
+              {(['personal', 'contact', 'address', 'academic', 'courses'] as ProfileTab[]).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                    activeTab === tab
+                      ? 'border-purple-600 text-purple-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
-                  style={{ width: `${profileCompletion}%` }}
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-2">
-                {profileCompletion === 100
-                  ? '🎉 Your profile is complete!'
-                  : profileCompletion >= 70
-                  ? 'Great progress! Fill a few more fields to complete your profile.'
-                  : profileCompletion >= 40
-                  ? 'You\'re halfway there! Keep going!'
-                  : 'Start filling your profile to unlock more features.'}
-              </p>
-            </div>
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+            </nav>
+          </div>
 
-            <div className="flex items-center gap-3">
-              {form.profilePicture ? (
-                <img
-                  src={form.profilePicture}
-                  alt="Profile"
-                  className="w-16 h-16 rounded-full object-cover border-2 border-purple-200"
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold text-xl">
-                  {form.name?.[0]?.toUpperCase() || form.email?.[0]?.toUpperCase() || 'U'}
+          <div className="p-6">
+            {activeTab === 'personal' && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-gray-900">Personal Details</h3>
+                
+                {/* Profile Picture */}
+                <div className="flex items-center gap-4">
+                  {form.profilePicture ? (
+                    <img src={form.profilePicture} alt="Profile" className="w-24 h-24 rounded-full object-cover border-4 border-purple-200" />
+                  ) : (
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold text-3xl">
+                      {form.firstName?.[0]?.toUpperCase() || form.name?.[0]?.toUpperCase() || 'U'}
+                    </div>
+                  )}
+                  <div>
+                    <label className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer transition-colors">
+                      {uploadingPicture ? 'Uploading...' : 'Upload Picture'}
+                      <input type="file" className="hidden" accept="image/*" onChange={handlePictureUpload} disabled={uploadingPicture} />
+                    </label>
+                    <p className="text-xs text-gray-500 mt-1">PNG, JPG, GIF (MAX. 10MB)</p>
+                  </div>
                 </div>
-              )}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">{form.name || 'Your name'}</h3>
-                <p className="text-sm text-gray-600">{form.email}</p>
-                <p className="text-xs text-gray-500">{form.currentStatus || 'Status not set'}</p>
-              </div>
-            </div>
-          </div>
 
-          {/* AI LEARNING PROFILE */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h6 className="font-bold mb-4 text-gray-900 text-sm uppercase tracking-wide">AI Learning Profile</h6>
-            <div className="mb-4">
-              <div className="flex justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">Average Score</span>
-                <span className="text-sm font-bold text-gray-900">
-                  {statsLoading ? '...' : stats ? `${stats.overview?.averagePercentage?.toFixed(1) || 0}%` : '0%'}
-                </span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">First Name (as per DOB certificate) *</label>
+                    <input
+                      type="text"
+                      className="w-full border rounded-lg px-3 py-2"
+                      value={form.firstName}
+                      onChange={(e) => setForm(prev => ({ ...prev, firstName: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+                    <input
+                      type="text"
+                      className="w-full border rounded-lg px-3 py-2"
+                      value={form.lastName}
+                      onChange={(e) => setForm(prev => ({ ...prev, lastName: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
+                    <input
+                      type="date"
+                      className="w-full border rounded-lg px-3 py-2"
+                      value={form.dateOfBirth}
+                      onChange={(e) => setForm(prev => ({ ...prev, dateOfBirth: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
+                    <select
+                      className="w-full border rounded-lg px-3 py-2"
+                      value={form.gender}
+                      onChange={(e) => setForm(prev => ({ ...prev, gender: e.target.value }))}
+                      required
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                      <option value="prefer_not_to_say">Prefer not to say</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Father/Mother/Guardian Name *</label>
+                    <input
+                      type="text"
+                      className="w-full border rounded-lg px-3 py-2"
+                      value={form.guardianName}
+                      onChange={(e) => setForm(prev => ({ ...prev, guardianName: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Relation *</label>
+                    <select
+                      className="w-full border rounded-lg px-3 py-2"
+                      value={form.guardianRelation}
+                      onChange={(e) => setForm(prev => ({ ...prev, guardianRelation: e.target.value }))}
+                      required
+                    >
+                      <option value="">Select Relation</option>
+                      <option value="father">Father</option>
+                      <option value="mother">Mother</option>
+                      <option value="guardian">Guardian</option>
+                    </select>
+                  </div>
+                </div>
               </div>
-              <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-blue-500 rounded-full transition-all duration-500" 
-                  style={{ width: statsLoading ? '0%' : stats ? `${Math.min(stats.overview?.averagePercentage || 0, 100)}%` : '0%' }}
-                ></div>
-              </div>
-            </div>
-            <div className="mb-4">
-              <div className="flex justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">Accuracy</span>
-                <span className="text-sm font-bold text-gray-900">
-                  {statsLoading ? '...' : stats ? `${stats.overview?.accuracy?.toFixed(1) || 0}%` : '0%'}
-                </span>
-              </div>
-              <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-green-500 rounded-full transition-all duration-500" 
-                  style={{ width: statsLoading ? '0%' : stats ? `${Math.min(stats.overview?.accuracy || 0, 100)}%` : '0%' }}
-                ></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">Pass Rate</span>
-                <span className="text-sm font-bold text-gray-900">
-                  {statsLoading ? '...' : stats ? `${stats.overview?.passRate?.toFixed(1) || 0}%` : '0%'}
-                </span>
-              </div>
-              <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-purple-500 rounded-full transition-all duration-500" 
-                  style={{ width: statsLoading ? '0%' : stats ? `${Math.min(stats.overview?.passRate || 0, 100)}%` : '0%' }}
-                ></div>
-              </div>
-            </div>
-          </div>
+            )}
 
-          {/* QUIZ STATISTICS */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h6 className="font-bold mb-4 text-gray-900 text-sm uppercase tracking-wide">Quiz Statistics</h6>
-            <div className="mb-4">
-              <div className="flex justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">Total Attempts</span>
-                <span className="text-sm font-bold text-gray-900">
-                  {statsLoading ? '...' : stats ? stats.overview?.totalAttempts || 0 : 0}
-                </span>
+            {activeTab === 'contact' && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-gray-900">Contact Details</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email ID *</label>
+                    <input
+                      type="email"
+                      className="w-full border rounded-lg px-3 py-2 bg-gray-100"
+                      value={form.email}
+                      readOnly
+                    />
+                    {user.verification?.emailVerified && (
+                      <span className="text-xs text-green-600 mt-1 block">✓ Verified</span>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number *</label>
+                    <input
+                      type="tel"
+                      className="w-full border rounded-lg px-3 py-2"
+                      value={form.phone}
+                      onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
+                      placeholder="+91 9876543210"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Alternate Mobile Number</label>
+                    <input
+                      type="tel"
+                      className="w-full border rounded-lg px-3 py-2"
+                      value={form.alternateMobile}
+                      onChange={(e) => setForm(prev => ({ ...prev, alternateMobile: e.target.value }))}
+                      placeholder="+91 9876543210"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp Number</label>
+                    <div className="flex items-center gap-2 mb-2">
+                      <input
+                        type="checkbox"
+                        checked={form.whatsappSameAsMobile}
+                        onChange={(e) => setForm(prev => ({ ...prev, whatsappSameAsMobile: e.target.checked }))}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm text-gray-600">Same as mobile number</span>
+                    </div>
+                    <input
+                      type="tel"
+                      className="w-full border rounded-lg px-3 py-2"
+                      value={form.whatsappNumber}
+                      onChange={(e) => setForm(prev => ({ ...prev, whatsappNumber: e.target.value }))}
+                      placeholder="+91 9876543210"
+                      disabled={form.whatsappSameAsMobile}
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="mb-4">
-              <div className="flex justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">Quizzes Attempted</span>
-                <span className="text-sm font-bold text-gray-900">
-                  {statsLoading ? '...' : stats ? stats.overview?.totalQuizzesAttempted || 0 : 0}
-                </span>
+            )}
+
+            {activeTab === 'address' && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-gray-900">Address Details</h3>
+                
+                {/* Present Address */}
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-semibold text-gray-900 mb-4">Present / Current Address</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">House No / Street</label>
+                      <input
+                        type="text"
+                        className="w-full border rounded-lg px-3 py-2"
+                        value={form.presentHouseNo}
+                        onChange={(e) => setForm(prev => ({ ...prev, presentHouseNo: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Area / Locality</label>
+                      <input
+                        type="text"
+                        className="w-full border rounded-lg px-3 py-2"
+                        value={form.presentArea}
+                        onChange={(e) => setForm(prev => ({ ...prev, presentArea: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">City / Town *</label>
+                      <input
+                        type="text"
+                        className="w-full border rounded-lg px-3 py-2"
+                        value={form.presentCity}
+                        onChange={(e) => setForm(prev => ({ ...prev, presentCity: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">District</label>
+                      <input
+                        type="text"
+                        className="w-full border rounded-lg px-3 py-2"
+                        value={form.presentDistrict}
+                        onChange={(e) => setForm(prev => ({ ...prev, presentDistrict: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">State *</label>
+                      <input
+                        type="text"
+                        className="w-full border rounded-lg px-3 py-2"
+                        value={form.presentState}
+                        onChange={(e) => setForm(prev => ({ ...prev, presentState: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">PIN Code *</label>
+                      <input
+                        type="text"
+                        className="w-full border rounded-lg px-3 py-2"
+                        value={form.presentPinCode}
+                        onChange={(e) => setForm(prev => ({ ...prev, presentPinCode: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Country *</label>
+                      <input
+                        type="text"
+                        className="w-full border rounded-lg px-3 py-2"
+                        value={form.presentCountry}
+                        onChange={(e) => setForm(prev => ({ ...prev, presentCountry: e.target.value }))}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Permanent Address */}
+                <div className="border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <input
+                      type="checkbox"
+                      checked={form.sameAsPresentAddress}
+                      onChange={(e) => setForm(prev => ({ ...prev, sameAsPresentAddress: e.target.checked }))}
+                      className="w-4 h-4"
+                    />
+                    <label className="text-sm font-medium text-gray-700">Same as Present Address</label>
+                  </div>
+                  <h4 className="font-semibold text-gray-900 mb-4">Permanent Address</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">House No / Street</label>
+                      <input
+                        type="text"
+                        className="w-full border rounded-lg px-3 py-2"
+                        value={form.permanentHouseNo}
+                        onChange={(e) => setForm(prev => ({ ...prev, permanentHouseNo: e.target.value }))}
+                        disabled={form.sameAsPresentAddress}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Area / Locality</label>
+                      <input
+                        type="text"
+                        className="w-full border rounded-lg px-3 py-2"
+                        value={form.permanentArea}
+                        onChange={(e) => setForm(prev => ({ ...prev, permanentArea: e.target.value }))}
+                        disabled={form.sameAsPresentAddress}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">City / Town *</label>
+                      <input
+                        type="text"
+                        className="w-full border rounded-lg px-3 py-2"
+                        value={form.permanentCity}
+                        onChange={(e) => setForm(prev => ({ ...prev, permanentCity: e.target.value }))}
+                        disabled={form.sameAsPresentAddress}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">District</label>
+                      <input
+                        type="text"
+                        className="w-full border rounded-lg px-3 py-2"
+                        value={form.permanentDistrict}
+                        onChange={(e) => setForm(prev => ({ ...prev, permanentDistrict: e.target.value }))}
+                        disabled={form.sameAsPresentAddress}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">State *</label>
+                      <input
+                        type="text"
+                        className="w-full border rounded-lg px-3 py-2"
+                        value={form.permanentState}
+                        onChange={(e) => setForm(prev => ({ ...prev, permanentState: e.target.value }))}
+                        disabled={form.sameAsPresentAddress}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">PIN Code *</label>
+                      <input
+                        type="text"
+                        className="w-full border rounded-lg px-3 py-2"
+                        value={form.permanentPinCode}
+                        onChange={(e) => setForm(prev => ({ ...prev, permanentPinCode: e.target.value }))}
+                        disabled={form.sameAsPresentAddress}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Country *</label>
+                      <input
+                        type="text"
+                        className="w-full border rounded-lg px-3 py-2"
+                        value={form.permanentCountry}
+                        onChange={(e) => setForm(prev => ({ ...prev, permanentCountry: e.target.value }))}
+                        disabled={form.sameAsPresentAddress}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div>
-              <div className="flex justify-between">
-                <span className="text-sm font-medium text-gray-700">Available Quizzes</span>
-                <span className="text-sm font-bold text-gray-900">
-                  {statsLoading ? '...' : stats ? stats.overview?.availableQuizzes || 0 : 0}
-                </span>
+            )}
+
+            {activeTab === 'academic' && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-gray-900">Academic / Qualification Details</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Current Qualification *</label>
+                    <select
+                      className="w-full border rounded-lg px-3 py-2"
+                      value={form.currentQualification}
+                      onChange={(e) => setForm(prev => ({ ...prev, currentQualification: e.target.value }))}
+                      required
+                    >
+                      <option value="">Select Qualification</option>
+                      <optgroup label="School">
+                        <option value="school_3">Class 3</option>
+                        <option value="school_4">Class 4</option>
+                        <option value="school_5">Class 5</option>
+                        <option value="school_6">Class 6</option>
+                        <option value="school_7">Class 7</option>
+                        <option value="school_8">Class 8</option>
+                        <option value="school_9">Class 9</option>
+                        <option value="school_10">Class 10</option>
+                      </optgroup>
+                      <optgroup label="Intermediate">
+                        <option value="inter_mpc">MPC</option>
+                        <option value="inter_bipc">BIPC</option>
+                        <option value="inter_cec">CEC</option>
+                        <option value="inter_others">Others</option>
+                      </optgroup>
+                      <optgroup label="Diploma">
+                        <option value="diploma_ece">ECE</option>
+                        <option value="diploma_eee">EEE</option>
+                        <option value="diploma_cse">CSE</option>
+                        <option value="diploma_mech">MECH</option>
+                        <option value="diploma_civil">CIVIL</option>
+                        <option value="diploma_others">Others</option>
+                      </optgroup>
+                      <optgroup label="Undergraduate">
+                        <option value="ug_btech">B.Tech</option>
+                        <option value="ug_bsc">B.Sc</option>
+                        <option value="ug_ba">BA</option>
+                        <option value="ug_bcom">B.COM</option>
+                        <option value="ug_bba">BBA</option>
+                        <option value="ug_others">Others</option>
+                      </optgroup>
+                      <optgroup label="Postgraduate">
+                        <option value="pg_mtech">M.Tech</option>
+                        <option value="pg_msc">M.Sc</option>
+                        <option value="pg_ma">MA</option>
+                        <option value="pg_mcom">M.COM</option>
+                        <option value="pg_mba">MBA</option>
+                        <option value="pg_others">Others</option>
+                      </optgroup>
+                      <option value="phd">PhD</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">School/College/Institution Name *</label>
+                    <input
+                      type="text"
+                      className="w-full border rounded-lg px-3 py-2"
+                      value={form.institutionName}
+                      onChange={(e) => setForm(prev => ({ ...prev, institutionName: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">University</label>
+                    <input
+                      type="text"
+                      className="w-full border rounded-lg px-3 py-2"
+                      value={form.university}
+                      onChange={(e) => setForm(prev => ({ ...prev, university: e.target.value }))}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Year of Study</label>
+                    <select
+                      className="w-full border rounded-lg px-3 py-2"
+                      value={form.yearOfStudy}
+                      onChange={(e) => setForm(prev => ({ ...prev, yearOfStudy: e.target.value }))}
+                    >
+                      <option value="">Select Year</option>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(year => (
+                        <option key={year} value={year.toString()}>{year}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Expected Passing Year</label>
+                    <input
+                      type="number"
+                      className="w-full border rounded-lg px-3 py-2"
+                      value={form.expectedPassingYear}
+                      onChange={(e) => setForm(prev => ({ ...prev, expectedPassingYear: e.target.value }))}
+                      min="1900"
+                      max="2100"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Grade Type</label>
+                    <select
+                      className="w-full border rounded-lg px-3 py-2"
+                      value={form.gradeType}
+                      onChange={(e) => setForm(prev => ({ ...prev, gradeType: e.target.value }))}
+                    >
+                      <option value="percentage">Percentage</option>
+                      <option value="cgpa">CGPA</option>
+                    </select>
+                  </div>
+                  
+                  {form.gradeType === 'percentage' ? (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Percentage</label>
+                      <input
+                        type="number"
+                        className="w-full border rounded-lg px-3 py-2"
+                        value={form.percentage}
+                        onChange={(e) => setForm(prev => ({ ...prev, percentage: e.target.value }))}
+                        min="0"
+                        max="100"
+                        step="0.01"
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">CGPA</label>
+                      <input
+                        type="number"
+                        className="w-full border rounded-lg px-3 py-2"
+                        value={form.cgpa}
+                        onChange={(e) => setForm(prev => ({ ...prev, cgpa: e.target.value }))}
+                        min="0"
+                        max="10"
+                        step="0.01"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
+
+            {activeTab === 'courses' && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-gray-900">Select Courses for Practice</h3>
+                <p className="text-sm text-gray-600">Select the courses you want to practice. Quizzes will be shown based on your selections.</p>
+                
+                <div className="space-y-6 max-h-[600px] overflow-y-auto">
+                  {Object.entries(courseCategories).map(([category, options]) => (
+                    <div key={category} className="border rounded-lg p-4">
+                      <h4 className="font-semibold text-gray-900 mb-3">{category}</h4>
+                      {Array.isArray(options) ? (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                          {options.map((option) => {
+                            const courseId = `${category}_${option}`;
+                            return (
+                              <label key={courseId} className="flex items-center gap-2 p-2 border rounded cursor-pointer hover:bg-gray-50">
+                                <input
+                                  type="checkbox"
+                                  checked={form.selectedCourses.includes(courseId)}
+                                  onChange={() => toggleCourse(courseId)}
+                                  className="w-4 h-4 text-purple-600"
+                                />
+                                <span className="text-sm text-gray-700">{option}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        Object.entries(options).map(([subCategory, subOptions]) => (
+                          <div key={subCategory} className="mb-4">
+                            <h5 className="font-medium text-gray-800 mb-2">{subCategory}</h5>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                              {(subOptions as string[]).map((option) => {
+                                const courseId = `${category}_${subCategory}_${option}`;
+                                return (
+                                  <label key={courseId} className="flex items-center gap-2 p-2 border rounded cursor-pointer hover:bg-gray-50">
+                                    <input
+                                      type="checkbox"
+                                      checked={form.selectedCourses.includes(courseId)}
+                                      onChange={() => toggleCourse(courseId)}
+                                      className="w-4 h-4 text-purple-600"
+                                    />
+                                    <span className="text-sm text-gray-700">{option}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <p className="text-sm text-purple-800">
+                    <strong>Selected Courses:</strong> {form.selectedCourses.length} course(s) selected
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Save Button */}
+        <div className="flex justify-end gap-3 mt-6">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 font-medium"
+          >
+            {saving ? 'Saving...' : 'Save Profile'}
+          </button>
+        </div>
+
+        {error && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
+            {success}
+          </div>
+        )}
       </div>
     </div>
   );
 }
-

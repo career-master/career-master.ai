@@ -292,6 +292,7 @@ class QuizAttemptService {
 
       const now = new Date();
       const userBatches = user.batches || [];
+      const userSelectedCourses = user.profile?.selectedCourses || [];
 
       // Get all active quizzes
       const allQuizzes = await QuizRepository.getAllQuizzes(true);
@@ -314,6 +315,18 @@ class QuizAttemptService {
         // Check date range
         if (quiz.availableFrom && now < quiz.availableFrom) return false;
         if (quiz.availableTo && now > quiz.availableTo) return false;
+
+        // Filter by course categories if user has selected courses
+        if (userSelectedCourses && userSelectedCourses.length > 0) {
+          const quizCourseCategories = quiz.courseCategories || [];
+          // Show quiz if it has no course categories (available to all) OR matches user's selected courses
+          if (quizCourseCategories.length > 0) {
+            const hasMatchingCourse = quizCourseCategories.some(cat => userSelectedCourses.includes(cat));
+            if (!hasMatchingCourse) {
+              return false; // Quiz doesn't match user's selected courses
+            }
+          }
+        }
 
         // Check if available to everyone
         if (quiz.availableToEveryone) return true;
