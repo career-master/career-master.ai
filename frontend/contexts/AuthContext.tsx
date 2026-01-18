@@ -197,7 +197,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
       if (!googleClientId) {
-        throw new Error('Google Client ID is not configured. Please set NEXT_PUBLIC_GOOGLE_CLIENT_ID in your environment variables.');
+        console.warn('Google Client ID is not configured. Google sign in will not be available. Please set NEXT_PUBLIC_GOOGLE_CLIENT_ID in your environment variables.');
+        throw new Error('Google sign in is not available. Please configure NEXT_PUBLIC_GOOGLE_CLIENT_ID in your environment variables.');
       }
 
       // Load Google Identity Services
