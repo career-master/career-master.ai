@@ -112,6 +112,14 @@ body {
     animation: scroll-reverse 30s linear infinite;
   }
 
+  .animate-scroll-slow {
+    animation: scroll 40s linear infinite;
+  }
+
+  .animate-scroll-slow:hover {
+    animation-play-state: paused;
+  }
+
   /* Glossy effect */
   .glossy {
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));

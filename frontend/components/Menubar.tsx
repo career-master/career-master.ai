@@ -86,7 +86,8 @@ export default function Menubar() {
   ];
 
   return (
-    <nav className="w-full bg-gradient-to-r from-orange-500 to-orange-600 shadow-lg sticky top-0 z-50 backdrop-blur-sm bg-opacity-95 glossy">
+    <nav className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 shadow-lg sticky top-0 z-50 backdrop-blur-sm bg-opacity-95 glossy">
+      <nav className="w-full bg-cyan-800 shadow-lg sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Left: Logo */}
@@ -100,15 +101,9 @@ export default function Menubar() {
           {/* Center: Navigation Links */}
           <div className="hidden lg:flex items-center space-x-6">
             {/* About Us Dropdown */}
-            <div className="relative" ref={aboutRef}>
+            <div className="relative" ref={aboutRef} onMouseEnter={() => { setAboutOpen(true); setTestByClassOpen(false); setTestByDomainOpen(false); setTypeOfTestOpen(false); }} onMouseLeave={() => setAboutOpen(false)}>
               <button
-                onClick={() => {
-                  setAboutOpen(!aboutOpen);
-                  setTestByClassOpen(false);
-                  setTestByDomainOpen(false);
-                  setTypeOfTestOpen(false);
-                }}
-                className="text-white font-medium hover:text-orange-100 transition-colors flex items-center"
+                className="text-white font-medium hover:text-blue-100 transition-colors flex items-center"
               >
                 About us
                 <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -121,7 +116,7 @@ export default function Menubar() {
                     <Link
                       key={idx}
                       href={option.href}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-indigo-600 transition-colors"
                       onClick={() => setAboutOpen(false)}
                     >
                       {option.label}
@@ -131,20 +126,14 @@ export default function Menubar() {
               )}
             </div>
 
-            <Link href="#features" className="text-white font-medium hover:text-orange-100 transition-colors">
+            <Link href="#features" className="text-white font-medium hover:text-blue-100 transition-colors">
               Features
             </Link>
 
             {/* Test by Class Dropdown */}
-            <div className="relative" ref={testByClassRef}>
+            <div className="relative" ref={testByClassRef} onMouseEnter={() => { setTestByClassOpen(true); setAboutOpen(false); setTestByDomainOpen(false); setTypeOfTestOpen(false); }} onMouseLeave={() => setTestByClassOpen(false)}>
               <button
-                onClick={() => {
-                  setTestByClassOpen(!testByClassOpen);
-                  setAboutOpen(false);
-                  setTestByDomainOpen(false);
-                  setTypeOfTestOpen(false);
-                }}
-                className="text-white font-medium hover:text-orange-100 transition-colors flex items-center"
+                className="text-white font-medium hover:text-blue-100 transition-colors flex items-center"
               >
                 Test by class
                 <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -157,7 +146,7 @@ export default function Menubar() {
                     <Link
                       key={idx}
                       href={option.href}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-indigo-600 transition-colors"
                       onClick={() => setTestByClassOpen(false)}
                     >
                       {option.label}
@@ -168,15 +157,9 @@ export default function Menubar() {
             </div>
 
             {/* Test by Domain Dropdown */}
-            <div className="relative" ref={testByDomainRef}>
+            <div className="relative" ref={testByDomainRef} onMouseEnter={() => { setTestByDomainOpen(true); setAboutOpen(false); setTestByClassOpen(false); setTypeOfTestOpen(false); }} onMouseLeave={() => setTestByDomainOpen(false)}>
               <button
-                onClick={() => {
-                  setTestByDomainOpen(!testByDomainOpen);
-                  setAboutOpen(false);
-                  setTestByClassOpen(false);
-                  setTypeOfTestOpen(false);
-                }}
-                className="text-white font-medium hover:text-orange-100 transition-colors flex items-center"
+                className="text-white font-medium hover:text-blue-100 transition-colors flex items-center"
               >
                 Test by Domain
                 <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -189,7 +172,7 @@ export default function Menubar() {
                     <Link
                       key={idx}
                       href={option.href}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-indigo-600 transition-colors"
                       onClick={() => setTestByDomainOpen(false)}
                     >
                       {option.label}
@@ -200,15 +183,9 @@ export default function Menubar() {
             </div>
 
             {/* Type of Test Dropdown */}
-            <div className="relative" ref={typeOfTestRef}>
+            <div className="relative" ref={typeOfTestRef} onMouseEnter={() => { setTypeOfTestOpen(true); setAboutOpen(false); setTestByClassOpen(false); setTestByDomainOpen(false); }} onMouseLeave={() => setTypeOfTestOpen(false)}>
               <button
-                onClick={() => {
-                  setTypeOfTestOpen(!typeOfTestOpen);
-                  setAboutOpen(false);
-                  setTestByClassOpen(false);
-                  setTestByDomainOpen(false);
-                }}
-                className="text-white font-medium hover:text-orange-100 transition-colors flex items-center"
+                className="text-white font-medium hover:text-blue-100 transition-colors flex items-center"
               >
                 Type of Test
                 <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -221,7 +198,7 @@ export default function Menubar() {
                     <Link
                       key={idx}
                       href={option.href}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-indigo-600 transition-colors"
                       onClick={() => setTypeOfTestOpen(false)}
                     >
                       {option.label}
@@ -231,7 +208,7 @@ export default function Menubar() {
               )}
             </div>
 
-            <Link href="#pricing" className="text-white font-medium hover:text-orange-100 transition-colors">
+            <Link href="#pricing" className="text-white font-medium hover:text-blue-100 transition-colors">
               Pricing Table
             </Link>
           </div>
@@ -241,7 +218,7 @@ export default function Menubar() {
             {/* Dark Mode Toggle */}
             <button
               onClick={toggleDarkMode}
-              className="p-2 rounded-lg text-white hover:bg-orange-700 transition-colors"
+              className="p-2 rounded-lg text-white hover:bg-blue-800 transition-colors"
               aria-label="Toggle dark mode"
             >
               {isDarkMode ? (
@@ -258,7 +235,7 @@ export default function Menubar() {
             {isAuthenticated ? (
               <Link
                 href="/dashboard"
-                className="px-4 py-2 bg-white text-orange-600 font-medium rounded-lg hover:bg-orange-50 transition-colors"
+                className="px-4 py-2 bg-white text-indigo-600 font-medium rounded-lg hover:bg-blue-50 transition-colors"
               >
                 Dashboard
               </Link>
@@ -266,13 +243,13 @@ export default function Menubar() {
               <div className="flex items-center space-x-2">
                 <Link
                   href="/login"
-                  className="px-4 py-2 text-white font-medium hover:text-orange-100 transition-colors"
+                  className="px-4 py-2 text-white font-medium hover:text-blue-100 transition-colors"
                 >
                   Login
                 </Link>
                 <Link
                   href="/signup"
-                  className="px-4 py-2 bg-white text-orange-600 font-medium rounded-lg hover:bg-orange-50 transition-colors"
+                  className="px-4 py-2 bg-white text-indigo-600 font-medium rounded-lg hover:bg-blue-50 transition-colors"
                 >
                   Register
                 </Link>
@@ -282,7 +259,7 @@ export default function Menubar() {
             {/* Mobile menu button */}
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="lg:hidden p-2 rounded-lg text-white hover:bg-orange-700 transition-colors"
+              className="lg:hidden p-2 rounded-lg text-white hover:bg-blue-800 transition-colors"
             >
               {isOpen ? (
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -300,12 +277,12 @@ export default function Menubar() {
 
       {/* Mobile menu */}
       {isOpen && (
-        <div className="lg:hidden bg-orange-600 border-t border-orange-700">
+        <div className="lg:hidden bg-indigo-700 border-t border-indigo-800">
           <div className="px-4 py-4 space-y-2">
             <Link href="#about" className="block text-white font-medium py-2">About us</Link>
             <Link href="#features" className="block text-white font-medium py-2">Features</Link>
             <Link href="#pricing" className="block text-white font-medium py-2">Pricing Table</Link>
-            <div className="pt-2 border-t border-orange-700">
+            <div className="pt-2 border-t border-indigo-800">
               {isAuthenticated ? (
                 <Link href="/dashboard" className="block text-white font-medium py-2">Dashboard</Link>
               ) : (
@@ -318,6 +295,7 @@ export default function Menubar() {
           </div>
         </div>
       )}
+    </nav>
     </nav>
   );
 }

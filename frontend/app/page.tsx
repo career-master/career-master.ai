@@ -117,7 +117,7 @@ export default function Home() {
 
           <div className="grid md:grid-cols-3 gap-8">
             {/* Vision */}
-            <div id="vision" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg">
+            <div id="vision" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg hover:scale-105 transition-transform cursor-pointer">
               <h3 className="text-2xl font-bold mb-4 text-orange-600 dark:text-orange-400">Vision</h3>
               <p className="text-gray-700 dark:text-gray-300">
                 To become the leading platform for comprehensive education and career development, empowering learners
@@ -126,7 +126,7 @@ export default function Home() {
             </div>
 
             {/* Mission */}
-            <div id="mission" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg">
+            <div id="mission" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg hover:scale-105 transition-transform cursor-pointer">
               <h3 className="text-2xl font-bold mb-4 text-orange-600 dark:text-orange-400">Mission</h3>
               <p className="text-gray-700 dark:text-gray-300">
                 To provide accessible, high-quality educational resources and assessments that help students achieve
@@ -135,7 +135,7 @@ export default function Home() {
             </div>
 
             {/* Why We? */}
-            <div id="why-we" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg">
+            <div id="why-we" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg hover:scale-105 transition-transform cursor-pointer">
               <h3 className="text-2xl font-bold mb-4 text-orange-600 dark:text-orange-400">Why We?</h3>
               <p className="text-gray-700 dark:text-gray-300">
                 We combine cutting-edge technology with expert-curated content to deliver personalized learning
@@ -211,7 +211,7 @@ export default function Home() {
                 icon: '🏆',
               },
             ].map((feature, index) => (
-              <div key={index} className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+              <div key={index} className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg shadow-lg hover:scale-105 transition-transform cursor-pointer">
                 <div className="text-4xl mb-4">{feature.icon}</div>
                 <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">{feature.title}</h3>
                 <p className="text-gray-700 dark:text-gray-300">{feature.description}</p>
@@ -240,7 +240,7 @@ export default function Home() {
               'Working Professionals',
               'Career Changers',
             ].map((category, index) => (
-              <div key={index} className="bg-white dark:bg-gray-700 p-4 rounded-lg shadow-md text-center">
+              <div key={index} className="bg-white dark:bg-gray-700 p-4 rounded-lg shadow-md text-center hover:scale-105 transition-transform cursor-pointer">
                 <div className="text-3xl mb-2">🎓</div>
                 <h3 className="font-bold text-gray-900 dark:text-white">{category}</h3>
               </div>
@@ -297,7 +297,7 @@ export default function Home() {
 
           <div className="grid md:grid-cols-3 gap-8">
             {[1, 2, 3].map((cert, index) => (
-              <div key={index} className="bg-white dark:bg-gray-700 p-8 rounded-lg shadow-lg text-center">
+              <div key={index} className="bg-white dark:bg-gray-700 p-8 rounded-lg shadow-lg text-center hover:scale-105 transition-transform cursor-pointer">
                 <div className="text-6xl mb-4">🏆</div>
                 <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">Certificate {cert}</h3>
                 <p className="text-gray-700 dark:text-gray-300">
@@ -379,18 +379,20 @@ export default function Home() {
       </section>
 
       {/* Clients Section */}
-      <section id="clients" className="py-20 bg-gray-50 dark:bg-gray-800">
+      <section id="clients" className="py-20 bg-gray-50 dark:bg-gray-800 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">Our Clients</h2>
             <div className="w-24 h-1 bg-orange-500 mx-auto"></div>
           </div>
+        </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8">
-            {[1, 2, 3, 4, 5, 6].map((client, index) => (
+        <div className="flex animate-scroll-slow">
+          <div className="flex space-x-8 px-4">
+            {[1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6].map((client, index) => (
               <div
                 key={index}
-                className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md flex items-center justify-center h-24"
+                className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md flex items-center justify-center h-24 min-w-[200px]"
               >
                 <div className="text-2xl font-bold text-gray-400">Client {client}</div>
               </div>
@@ -475,7 +477,7 @@ export default function Home() {
                 image: '👨‍🔬',
               },
             ].map((story, index) => (
-              <div key={index} className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg">
+              <div key={index} className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg hover:scale-105 transition-transform cursor-pointer">
                 <div className="text-5xl mb-4 text-center">{story.image}</div>
                 <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">{story.name}</h3>
                 <p className="text-orange-600 dark:text-orange-400 mb-3">{story.role}</p>
