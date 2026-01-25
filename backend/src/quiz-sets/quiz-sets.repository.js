@@ -82,6 +82,21 @@ class QuizSetRepository {
   }
 
   /**
+   * Get quiz sets by quiz ID (for admin edit form: which topic is this quiz linked to)
+   * @param {string} quizId
+   * @returns {Promise<Array>}
+   */
+  static async getQuizSetsByQuizId(quizId) {
+    try {
+      return await QuizSet.find({ quizId })
+        .populate('topicId')
+        .sort({ order: 1 });
+    } catch (error) {
+      throw new ErrorHandler(500, `Error fetching quiz sets: ${error.message}`);
+    }
+  }
+
+  /**
    * Delete quiz set
    * @param {string} quizSetId
    * @returns {Promise<void>}

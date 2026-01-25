@@ -32,7 +32,7 @@ class TopicController {
    * List all topics (optionally filtered by subjectId)
    */
   static getTopics = asyncHandler(async (req, res) => {
-    const { subjectId, isActive } = req.query;
+    const { subjectId, isActive, parentTopicId } = req.query;
     
     let topics;
     if (subjectId) {
@@ -40,11 +40,28 @@ class TopicController {
       if (isActive !== undefined) {
         filter.isActive = isActive === 'true' || isActive === true;
       }
+      // parentTopicId: 'roots' or 'null' or '' => only root topics (no parent)
+      if (parentTopicId === 'roots' || parentTopicId === 'null' || parentTopicId === '') {
+        filter.$or = [
+          { parentTopicId: null },
+          { parentTopicId: { $exists: false } }
+        ];
+      } else if (parentTopicId) {
+        filter.parentTopicId = parentTopicId;
+      }
       topics = await TopicService.getTopicsBySubjectId(subjectId, filter);
     } else {
       const filter = {};
       if (isActive !== undefined) {
         filter.isActive = isActive === 'true' || isActive === true;
+      }
+      if (parentTopicId === 'roots' || parentTopicId === 'null' || parentTopicId === '') {
+        filter.$or = [
+          { parentTopicId: null },
+          { parentTopicId: { $exists: false } }
+        ];
+      } else if (parentTopicId) {
+        filter.parentTopicId = parentTopicId;
       }
       topics = await TopicService.getTopics(filter);
     }

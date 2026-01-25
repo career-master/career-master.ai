@@ -90,6 +90,14 @@ class QuizSetService {
   }
 
   /**
+   * Get quiz sets by quiz ID (for admin: which topic(s) this quiz is linked to)
+   * @param {string} quizId
+   */
+  static async getQuizSetsByQuizId(quizId) {
+    return await QuizSetRepository.getQuizSetsByQuizId(quizId);
+  }
+
+  /**
    * Delete quiz set
    * @param {string} quizSetId
    */

@@ -236,6 +236,43 @@ const QUESTION_BANK = {
       difficulty: 'medium'
     }
   ],
+
+  // MongoDB sub-topics (for "MONGODB - Intro", "MONGODB - CRUD Operations", etc.)
+  'MONGODB_INTRO': [
+    { question: 'What is a document in MongoDB?', options: ['A row', 'A BSON (JSON-like) record in a collection', 'A table', 'A database'], correct: 1, difficulty: 'easy' },
+    { question: 'What is the default _id type in MongoDB?', options: ['Integer', 'ObjectId', 'String', 'UUID'], correct: 1, difficulty: 'easy' },
+    { question: 'What does BSON stand for?', options: ['Binary SQL', 'Binary JSON', 'Basic Object Notation', 'Big String Object Notation'], correct: 1, difficulty: 'medium' },
+    { question: 'Which shell is used to interact with MongoDB?', options: ['mongo', 'mongosh or mongo', 'mongocli', 'mdb'], correct: 1, difficulty: 'easy' },
+    { question: 'What is a database in MongoDB?', options: ['A single table', 'A container for collections', 'A single document', 'A schema'], correct: 1, difficulty: 'easy' }
+  ],
+  'MONGODB_CRUD_OPERATIONS': [
+    { question: 'Which method inserts a single document?', options: ['insert()', 'insertOne()', 'addOne()', 'create()'], correct: 1, difficulty: 'easy' },
+    { question: 'What does find() with empty filter return?', options: ['Nothing', 'All documents in the collection', 'First document only', 'Error'], correct: 1, difficulty: 'easy' },
+    { question: 'Which operator is used to set a field value in update?', options: ['$set', '$put', '$update', '$value'], correct: 0, difficulty: 'easy' },
+    { question: 'What does deleteMany({}) do?', options: ['Deletes one document', 'Deletes all documents in the collection', 'Deletes the collection', 'Throws error'], correct: 1, difficulty: 'medium' },
+    { question: 'Which method is used to replace a document?', options: ['replaceOne()', 'updateOne() with $set', 'replace()', 'Both replaceOne() and updateOne() with replacement doc'], correct: 3, difficulty: 'medium' }
+  ],
+  'MONGODB_AGGREGATION': [
+    { question: 'What is an aggregation pipeline?', options: ['A single operation', 'A sequence of stages that process documents', 'A type of index', 'A replication config'], correct: 1, difficulty: 'medium' },
+    { question: 'What does the $match stage do?', options: ['Joins collections', 'Filters documents', 'Groups documents', 'Sorts documents'], correct: 1, difficulty: 'easy' },
+    { question: 'What does $group do?', options: ['Filters', 'Groups documents by an expression and computes aggregates', 'Sorts', 'Limits'], correct: 1, difficulty: 'medium' },
+    { question: 'Which stage projects or reshapes fields?', options: ['$match', '$project', '$select', '$fields'], correct: 1, difficulty: 'easy' },
+    { question: 'What does $lookup do?', options: ['Filters', 'Performs a left outer join to another collection', 'Sorts', 'Groups'], correct: 1, difficulty: 'medium' }
+  ],
+  'MONGODB_INDEXES': [
+    { question: 'What is the main purpose of an index in MongoDB?', options: ['To store more data', 'To speed up queries', 'To replace collections', 'To encrypt data'], correct: 1, difficulty: 'easy' },
+    { question: 'Which method creates an index?', options: ['createIndex()', 'addIndex()', 'makeIndex()', 'index()'], correct: 0, difficulty: 'easy' },
+    { question: 'What is a compound index?', options: ['An index on one field', 'An index on multiple fields', 'A hashed index', 'A text index'], correct: 1, difficulty: 'medium' },
+    { question: 'What does a unique index enforce?', options: ['Speed', 'No duplicate values for the indexed key(s)', 'Encryption', 'Sharding'], correct: 1, difficulty: 'easy' },
+    { question: 'Which index type supports text search?', options: ['single', 'text', 'string', 'search'], correct: 1, difficulty: 'easy' }
+  ],
+  'MONGODB_DATA_MODELING': [
+    { question: 'What is embedded document design?', options: ['Storing related data in separate collections', 'Storing related data inside a single document', 'Using only _id', 'Normalized tables'], correct: 1, difficulty: 'medium' },
+    { question: 'When is a reference (manual or DBRef) preferred?', options: ['For one-to-one only', 'When sub-documents are large or shared across many docs', 'Never in MongoDB', 'For embedded only'], correct: 1, difficulty: 'medium' },
+    { question: 'What is a common one-to-many pattern in MongoDB?', options: ['Multiple collections only', 'Array of sub-documents or array of ObjectIds', 'Single flat document', 'No pattern'], correct: 1, difficulty: 'medium' },
+    { question: 'What does schema flexibility in MongoDB allow?', options: ['No flexibility', 'Documents in a collection to have different fields', 'Only one schema per DB', 'Strict SQL-like schema'], correct: 1, difficulty: 'easy' },
+    { question: 'What is denormalization in MongoDB modeling?', options: ['Splitting into more collections', 'Duplicating data across documents to reduce lookups', 'Using only _id', 'Avoiding indexes'], correct: 1, difficulty: 'medium' }
+  ],
   
   'MYSQL': [
     {
@@ -808,6 +845,279 @@ const QUESTION_BANK = {
       difficulty: 'medium'
     }
   ],
+
+  // Programming Languages - C#, GO, RUST
+  'C#': [
+    { question: 'What is C# primarily used for?', options: ['Web only', 'Microsoft ecosystem: desktop, web, and mobile apps', 'Database only', 'Games only'], correct: 1, difficulty: 'easy' },
+    { question: 'What is the correct extension for a C# file?', options: ['.cs', '.csharp', '.c#', '.csp'], correct: 0, difficulty: 'easy' },
+    { question: 'What is LINQ in C#?', options: ['A database', 'Language Integrated Query for querying collections', 'A GUI framework', 'A testing tool'], correct: 1, difficulty: 'medium' },
+    { question: 'What is the base class of all types in C#?', options: ['Object', 'Base', 'Type', 'Root'], correct: 0, difficulty: 'medium' },
+    { question: 'What does the async/await keywords do in C#?', options: ['Synchronous execution', 'Asynchronous, non-blocking operations', 'Thread creation', 'Process spawning'], correct: 1, difficulty: 'hard' }
+  ],
+  'GO': [
+    { question: 'Who created the Go programming language?', options: ['Microsoft', 'Google', 'Apple', 'Facebook'], correct: 1, difficulty: 'easy' },
+    { question: 'What is a goroutine in Go?', options: ['A class', 'A lightweight thread for concurrency', 'A variable type', 'A package'], correct: 1, difficulty: 'easy' },
+    { question: 'What is the purpose of the go keyword?', options: ['Define a function', 'Start a new goroutine', 'Import a package', 'Return a value'], correct: 1, difficulty: 'medium' },
+    { question: 'What does defer do in Go?', options: ['Import', 'Delay execution until the surrounding function returns', 'Delete', 'Define'], correct: 1, difficulty: 'medium' },
+    { question: 'What is the correct way to declare a variable in Go?', options: ['var x int = 5', 'x := 5', 'Both var x int = 5 and x := 5', 'int x = 5'], correct: 2, difficulty: 'easy' }
+  ],
+  'RUST': [
+    { question: 'What is Rust best known for?', options: ['Ease of use', 'Memory safety without garbage collection', 'Slow speed', 'Dynamic typing'], correct: 1, difficulty: 'easy' },
+    { question: 'What is ownership in Rust?', options: ['A library', 'A rule that each value has a single owner', 'A type', 'A function'], correct: 1, difficulty: 'medium' },
+    { question: 'What does the borrow checker do in Rust?', options: ['Checks syntax', 'Ensures references follow borrowing rules at compile time', 'Runs tests', 'Manages memory at runtime'], correct: 1, difficulty: 'hard' },
+    { question: 'What is Cargo in Rust?', options: ['A language', 'Package manager and build system', 'A database', 'A framework'], correct: 1, difficulty: 'easy' },
+    { question: 'What keyword is used to make a variable mutable in Rust?', options: ['var', 'mut', 'mutable', 'change'], correct: 1, difficulty: 'easy' }
+  ],
+
+  // C sub-topics (for "C - Intro", "C - Data Types", etc. - keys: C_INTRO, C_DATA_TYPES, ...)
+  'C_INTRO': [
+    { question: 'What is the entry point of a C program?', options: ['start()', 'main()', 'begin()', 'run()'], correct: 1, difficulty: 'easy' },
+    { question: 'Which header is needed for printf in C?', options: ['<iostream>', '<stdio.h>', '<console.h>', '<print.h>'], correct: 1, difficulty: 'easy' },
+    { question: 'What does \\n represent in C?', options: ['New variable', 'Newline character', 'Number', 'Nothing'], correct: 1, difficulty: 'easy' },
+    { question: 'What is the smallest unit of execution in C?', options: ['Block', 'Statement', 'Expression', 'All of these'], correct: 1, difficulty: 'medium' },
+    { question: 'How do you add a single-line comment in C?', options: ['//', '/* */', '--', 'Both // and /* */ in C99'], correct: 3, difficulty: 'easy' }
+  ],
+  'C_DATA_TYPES': [
+    { question: 'Which is a valid basic data type in C?', options: ['int', 'string', 'bool', 'float and int'], correct: 3, difficulty: 'easy' },
+    { question: 'What is the size of char in C?', options: ['1 byte', '2 bytes', '4 bytes', 'Depends on system'], correct: 0, difficulty: 'easy' },
+    { question: 'What does "unsigned" mean for an integer?', options: ['No sign', 'Only positive or zero', 'No negative numbers', 'Both B and C'], correct: 3, difficulty: 'medium' },
+    { question: 'Which is used to store decimal numbers in C?', options: ['int', 'float or double', 'decimal', 'number'], correct: 1, difficulty: 'easy' },
+    { question: 'What is the range of values for a signed int?', options: ['0 to 65535', 'About -2.1e9 to 2.1e9 on 32-bit', '0 to 4.2e9', 'Unlimited'], correct: 1, difficulty: 'medium' }
+  ],
+  'C_OPERATORS': [
+    { question: 'What does the % operator do in C?', options: ['Percentage', 'Modulus (remainder)', 'Multiply', 'Divide'], correct: 1, difficulty: 'easy' },
+    { question: 'What is i++?', options: ['Add 2', 'Increment i by 1', 'Square i', 'Double i'], correct: 1, difficulty: 'easy' },
+    { question: 'What does == compare?', options: ['Assignment', 'Equality', 'Approximation', 'Range'], correct: 1, difficulty: 'easy' },
+    { question: 'What is the result of 5 / 2 in C when both are int?', options: ['2.5', '2', '3', '2.0'], correct: 1, difficulty: 'medium' },
+    { question: 'What does the && operator do?', options: ['Bitwise AND', 'Logical AND', 'Address of', 'Both A and B'], correct: 1, difficulty: 'easy' }
+  ],
+  'C_CONTROL_FLOW': [
+    { question: 'Which keyword starts an if statement?', options: ['when', 'if', 'check', 'test'], correct: 1, difficulty: 'easy' },
+    { question: 'What does a for loop need?', options: ['Only condition', 'Init, condition, and update', 'Only init', 'Only update'], correct: 1, difficulty: 'easy' },
+    { question: 'What does break do in a loop?', options: ['Pause', 'Exit the loop immediately', 'Skip one iteration', 'Reset'], correct: 1, difficulty: 'easy' },
+    { question: 'What does continue do in a loop?', options: ['Exit the loop', 'Skip to the next iteration', 'Stop the program', 'Restart the loop'], correct: 1, difficulty: 'medium' },
+    { question: 'Which is the conditional (ternary) operator?', options: ['? :', 'if-else', '&&', '||'], correct: 0, difficulty: 'medium' }
+  ],
+  'C_FUNCTIONS': [
+    { question: 'What does a function return type of "void" mean?', options: ['Returns 0', 'Returns nothing', 'Returns null', 'Returns void'], correct: 1, difficulty: 'easy' },
+    { question: 'How are arguments passed to functions in C by default?', options: ['By reference', 'By value', 'By pointer', 'By name'], correct: 1, difficulty: 'medium' },
+    { question: 'What is a function prototype?', options: ['The function body', 'A declaration of the function before its definition', 'A pointer', 'A macro'], correct: 1, difficulty: 'medium' },
+    { question: 'Can a C function return more than one value directly?', options: ['Yes, always', 'No, use pointers or structs for multiple', 'Yes, with arrays only', 'Only in C99'], correct: 1, difficulty: 'hard' },
+    { question: 'What is recursion?', options: ['A loop', 'A function calling itself', 'A variable', 'A type'], correct: 1, difficulty: 'easy' }
+  ],
+  'C_POINTERS': [
+    { question: 'What does &variable give you?', options: ['Value', 'Address of variable', 'Copy', 'Reference'], correct: 1, difficulty: 'easy' },
+    { question: 'What does *ptr do when used as an expression?', options: ['Multiply', 'Dereference - get value at address', 'Define', 'Pointer type'], correct: 1, difficulty: 'easy' },
+    { question: 'What is a null pointer?', options: ['Pointer to 0', 'Pointer that does not point to valid memory', 'Uninitialized', 'Void pointer'], correct: 1, difficulty: 'medium' },
+    { question: 'What is the purpose of free()?', options: ['Allocate', 'Deallocate memory from malloc', 'Clear variable', 'Reset pointer'], correct: 1, difficulty: 'easy' },
+    { question: 'What is a void pointer (void *)?', options: ['Invalid', 'A generic pointer that can point to any type', 'Empty', 'Null'], correct: 1, difficulty: 'medium' }
+  ],
+  'C_ARRAYS_STRINGS': [
+    { question: 'How do you declare an array of 10 integers in C?', options: ['int array[10];', 'array int[10];', 'int[10] array;', 'integer array(10);'], correct: 0, difficulty: 'easy' },
+    { question: 'What is the index of the first element in a C array?', options: ['1', '0', '-1', 'depends'], correct: 1, difficulty: 'easy' },
+    { question: 'How is a string stored in C?', options: ['String type', 'Array of char ending with \\0', 'Object', 'List'], correct: 1, difficulty: 'easy' },
+    { question: 'Which function copies a string in C?', options: ['strcopy', 'strcpy', 'copy', 'string_copy'], correct: 1, difficulty: 'medium' },
+    { question: 'What does strlen return?', options: ['Size in bytes', 'Length of string excluding \\0', 'Capacity', 'Index'], correct: 1, difficulty: 'easy' }
+  ],
+
+  // Full Stack - BOOTSTRAP, TAILWIND, TYPESCRIPT, DART, ANGULAR, VUEJS, SPRING BOOT, DJANGO, FLASK, ASP.NET, MATERIAL UI, CHAKRA UI, SASS
+  'BOOTSTRAP': [
+    { question: 'What is Bootstrap?', options: ['A programming language', 'A CSS framework for responsive web design', 'A database', 'A server'], correct: 1, difficulty: 'easy' },
+    { question: 'What is the Bootstrap grid system based on?', options: ['Tables', '12 columns', 'Fixed width', 'No grid'], correct: 1, difficulty: 'easy' },
+    { question: 'Which class makes a Bootstrap button blue?', options: ['btn-blue', 'btn-primary', 'btn-info', 'Both btn-primary and btn-info'], correct: 3, difficulty: 'easy' },
+    { question: 'What does the Bootstrap class "container-fluid" do?', options: ['Fixed width', 'Full-width container', 'Hides content', 'Adds padding only'], correct: 1, difficulty: 'medium' },
+    { question: 'What is the purpose of data-bs-toggle in Bootstrap 5?', options: ['Styling', 'Enabling JavaScript components like modals and dropdowns', 'Database', 'Routing'], correct: 1, difficulty: 'medium' }
+  ],
+  'TAILWIND': [
+    { question: 'What is Tailwind CSS?', options: ['A JS framework', 'A utility-first CSS framework', 'A database', 'A backend tool'], correct: 1, difficulty: 'easy' },
+    { question: 'How does Tailwind primarily style elements?', options: ['External CSS files', 'Utility classes in HTML', 'Inline styles only', 'Sass files'], correct: 1, difficulty: 'easy' },
+    { question: 'What does the class "flex" do in Tailwind?', options: ['Hide element', 'Display flex', 'Fixed position', 'Float'], correct: 1, difficulty: 'easy' },
+    { question: 'What is the purpose of @apply in Tailwind?', options: ['Import', 'Apply utility classes inside CSS', 'Extend', 'Override'], correct: 1, difficulty: 'medium' },
+    { question: 'Which Tailwind class adds padding on all sides?', options: ['p-4', 'pad-4', 'padding-4', 'space-4'], correct: 0, difficulty: 'easy' }
+  ],
+  'TYPESCRIPT': [
+    { question: 'What is TypeScript?', options: ['A database', 'JavaScript with static types', 'A CSS framework', 'A server'], correct: 1, difficulty: 'easy' },
+    { question: 'What does the : string syntax indicate in TypeScript?', options: ['A label', 'A type annotation', 'A comment', 'A function'], correct: 1, difficulty: 'easy' },
+    { question: 'What is an interface in TypeScript?', options: ['A class', 'A way to define the shape of an object', 'A variable', 'A loop'], correct: 1, difficulty: 'medium' },
+    { question: 'What does the "as" keyword do in TypeScript?', options: ['Import', 'Type assertion', 'Assign', 'Compare'], correct: 1, difficulty: 'medium' },
+    { question: 'What is the file extension for TypeScript?', options: ['.js', '.ts', '.typescript', '.tsc'], correct: 1, difficulty: 'easy' }
+  ],
+  'DART': [
+    { question: 'What is Dart primarily used for?', options: ['Backend only', 'Flutter app development and web', 'Databases', 'DevOps'], correct: 1, difficulty: 'easy' },
+    { question: 'What is the Dart null safety feature?', options: ['Prevents null errors at compile time', 'Allows only null', 'Removes null', 'Converts null'], correct: 0, difficulty: 'medium' },
+    { question: 'What is a Stream in Dart?', options: ['A file', 'An asynchronous sequence of data events', 'A string', 'A loop'], correct: 1, difficulty: 'medium' },
+    { question: 'What does the "?" operator do for null in Dart?', options: ['Throws', 'Null-aware access', 'Assigns', 'Deletes'], correct: 1, difficulty: 'easy' },
+    { question: 'Which framework uses Dart?', options: ['React', 'Angular', 'Flutter', 'Vue'], correct: 2, difficulty: 'easy' }
+  ],
+  'ANGULAR': [
+    { question: 'What is Angular?', options: ['A CSS framework', 'A TypeScript-based web framework by Google', 'A database', 'A server'], correct: 1, difficulty: 'easy' },
+    { question: 'What is a component in Angular?', options: ['A service', 'A class with template and logic for a part of UI', 'A module', 'A pipe'], correct: 1, difficulty: 'easy' },
+    { question: 'What is dependency injection in Angular?', options: ['A bug', 'A way to provide dependencies to classes', 'A directive', 'A route'], correct: 1, difficulty: 'medium' },
+    { question: 'What does ngModel do?', options: ['Styling', 'Two-way data binding', 'Routing', 'HTTP'], correct: 1, difficulty: 'medium' },
+    { question: 'What is the Angular CLI command to generate a component?', options: ['ng add', 'ng generate component', 'ng new component', 'ng create'], correct: 1, difficulty: 'easy' }
+  ],
+  'VUEJS': [
+    { question: 'What is Vue.js?', options: ['A database', 'A progressive JavaScript framework for building UIs', 'A CSS tool', 'A backend'], correct: 1, difficulty: 'easy' },
+    { question: 'What is the Vue 3 Composition API?', options: ['A database', 'An alternative to Options API using setup() and composables', 'A router', 'A store'], correct: 1, difficulty: 'medium' },
+    { question: 'What is v-model in Vue?', options: ['A style', 'Two-way binding for form inputs', 'A method', 'A prop'], correct: 1, difficulty: 'easy' },
+    { question: 'What is a Vue directive?', options: ['A component', 'Special tokens like v-if, v-for that add behavior', 'A service', 'A hook'], correct: 1, difficulty: 'medium' },
+    { question: 'What does Vuex or Pinia provide in Vue?', options: ['Routing', 'State management', 'HTTP only', 'Styling'], correct: 1, difficulty: 'medium' }
+  ],
+  'SPRING BOOT': [
+    { question: 'What is Spring Boot?', options: ['A database', 'A Java framework for building standalone applications', 'A frontend lib', 'A CMS'], correct: 1, difficulty: 'easy' },
+    { question: 'What does @RestController do in Spring Boot?', options: ['Renders HTML', 'Marks a class as REST API controller', 'Configures DB', 'Schedules jobs'], correct: 1, difficulty: 'easy' },
+    { question: 'What is the default embedded server in Spring Boot?', options: ['Apache', 'Tomcat', 'Jetty', 'Both Tomcat and Jetty'], correct: 3, difficulty: 'medium' },
+    { question: 'What does @Autowired do?', options: ['Creates bean', 'Injects dependency', 'Exports', 'Maps'], correct: 1, difficulty: 'medium' },
+    { question: 'What file holds main Spring Boot configuration?', options: ['config.xml', 'application.properties or application.yml', 'pom.xml only', 'build.gradle only'], correct: 1, difficulty: 'easy' }
+  ],
+  'DJANGO': [
+    { question: 'What is Django?', options: ['A frontend framework', 'A Python web framework', 'A database', 'A language'], correct: 1, difficulty: 'easy' },
+    { question: 'What is the Django ORM?', options: ['A template engine', 'Object-Relational Mapping for database operations', 'A router', 'A form'], correct: 1, difficulty: 'medium' },
+    { question: 'What does "migrate" do in Django?', options: ['Move files', 'Apply database migrations', 'Deploy', 'Import'], correct: 1, difficulty: 'easy' },
+    { question: 'What is a Django view?', options: ['A template', 'A function or class that handles a request and returns a response', 'A model', 'A URL'], correct: 1, difficulty: 'medium' },
+    { question: 'What is the Django admin?', options: ['A hosting service', 'Auto-generated admin interface for models', 'A CSS framework', 'A test runner'], correct: 1, difficulty: 'easy' }
+  ],
+  'FLASK': [
+    { question: 'What is Flask?', options: ['A database', 'A lightweight Python web framework', 'A frontend framework', 'A CMS'], correct: 1, difficulty: 'easy' },
+    { question: 'What does @app.route() do in Flask?', options: ['Defines a URL route and view', 'Configures DB', 'Runs server', 'Imports'], correct: 0, difficulty: 'easy' },
+    { question: 'What is a Flask blueprint?', options: ['A color', 'A way to organize a Flask app into modules', 'A database', 'A template'], correct: 1, difficulty: 'medium' },
+    { question: 'What is Jinja2 in Flask?', options: ['A database', 'A template engine', 'A router', 'A ORM'], correct: 1, difficulty: 'easy' },
+    { question: 'How do you run a Flask app in development?', options: ['flask run', 'python app.py', 'Both flask run and python app.py', 'npm start'], correct: 2, difficulty: 'easy' }
+  ],
+  'ASP.NET': [
+    { question: 'What is ASP.NET Core?', options: ['A database', 'A cross-platform web framework by Microsoft', 'A CSS framework', 'A JS library'], correct: 1, difficulty: 'easy' },
+    { question: 'What is MVC in ASP.NET?', options: ['Model-View-Controller pattern', 'A database', 'A language', 'A server'], correct: 0, difficulty: 'easy' },
+    { question: 'What does Entity Framework do in ASP.NET?', options: ['Frontend', 'ORM for database access', 'Caching', 'Logging'], correct: 1, difficulty: 'medium' },
+    { question: 'What is middleware in ASP.NET Core?', options: ['A view', 'Components in the request pipeline', 'A model', 'A config file'], correct: 1, difficulty: 'medium' },
+    { question: 'What is Blazor in ASP.NET?', options: ['A database', 'A framework for building interactive UIs with C# and WebAssembly', 'A CSS tool', 'A server'], correct: 1, difficulty: 'medium' }
+  ],
+  'MATERIAL UI': [
+    { question: 'What is Material UI (MUI)?', options: ['A database', 'A React component library implementing Material Design', 'A backend', 'A language'], correct: 1, difficulty: 'easy' },
+    { question: 'What design system does Material UI follow?', options: ['Bootstrap', 'Material Design by Google', 'Tailwind', 'Custom'], correct: 1, difficulty: 'easy' },
+    { question: 'What is the purpose of the ThemeProvider in MUI?', options: ['Routing', 'Applying theme (colors, typography) to the app', 'State', 'HTTP'], correct: 1, difficulty: 'medium' },
+    { question: 'What does the Button component in MUI support?', options: ['Only one variant', 'Variants like contained, outlined, text', 'No styling', 'Only icons'], correct: 1, difficulty: 'easy' },
+    { question: 'What is MUI Base?', options: ['A database', 'Unstyled, accessible components from MUI', 'A server', 'A build tool'], correct: 1, difficulty: 'medium' }
+  ],
+  'CHAKRA UI': [
+    { question: 'What is Chakra UI?', options: ['A database', 'A React component library that is modular and accessible', 'A backend', 'A language'], correct: 1, difficulty: 'easy' },
+    { question: 'What makes Chakra UI accessible?', options: ['It is not', 'Built-in focus management, ARIA, keyboard support', 'Only color', 'Only size'], correct: 1, difficulty: 'medium' },
+    { question: 'What is the Chakra provider used for?', options: ['Routing', 'Providing theme and default props to the app', 'State', 'HTTP'], correct: 1, difficulty: 'easy' },
+    { question: 'How does Chakra handle theming?', options: ['No theming', 'Theme object with colors, fonts, components', 'CSS only', 'Inline only'], correct: 1, difficulty: 'medium' },
+    { question: 'What type of components does Chakra offer?', options: ['Only buttons', 'Layout, forms, data display, feedback, and more', 'Only layout', 'Only forms'], correct: 1, difficulty: 'easy' }
+  ],
+  'SASS': [
+    { question: 'What is SASS?', options: ['A database', 'A CSS preprocessor with variables, nesting, mixins', 'A JS framework', 'A server'], correct: 1, difficulty: 'easy' },
+    { question: 'What is a SASS variable?', options: ['$name: value', '@name: value', '#name: value', 'var(name)'], correct: 0, difficulty: 'easy' },
+    { question: 'What is a mixin in SASS?', options: ['A variable', 'Reusable block of styles', 'A function', 'A loop'], correct: 1, difficulty: 'medium' },
+    { question: 'What does @include do in SASS?', options: ['Import', 'Include a mixin', 'Extend', 'Condition'], correct: 1, difficulty: 'easy' },
+    { question: 'What is the file extension for SASS?', options: ['.css', '.scss or .sass', '.sass only', '.styl'], correct: 1, difficulty: 'easy' }
+  ],
+
+  // Databases - ORACLE, SQL SERVER, FIREBASE, MARIADB, REDIS, CASSANDRA, ELASTICSEARCH
+  'ORACLE': [
+    { question: 'What is Oracle Database?', options: ['A NoSQL DB', 'A relational database management system', 'A frontend', 'A language'], correct: 1, difficulty: 'easy' },
+    { question: 'What is PL/SQL?', options: ['A NoSQL language', 'Oracle\'s procedural extension to SQL', 'A GUI tool', 'A type'], correct: 1, difficulty: 'medium' },
+    { question: 'What is an Oracle schema?', options: ['A table', 'A collection of database objects owned by a user', 'A view', 'An index'], correct: 1, difficulty: 'medium' },
+    { question: 'What is RAC in Oracle?', options: ['A query', 'Real Application Clusters for high availability', 'A type', 'A key'], correct: 1, difficulty: 'hard' },
+    { question: 'What does Oracle DataGuard provide?', options: ['Frontend', 'Disaster recovery and data protection', 'Caching', 'Monitoring only'], correct: 1, difficulty: 'medium' }
+  ],
+  'SQL SERVER': [
+    { question: 'What is Microsoft SQL Server?', options: ['NoSQL', 'A relational database system by Microsoft', 'A frontend', 'A language'], correct: 1, difficulty: 'easy' },
+    { question: 'What is T-SQL?', options: ['A NoSQL variant', 'Microsoft\'s extension to SQL', 'A GUI', 'A type'], correct: 1, difficulty: 'easy' },
+    { question: 'What is the purpose of SQL Server Agent?', options: ['Run queries', 'Schedule jobs, alerts, and automate tasks', 'Backup only', 'Monitor only'], correct: 1, difficulty: 'medium' },
+    { question: 'What is an SQL Server index?', options: ['A table', 'A structure to speed up queries', 'A view', 'A key only'], correct: 1, difficulty: 'medium' },
+    { question: 'What does SSIS stand for?', options: ['SQL Server Interface', 'SQL Server Integration Services', 'SQL Server Index', 'SQL Server Instance'], correct: 1, difficulty: 'hard' }
+  ],
+  'FIREBASE': [
+    { question: 'What is Firebase?', options: ['A relational DB', 'Google\'s platform for app development (auth, DB, hosting)', 'A CSS framework', 'A language'], correct: 1, difficulty: 'easy' },
+    { question: 'What is Firestore?', options: ['A SQL DB', 'NoSQL document database in Firebase', 'A CMS', 'A server'], correct: 1, difficulty: 'easy' },
+    { question: 'What does Firebase Authentication provide?', options: ['Database', 'User sign-in (email, Google, etc.)', 'Hosting only', 'Storage only'], correct: 1, difficulty: 'easy' },
+    { question: 'What is Firebase Realtime Database?', options: ['A table DB', 'JSON-based, real-time syncing NoSQL DB', 'A cache', 'A queue'], correct: 1, difficulty: 'medium' },
+    { question: 'What is the purpose of Firebase Hosting?', options: ['Run backend', 'Host static and dynamic web apps', 'Store files only', 'Send email'], correct: 1, difficulty: 'medium' }
+  ],
+  'MARIADB': [
+    { question: 'What is MariaDB?', options: ['A NoSQL DB', 'A MySQL-compatible relational database', 'A frontend', 'A language'], correct: 1, difficulty: 'easy' },
+    { question: 'How is MariaDB related to MySQL?', options: ['Unrelated', 'Fork of MySQL, community-developed', 'A wrapper', 'A copy'], correct: 1, difficulty: 'medium' },
+    { question: 'What is the default storage engine in MariaDB?', options: ['MyISAM', 'InnoDB', 'Memory', 'CSV'], correct: 1, difficulty: 'medium' },
+    { question: 'What does Galera Cluster do for MariaDB?', options: ['Query', 'Synchronous multi-master replication', 'Backup', 'Monitor'], correct: 1, difficulty: 'hard' },
+    { question: 'Is MariaDB open source?', options: ['No', 'Yes', 'Partially', 'Enterprise only'], correct: 1, difficulty: 'easy' }
+  ],
+  'REDIS': [
+    { question: 'What is Redis?', options: ['A relational DB', 'An in-memory data store used as cache, DB, and message broker', 'A frontend', 'A language'], correct: 1, difficulty: 'easy' },
+    { question: 'What does Redis primarily store?', options: ['Only strings', 'Strings, hashes, lists, sets, sorted sets', 'Only numbers', 'Only JSON'], correct: 1, difficulty: 'medium' },
+    { question: 'What is Redis often used for?', options: ['Primary DB only', 'Caching and session storage', 'File storage', 'Email'], correct: 1, difficulty: 'easy' },
+    { question: 'What does the Redis command SET do?', options: ['Create table', 'Set a key to a value', 'Delete', 'Query'], correct: 1, difficulty: 'easy' },
+    { question: 'What is Redis persistence?', options: ['Not supported', 'RDB snapshots and AOF for durability', 'Only memory', 'Only backup'], correct: 1, difficulty: 'medium' }
+  ],
+  'CASSANDRA': [
+    { question: 'What is Apache Cassandra?', options: ['A relational DB', 'A distributed NoSQL wide-column store', 'A frontend', 'A language'], correct: 1, difficulty: 'easy' },
+    { question: 'What is Cassandra designed for?', options: ['Single node', 'High availability and linear scalability across nodes', 'Small data', 'OLTP only'], correct: 1, difficulty: 'medium' },
+    { question: 'What is a Cassandra keyspace?', options: ['A table', 'A namespace for tables (like a schema)', 'A key', 'A node'], correct: 1, difficulty: 'medium' },
+    { question: 'What is CQL?', options: ['A NoSQL API', 'Cassandra Query Language', 'A type', 'A tool'], correct: 1, difficulty: 'easy' },
+    { question: 'What is the Cassandra data model?', options: ['Relational', 'Wide-column / column-family', 'Document', 'Graph'], correct: 1, difficulty: 'hard' }
+  ],
+  'ELASTICSEARCH': [
+    { question: 'What is Elasticsearch?', options: ['A relational DB', 'A search and analytics engine based on Apache Lucene', 'A frontend', 'A language'], correct: 1, difficulty: 'easy' },
+    { question: 'What is Elasticsearch best suited for?', options: ['ACID transactions', 'Full-text search, log analytics, and real-time analytics', 'Graph queries', 'Simple CRUD only'], correct: 1, difficulty: 'medium' },
+    { question: 'What is an index in Elasticsearch?', options: ['A DB table', 'A collection of documents', 'A key', 'A node'], correct: 1, difficulty: 'easy' },
+    { question: 'What is the Query DSL in Elasticsearch?', options: ['A language', 'JSON-based language for queries', 'A type', 'A GUI'], correct: 1, difficulty: 'medium' },
+    { question: 'What is the ELK Stack?', options: ['A DB', 'Elasticsearch, Logstash, Kibana', 'A framework', 'A server'], correct: 1, difficulty: 'medium' }
+  ],
+
+  // Mobile - SWIFT, KOTLIN, REACT NATIVE
+  'SWIFT': [
+    { question: 'What is Swift?', options: ['A database', 'Apple\'s programming language for iOS, macOS, etc.', 'A framework', 'A server'], correct: 1, difficulty: 'easy' },
+    { question: 'What is an optional in Swift?', options: ['Required', 'A type that can hold a value or nil', 'A loop', 'A function'], correct: 1, difficulty: 'easy' },
+    { question: 'What is the "?" after a type in Swift?', options: ['Syntax error', 'Makes it an optional', 'Multiplies', 'Comment'], correct: 1, difficulty: 'medium' },
+    { question: 'What is SwiftUI?', options: ['A database', 'A declarative UI framework by Apple', 'A server', 'A language'], correct: 1, difficulty: 'medium' },
+    { question: 'What does guard do in Swift?', options: ['Loop', 'Early exit if condition fails', 'Import', 'Class'], correct: 1, difficulty: 'medium' }
+  ],
+  'KOTLIN': [
+    { question: 'What is Kotlin?', options: ['A database', 'A JVM language; official for Android', 'A frontend only', 'A server only'], correct: 1, difficulty: 'easy' },
+    { question: 'What is a null safety feature in Kotlin?', options: ['No null', 'Nullable types with ? and safe calls', 'Only !!', 'Ignore null'], correct: 1, difficulty: 'medium' },
+    { question: 'What is a Kotlin data class?', options: ['A DB table', 'A class that automatically generates equals, hashCode, toString', 'A function', 'A type'], correct: 1, difficulty: 'medium' },
+    { question: 'What does the "?" safe call operator do in Kotlin?', options: ['Throw', 'Return null if receiver is null', 'Assign', 'Compare'], correct: 1, difficulty: 'easy' },
+    { question: 'What is Kotlin used for on Android?', options: ['Optional', 'Official language; can replace Java', 'Not supported', 'Only tests'], correct: 1, difficulty: 'easy' }
+  ],
+  'REACT NATIVE': [
+    { question: 'What is React Native?', options: ['A database', 'A framework to build mobile apps with React', 'A backend', 'A language'], correct: 1, difficulty: 'easy' },
+    { question: 'What does React Native use to render UI?', options: ['WebView only', 'Native components (not HTML divs)', 'HTML only', 'Java only'], correct: 1, difficulty: 'medium' },
+    { question: 'What is the bridge in React Native?', options: ['A component', 'Communication layer between JS and native code', 'A router', 'A store'], correct: 1, difficulty: 'hard' },
+    { question: 'What is Expo in React Native?', options: ['A database', 'A set of tools and services for React Native development', 'A UI lib', 'A server'], correct: 1, difficulty: 'medium' },
+    { question: 'Can you use the same React Native code for iOS and Android?', options: ['No', 'Yes, with platform-specific code when needed', 'Only iOS', 'Only Android'], correct: 1, difficulty: 'easy' }
+  ],
+
+  // AI - JULIA, SCALA
+  'JULIA': [
+    { question: 'What is Julia primarily used for?', options: ['Web development', 'Scientific computing and numerical analysis', 'Mobile apps', 'Games'], correct: 1, difficulty: 'easy' },
+    { question: 'What is a key feature of Julia?', options: ['Only slow', 'High-level syntax with performance close to C', 'No types', 'No libraries'], correct: 1, difficulty: 'medium' },
+    { question: 'What does the Julia package manager do?', options: ['Run code', 'Add and manage packages (e.g. Pkg)', 'Deploy', 'Test only'], correct: 1, difficulty: 'easy' },
+    { question: 'What is multiple dispatch in Julia?', options: ['A bug', 'Selecting a function based on all argument types', 'A type', 'A loop'], correct: 1, difficulty: 'hard' },
+    { question: 'What is the JIT in Julia?', options: ['A package', 'Just-in-time compilation for speed', 'A type', 'A function'], correct: 1, difficulty: 'medium' }
+  ],
+  'SCALA': [
+    { question: 'What is Scala?', options: ['A database', 'A JVM language blending OOP and functional programming', 'A frontend', 'A server'], correct: 1, difficulty: 'easy' },
+    { question: 'What does "val" mean in Scala?', options: ['Variable', 'Immutable value', 'Function', 'Class'], correct: 1, difficulty: 'easy' },
+    { question: 'What is the relationship between Scala and Apache Spark?', options: ['Unrelated', 'Spark is written in Scala; Scala is a primary API', 'Spark uses Scala only for tests', 'Spark replaced Scala'], correct: 1, difficulty: 'medium' },
+    { question: 'What is a case class in Scala?', options: ['A DB table', 'A class with built-in equals, hash, pattern matching', 'A function', 'A type'], correct: 1, difficulty: 'medium' },
+    { question: 'What is the "Option" type in Scala?', options: ['Required', 'Represents optional value (Some or None)', 'A loop', 'A string'], correct: 1, difficulty: 'medium' }
+  ],
+
+  // Testing - JUNIT, CYPRESS
+  'JUNIT': [
+    { question: 'What is JUnit?', options: ['A database', 'A unit testing framework for Java', 'A frontend', 'A server'], correct: 1, difficulty: 'easy' },
+    { question: 'What does @Test denote in JUnit?', options: ['A class', 'A method as a test', 'A variable', 'Import'], correct: 1, difficulty: 'easy' },
+    { question: 'What is @BeforeEach in JUnit 5?', options: ['After test', 'Runs before each test', 'Once only', 'A test'], correct: 1, difficulty: 'medium' },
+    { question: 'What does Assertions.assertEquals do?', options: ['Run', 'Check that expected equals actual', 'Throw', 'Ignore'], correct: 1, difficulty: 'easy' },
+    { question: 'What is JUnit 5 also known as?', options: ['JUnit 4', 'Jupiter', 'JUnit 3', 'JUnit 6'], correct: 1, difficulty: 'medium' }
+  ],
+  'CYPRESS': [
+    { question: 'What is Cypress used for?', options: ['Unit tests only', 'End-to-end and component testing for web apps', 'Database testing', 'API only'], correct: 1, difficulty: 'easy' },
+    { question: 'What makes Cypress different from Selenium?', options: ['Nothing', 'Runs in the browser; fast, real-time reload; built-in wait', 'Only for mobile', 'No DOM'], correct: 1, difficulty: 'medium' },
+    { question: 'What is the typical Cypress command for visiting a URL?', options: ['cy.open()', 'cy.visit()', 'cy.go()', 'cy.nav()'], correct: 1, difficulty: 'easy' },
+    { question: 'What does cy.get() do in Cypress?', options: ['HTTP get', 'Select DOM element(s)', 'Import', 'Assert'], correct: 1, difficulty: 'easy' },
+    { question: 'Can Cypress test APIs?', options: ['No', 'Yes, via cy.request()', 'Only mock', 'Only UI'], correct: 1, difficulty: 'medium' }
+  ],
   
   // Academic Subjects - These will be overridden by category-specific questions in generateGenericQuestions
   // But kept here as fallback
@@ -856,17 +1166,25 @@ function getQuestionsForTopic(topicName, category = '', domain = '', numQuestion
   const normalizedCategory = (category || '').toUpperCase().trim();
   const normalizedDomain = (domain || '').toUpperCase().trim();
   
-  // Extract the actual topic name if it's in format "CATEGORY - TOPIC"
-  // e.g., "PROGRAMMING LANGAUGES - C" -> "C"
+  // Sub-topic format "C - Intro" -> "C_INTRO"; "C - Arrays & Strings" -> "C_ARRAYS_STRINGS"
+  // Must try this FIRST, before we strip to last part (which would turn "C - Intro" into "INTRO" and break the lookup)
+  let topicQuestions = [];
   if (normalizedTopic.includes(' - ')) {
+    const subKey = normalizedTopic.replace(/\s*-\s*/g, '_').replace(/\s+&\s+/g, '_').replace(/\s+/g, '_');
+    topicQuestions = QUESTION_BANK[subKey] || [];
+  }
+  
+  // If sub-topic key not found, extract "CATEGORY - TOPIC" -> take last part (e.g. "PROGRAMMING LANGAUGES - C" -> "C")
+  if (topicQuestions.length === 0 && normalizedTopic.includes(' - ')) {
     const parts = normalizedTopic.split(' - ');
     if (parts.length > 1) {
-      normalizedTopic = parts[parts.length - 1].trim(); // Take the last part (the actual topic)
+      normalizedTopic = parts[parts.length - 1].trim();
     }
   }
   
-  // Try exact match first
-  let topicQuestions = QUESTION_BANK[normalizedTopic] || [];
+  if (topicQuestions.length === 0) {
+    topicQuestions = QUESTION_BANK[normalizedTopic] || [];
+  }
   
   // If not found, try to find a partial match (e.g., "JAVASCRIPT" matches "JAVASCRIPT" in bank)
   if (topicQuestions.length === 0) {

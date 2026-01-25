@@ -254,7 +254,10 @@ class QuizService {
       const optionD = row.optionD || row.OptionD || row.D || '';
       const correctOption = (row.correctOption || row.Correct || row.correct || '').toString().trim().toUpperCase();
       const questionType = (row.type || row.Type || row.TYPE || 'multiple_choice_single').toString().trim().toLowerCase();
-      const marks = Number(row.marks || row.Marks || 1);
+      const rawMarks = row.marks ?? row.Marks;
+      const marks = (rawMarks !== '' && rawMarks != null && !Number.isNaN(Number(rawMarks)))
+        ? Number(rawMarks)
+        : (metadata.defaultMarks ?? 1);
       const negativeMarks = Number(row.negativeMarks || row.NegativeMarks || 0);
 
       // Skip if no question text

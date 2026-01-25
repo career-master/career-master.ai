@@ -16,7 +16,7 @@ class TopicService {
       throw new ErrorHandler(401, 'User ID is required to create a topic');
     }
 
-    const { subjectId, title, description, order, prerequisites, requiredQuizzesToUnlock } = payload;
+    const { subjectId, title, description, order, prerequisites, requiredQuizzesToUnlock, parentTopicId } = payload;
 
     const topicData = {
       subjectId,
@@ -28,6 +28,9 @@ class TopicService {
       createdBy: userId,
       isActive: payload.isActive !== undefined ? payload.isActive : true
     };
+    if (parentTopicId) {
+      topicData.parentTopicId = parentTopicId;
+    }
 
     return await TopicRepository.createTopic(topicData);
   }
