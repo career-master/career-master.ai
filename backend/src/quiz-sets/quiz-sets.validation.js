@@ -59,11 +59,18 @@ const topicIdParamSchema = z.object({
   })
 });
 
+const quizIdParamSchema = z.object({
+  params: z.object({
+    quizId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid quiz ID')
+  })
+});
+
 module.exports = {
   createQuizSetSchema,
   updateQuizSetSchema,
   quizSetIdParamSchema,
   topicIdParamSchema,
+  quizIdParamSchema,
   validate
 };
 

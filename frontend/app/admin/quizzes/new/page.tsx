@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import * as XLSX from 'xlsx';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import QuizSectionEditor from '@/components/QuizSectionEditor';
@@ -39,6 +40,19 @@ export default function AdminCreateQuizPage() {
   const [selectedBatches, setSelectedBatches] = useState<string[]>([]);
   const [batches, setBatches] = useState<any[]>([]);
   const [isActive, setIsActive] = useState(true);
+
+  // Link to Subject & Topic (optional: where this quiz appears for students)
+  const [subjectId, setSubjectId] = useState('');
+  const [selectedRootTopicId, setSelectedRootTopicId] = useState('');
+  const [selectedSubTopicId, setSelectedSubTopicId] = useState('');
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [rootTopics, setRootTopics] = useState<any[]>([]);
+  const [subTopics, setSubTopics] = useState<any[]>([]);
+  const [existingQuizSetId, setExistingQuizSetId] = useState<string | null>(null);
+  const [topicLinkLoading, setTopicLinkLoading] = useState(false);
+  const [showAddSubTopicForm, setShowAddSubTopicForm] = useState(false);
+  const [newSubTopicTitle, setNewSubTopicTitle] = useState('');
+  const [addingSubTopic, setAddingSubTopic] = useState(false);
   const [useSections, setUseSections] = useState(false);
   const [sections, setSections] = useState<any[]>([]);
   const [showQuestionForm, setShowQuestionForm] = useState(false);
@@ -59,6 +73,7 @@ export default function AdminCreateQuizPage() {
 
   const [saving, setSaving] = useState(false);
   const [excelUploading, setExcelUploading] = useState(false);
+  const [marksPerQuestion, setMarksPerQuestion] = useState(1);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -74,8 +89,9 @@ export default function AdminCreateQuizPage() {
       return;
     }
 
-    // Load batches
+    // Load batches and subjects (for Link to Subject & Topic dropdowns)
     loadBatches();
+    loadSubjects();
 
     // Load quiz data if editing
     if (quizId) {
@@ -92,6 +108,19 @@ export default function AdminCreateQuizPage() {
       }
     } catch (err: any) {
       console.error('Failed to load batches:', err);
+    }
+  };
+
+  const loadSubjects = async () => {
+    try {
+      const res = await apiService.getSubjects({ page: 1, limit: 500, isActive: true });
+      if (res.success && res.data) {
+        const data: any = res.data;
+        const list = Array.isArray(data) ? data : (data.items || []);
+        setSubjects(list);
+      }
+    } catch (err: any) {
+      console.error('Failed to load subjects:', err);
     }
   };
 
@@ -163,6 +192,63 @@ export default function AdminCreateQuizPage() {
             setQuestions(formattedQuestions);
           }
         }
+
+        // Load QuizSets for this quiz to pre-fill Subject / Topic / Sub-topic
+        try {
+          setTopicLinkLoading(true);
+          const qsRes = await apiService.getQuizSetsByQuiz(id);
+          if (qsRes.success && Array.isArray(qsRes.data) && qsRes.data.length > 0) {
+            const qs = qsRes.data[0] as any;
+            const topic: any = qs.topicId;
+            if (topic && (topic._id || topic.subjectId)) {
+              setExistingQuizSetId(qs._id);
+              const sid = (typeof topic.subjectId === 'string' ? topic.subjectId : topic.subjectId?.toString?.() || topic.subjectId?._id?.toString?.() || '') || '';
+              const topicIdStr = (typeof topic._id === 'string' ? topic._id : topic._id?.toString?.()) || '';
+              const parentId = topic.parentTopicId;
+              const hasParent = parentId && (typeof parentId === 'string' ? parentId : (parentId?.toString?.() || parentId?._id));
+              if (hasParent) {
+                const pid = typeof parentId === 'string' ? parentId : (parentId?.toString?.() || parentId?._id?.toString?.() || '');
+                setSubjectId(sid);
+                setSelectedRootTopicId(pid);
+                setSelectedSubTopicId(topicIdStr);
+                const [rootRes, subRes] = await Promise.all([
+                  apiService.getTopics(sid, true, 'roots'),
+                  apiService.getTopics(sid, true, pid)
+                ]);
+                if (rootRes.success && Array.isArray(rootRes.data)) setRootTopics(rootRes.data);
+                if (subRes.success && Array.isArray(subRes.data)) setSubTopics(subRes.data);
+              } else {
+                setSubjectId(sid);
+                setSelectedRootTopicId(topicIdStr);
+                setSelectedSubTopicId('');
+                const [rootRes, subRes] = await Promise.all([
+                  apiService.getTopics(sid, true, 'roots'),
+                  apiService.getTopics(sid, true, topicIdStr)
+                ]);
+                if (rootRes.success && Array.isArray(rootRes.data)) setRootTopics(rootRes.data);
+                if (subRes.success && Array.isArray(subRes.data) && subRes.data.length > 0) setSubTopics(subRes.data);
+                else setSubTopics([]);
+              }
+            }
+          } else {
+            setExistingQuizSetId(null);
+            setSubjectId('');
+            setSelectedRootTopicId('');
+            setSelectedSubTopicId('');
+            setRootTopics([]);
+            setSubTopics([]);
+          }
+        } catch (e) {
+          console.error('Failed to load quiz-set link:', e);
+          setExistingQuizSetId(null);
+          setSubjectId('');
+          setSelectedRootTopicId('');
+          setSelectedSubTopicId('');
+          setRootTopics([]);
+          setSubTopics([]);
+        } finally {
+          setTopicLinkLoading(false);
+        }
       } else {
         throw new Error('Failed to load quiz');
       }
@@ -205,6 +291,36 @@ export default function AdminCreateQuizPage() {
 
   const removeQuestion = (index: number) => {
     setQuestions((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddSubTopic = async () => {
+    const title = newSubTopicTitle.trim();
+    if (!title || !subjectId || !selectedRootTopicId) return;
+    setAddingSubTopic(true);
+    setError('');
+    try {
+      const res = await apiService.createTopic({
+        subjectId,
+        title,
+        parentTopicId: selectedRootTopicId,
+      });
+      if (!res.success || !(res.data as any)?._id) {
+        throw new Error((res as any).error?.message || 'Failed to create sub-topic');
+      }
+      const refetch = await apiService.getTopics(subjectId, true, selectedRootTopicId);
+      if (refetch.success && Array.isArray(refetch.data)) {
+        setSubTopics(refetch.data);
+        setSelectedSubTopicId((res.data as any)._id);
+      }
+      setShowAddSubTopicForm(false);
+      setNewSubTopicTitle('');
+      setSuccess('Sub-topic added. It is now selected in the dropdown.');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to add sub-topic');
+    } finally {
+      setAddingSubTopic(false);
+    }
   };
 
   const handleCreateQuiz = async (e: React.FormEvent) => {
@@ -563,6 +679,19 @@ export default function AdminCreateQuizPage() {
         throw new Error(res.error?.message || res.message || `Failed to ${quizId ? 'update' : 'create'} quiz`);
       }
 
+      // QuizSet: link to Subject / Topic / Sub-topic (where this quiz appears for students)
+      const resolvedTopicId = selectedSubTopicId || selectedRootTopicId || null;
+      if (quizId) {
+        if (existingQuizSetId) await apiService.deleteQuizSet(existingQuizSetId);
+        if (resolvedTopicId) {
+          const cr = await apiService.createQuizSet({ topicId: resolvedTopicId, quizId, setName: title || 'Quiz Set', order: 1 });
+          if (cr.success && (cr as any).data?._id) setExistingQuizSetId((cr as any).data._id);
+        } else setExistingQuizSetId(null);
+      } else {
+        const createdId = (res.data as any)?._id;
+        if (resolvedTopicId && createdId) await apiService.createQuizSet({ topicId: resolvedTopicId, quizId: createdId, setName: title || 'Quiz Set', order: 1 });
+      }
+
       setSuccess(`Quiz ${quizId ? 'updated' : 'created'} successfully`);
       
       if (!quizId) {
@@ -573,6 +702,11 @@ export default function AdminCreateQuizPage() {
         setAvailableFrom('');
         setAvailableTo('');
         setSelectedBatches([]);
+        setSubjectId('');
+        setSelectedRootTopicId('');
+        setSelectedSubTopicId('');
+        setRootTopics([]);
+        setSubTopics([]);
         setQuestions([
           {
             questionText: '',
@@ -593,24 +727,51 @@ export default function AdminCreateQuizPage() {
     }
   };
 
+  const downloadQuizExcelTemplate = () => {
+    const templateData = [
+      { question: 'What is the capital of France?', optionA: 'London', optionB: 'Berlin', optionC: 'Paris', optionD: 'Madrid', correctOption: 'C', type: 'multiple_choice_single', marks: '1', negativeMarks: '0' },
+      { question: 'Which are programming languages?', optionA: 'JavaScript', optionB: 'HTML', optionC: 'Python', optionD: 'CSS', correctOption: 'A,C', type: 'multiple_choice_multiple', marks: '2', negativeMarks: '0.5' },
+      { question: 'Python is a compiled language.', optionA: 'True', optionB: 'False', correctOption: 'B', type: 'true_false', marks: '1', negativeMarks: '0' },
+    ];
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Questions');
+    const instructions = [
+      { Column: 'question', Description: 'Question text (required)' },
+      { Column: 'optionA', Description: 'Option A (required)' },
+      { Column: 'optionB', Description: 'Option B (required)' },
+      { Column: 'optionC', Description: 'Option C (optional)' },
+      { Column: 'optionD', Description: 'Option D (optional)' },
+      { Column: 'correctOption', Description: 'Correct: A, B, C, D; or A,C for multiple' },
+      { Column: 'type', Description: 'multiple_choice_single, multiple_choice_multiple, or true_false' },
+      { Column: 'marks', Description: 'Marks per question (or use default above)' },
+      { Column: 'negativeMarks', Description: 'Negative marks for wrong answer (default 0)' },
+    ];
+    const wsInst = XLSX.utils.json_to_sheet(instructions);
+    XLSX.utils.book_append_sheet(wb, wsInst, 'Instructions');
+    XLSX.writeFile(wb, 'Quiz_Questions_Template.xlsx');
+  };
+
   const handleUploadExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate all required fields before uploading
+    // Validate: Quiz name (title), Duration, Marks per question required
     if (!title || !title.trim()) {
-      setError('Please enter a quiz title before uploading the Excel file.');
-      if (e.target) {
-        e.target.value = '';
-      }
+      setError('Please enter a quiz name (title) before uploading the Excel file.');
+      if (e.target) e.target.value = '';
       return;
     }
 
     if (!durationMinutes || durationMinutes < 1) {
       setError('Please enter a valid duration (minimum 1 minute) before uploading the Excel file.');
-      if (e.target) {
-        e.target.value = '';
-      }
+      if (e.target) e.target.value = '';
+      return;
+    }
+
+    if (!marksPerQuestion || marksPerQuestion < 1) {
+      setError('Please enter Marks per question (at least 1) before uploading the Excel file.');
+      if (e.target) e.target.value = '';
       return;
     }
 
@@ -656,6 +817,7 @@ export default function AdminCreateQuizPage() {
       if (enableAvailableTo && availableTo) formData.append('availableTo', availableTo);
       formData.append('availableToEveryone', String(availableToEveryone));
       formData.append('maxAttempts', String(maxAttempts || 999));
+      formData.append('defaultMarks', String(marksPerQuestion));
       if (!availableToEveryone && selectedBatches.length > 0) {
         formData.append('batches', selectedBatches.join(','));
       }
@@ -664,7 +826,23 @@ export default function AdminCreateQuizPage() {
       if (!res.success) {
         throw new Error(res.error?.message || res.message || 'Failed to upload quiz from Excel');
       }
-      setSuccess('Quiz uploaded successfully from Excel');
+
+      // Link to Subject/Topic if selected (optional)
+      const resolvedTopicId = selectedSubTopicId || selectedRootTopicId || null;
+      if (resolvedTopicId && (res.data as any)?._id) {
+        try {
+          await apiService.createQuizSet({
+            topicId: resolvedTopicId,
+            quizId: (res.data as any)._id,
+            setName: title || 'Quiz Set',
+            order: 1,
+          });
+        } catch (linkErr: any) {
+          console.warn('Quiz created but linking to topic failed:', linkErr);
+        }
+      }
+
+      setSuccess('Quiz uploaded successfully from Excel' + (resolvedTopicId ? ' and linked to the selected topic.' : '.'));
     } catch (err: any) {
       setError(err.message || 'Failed to upload quiz from Excel');
     } finally {
@@ -718,49 +896,6 @@ export default function AdminCreateQuizPage() {
             </div>
           )}
 
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-lg font-bold text-gray-900">
-                {quizId ? 'Edit Quiz' : 'Create Quiz'}
-              </h2>
-              <div className="flex items-center gap-2">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".xlsx,.xls"
-                  className="hidden"
-                  onChange={handleUploadExcel}
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={Boolean(
-                    excelUploading ||
-                    !title?.trim() ||
-                    !durationMinutes ||
-                    durationMinutes < 1 ||
-                    (enableAvailableFrom && !availableFrom) ||
-                    (enableAvailableTo && !availableTo) ||
-                    (enableAvailableFrom && enableAvailableTo && availableFrom && availableTo && new Date(availableTo) <= new Date(availableFrom))
-                  )}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={
-                    !title?.trim() || !durationMinutes
-                      ? 'Please fill all required fields (Title, Duration) before uploading Excel'
-                      : (enableAvailableFrom && !availableFrom) || (enableAvailableTo && !availableTo)
-                      ? 'Please fill in the enabled date fields before uploading Excel'
-                      : ''
-                  }
-                >
-                  {excelUploading ? 'Uploading Excel...' : 'Upload Excel'}
-                </button>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 italic">
-              Note: Please fill in Quiz Title and Duration before uploading Excel file. Dates are optional.
-            </p>
-          </div>
-
           <form onSubmit={handleCreateQuiz} className="space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -787,6 +922,137 @@ export default function AdminCreateQuizPage() {
                 rows={2}
                 placeholder="Short description of the quiz..."
               />
+            </div>
+
+            {/* Link to Subject & Topic — optional, where this quiz appears for students */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+              <h3 className="text-sm font-bold text-slate-800 mb-1">Link to Subject & Topic</h3>
+              <p className="text-xs text-slate-500 mb-3">Choose where this quiz appears for students. Optional.</p>
+              {topicLinkLoading ? (
+                <p className="text-sm text-slate-500">Loading link...</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Subject</label>
+                    <select
+                      value={subjectId}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setSubjectId(v);
+                        setSelectedRootTopicId('');
+                        setSelectedSubTopicId('');
+                        setRootTopics([]);
+                        setSubTopics([]);
+                        setShowAddSubTopicForm(false);
+                        setNewSubTopicTitle('');
+                        if (v) {
+                          apiService.getTopics(v, true, 'roots').then((r) => {
+                            if (r.success && Array.isArray(r.data)) setRootTopics(r.data);
+                            else setRootTopics([]);
+                          });
+                        }
+                      }}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500"
+                    >
+                      <option value="">— Don&apos;t link to a topic —</option>
+                      {subjects.map((s) => (
+                        <option key={s._id} value={s._id}>{s.title}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Topic</label>
+                    <select
+                      value={selectedRootTopicId}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setSelectedRootTopicId(v);
+                        setSelectedSubTopicId('');
+                        setShowAddSubTopicForm(false);
+                        setNewSubTopicTitle('');
+                        if (v && subjectId) {
+                          apiService.getTopics(subjectId, true, v).then((r) => {
+                            if (r.success && Array.isArray(r.data)) setSubTopics(r.data);
+                            else setSubTopics([]);
+                          });
+                        } else setSubTopics([]);
+                      }}
+                      disabled={!subjectId}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Select topic</option>
+                      {rootTopics.map((t) => (
+                        <option key={t._id} value={t._id}>{t.title}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Sub-topic</label>
+                    {showAddSubTopicForm ? (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={newSubTopicTitle}
+                          onChange={(e) => setNewSubTopicTitle(e.target.value)}
+                          placeholder="Sub-topic name"
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') { e.preventDefault(); handleAddSubTopic(); }
+                            if (e.key === 'Escape') { setShowAddSubTopicForm(false); setNewSubTopicTitle(''); }
+                          }}
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleAddSubTopic}
+                            disabled={addingSubTopic || !newSubTopicTitle.trim()}
+                            className="rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                          >
+                            {addingSubTopic ? 'Adding…' : 'Add'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setShowAddSubTopicForm(false); setNewSubTopicTitle(''); }}
+                            disabled={addingSubTopic}
+                            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <select
+                          value={selectedSubTopicId}
+                          onChange={(e) => setSelectedSubTopicId(e.target.value)}
+                          disabled={!selectedRootTopicId || subTopics.length === 0}
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                        >
+                          <option value="">— None (use topic) —</option>
+                          {subTopics.map((t) => (
+                            <option key={t._id} value={t._id}>{t.title}</option>
+                          ))}
+                        </select>
+                        {selectedRootTopicId && (
+                          <p className="mt-1.5">
+                            <button
+                              type="button"
+                              onClick={() => { setShowAddSubTopicForm(true); setNewSubTopicTitle(''); }}
+                              className="text-xs font-medium text-slate-600 hover:text-slate-800 underline"
+                            >
+                              {subTopics.length === 0 ? 'Add sub-topic' : '+ Add sub-topic'}
+                            </button>
+                          </p>
+                        )}
+                        {selectedRootTopicId && subTopics.length === 0 && !showAddSubTopicForm && (
+                          <p className="text-xs text-slate-400 mt-0.5">No sub-topics yet</p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -822,6 +1088,32 @@ export default function AdminCreateQuizPage() {
                 </p>
               </div>
             </div>
+
+            {!quizId && (
+            <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-4">
+              <h3 className="text-sm font-bold text-gray-900 mb-2">Create via Excel</h3>
+              <p className="text-xs text-gray-600 mb-3">Download template → add questions &amp; options → set Marks per question → Upload. Topic (above) is optional.</p>
+              <div className="flex flex-wrap items-center gap-3 mb-2">
+                <button type="button" onClick={downloadQuizExcelTemplate} className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-50 transition-colors">Download template</button>
+                <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleUploadExcel} />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={Boolean(excelUploading || !title?.trim() || !durationMinutes || durationMinutes < 1 || !marksPerQuestion || marksPerQuestion < 1 || (enableAvailableFrom && !availableFrom) || (enableAvailableTo && !availableTo) || (enableAvailableFrom && enableAvailableTo && availableFrom && availableTo && new Date(availableTo) <= new Date(availableFrom)))}
+                  className="rounded-lg border border-amber-400 bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={!title?.trim() || !durationMinutes || !marksPerQuestion || marksPerQuestion < 1 ? 'Enter Quiz name, Duration (above), Marks per question (≥1). Topic optional.' : ''}
+                >
+                  {excelUploading ? 'Uploading...' : 'Upload Excel'}
+                </button>
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <span className="font-medium">Marks per question:</span>
+                  <input type="number" min={1} max={100} value={marksPerQuestion} onChange={(e) => setMarksPerQuestion(Math.max(1, Number(e.target.value) || 1))} className="w-16 rounded border border-gray-300 px-2 py-1 text-sm" />
+                  <span className="text-gray-500">(required for upload)</span>
+                </label>
+              </div>
+              <p className="text-xs text-gray-500">Required for Excel: Quiz name, Duration, Marks per question. Subject/Topic/Sub-topic: optional — if none selected, quiz is not linked.</p>
+            </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>

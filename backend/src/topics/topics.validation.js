@@ -36,6 +36,11 @@ const createTopicSchema = z.object({
       .min(0)
       .default(2)
       .optional(),
+    parentTopicId: z
+      .string()
+      .regex(/^[0-9a-fA-F]{24}$/, 'Invalid parent topic ID')
+      .optional()
+      .nullable(),
     isActive: z
       .boolean()
       .default(true)
@@ -51,7 +56,12 @@ const updateTopicSchema = z.object({
     subjectId: z
       .string()
       .regex(/^[0-9a-fA-F]{24}$/, 'Invalid subject ID')
+      .optional(),
+    parentTopicId: z
+      .string()
+      .regex(/^[0-9a-fA-F]{24}$/, 'Invalid parent topic ID')
       .optional()
+      .nullable()
   })
 });
 

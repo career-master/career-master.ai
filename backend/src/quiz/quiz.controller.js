@@ -28,6 +28,9 @@ class QuizController {
   static uploadQuizExcel = asyncHandler(async (req, res) => {
     const userId = req.user?.id || req.user?._id;
     const file = req.file;
+    const defaultMarks = req.body.defaultMarks != null && req.body.defaultMarks !== ''
+      ? Number(req.body.defaultMarks)
+      : undefined;
     const metadata = {
       title: req.body.title,
       description: req.body.description,
@@ -36,7 +39,8 @@ class QuizController {
       availableTo: req.body.availableTo,
       batches: req.body.batches,
       availableToEveryone: req.body.availableToEveryone === 'true' || req.body.availableToEveryone === true,
-      maxAttempts: req.body.maxAttempts ? Number(req.body.maxAttempts) : 999
+      maxAttempts: req.body.maxAttempts ? Number(req.body.maxAttempts) : 999,
+      defaultMarks: Number.isFinite(defaultMarks) ? defaultMarks : undefined
     };
 
     const quiz = await QuizService.createQuizFromExcel(file?.buffer, metadata, userId);

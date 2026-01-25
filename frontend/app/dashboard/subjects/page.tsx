@@ -147,21 +147,9 @@ export default function SubjectsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <style jsx global>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 animate-fade-in">
           <h1 className="text-4xl font-bold text-gray-900 mb-3">Subjects & Topics</h1>
           <p className="text-lg text-gray-600 mb-6">
             Explore comprehensive learning materials organized by subjects. Master each topic at your own pace.
@@ -265,10 +253,7 @@ export default function SubjectsPage() {
                     return (
                     <div
                       key={subject._id}
-                      className="group bg-white rounded-xl border border-gray-200 shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col h-full min-w-0"
-                      style={{
-                        animation: `fadeInUp 0.5s ease-out ${index * 0.1}s both`
-                      }}
+                      className={`group bg-white rounded-xl border border-gray-200 shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col h-full min-w-0 hover:-translate-y-0.5 animate-fadeinup ${['animate-delay-1', 'animate-delay-2', 'animate-delay-3', 'animate-delay-4', 'animate-delay-5', 'animate-delay-6'][index % 6]}`}
                     >
                       {/* Thumbnail - Top */}
                       <div className="h-48 bg-gradient-to-br from-purple-500 to-blue-500 relative overflow-hidden flex-shrink-0">

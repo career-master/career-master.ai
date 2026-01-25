@@ -47,6 +47,19 @@ class QuizSetController {
   });
 
   /**
+   * GET /quiz-sets/quiz/:quizId
+   * Get quiz sets by quiz ID (for admin edit form: pre-fill Subject/Topic/Sub-topic)
+   */
+  static getQuizSetsByQuizId = asyncHandler(async (req, res) => {
+    const quizSets = await QuizSetService.getQuizSetsByQuizId(req.params.quizId);
+
+    res.status(200).json({
+      success: true,
+      data: quizSets
+    });
+  });
+
+  /**
    * GET /quiz-sets/:id
    * Get quiz set by ID
    */

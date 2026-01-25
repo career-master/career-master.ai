@@ -32,6 +32,11 @@ const topicSchema = new mongoose.Schema(
       type: Boolean,
       default: true
     },
+    parentTopicId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Topic',
+      default: null // When set, this topic is a sub-topic of the parent
+    },
     prerequisites: {
       type: [mongoose.Schema.Types.ObjectId],
       ref: 'Topic',
@@ -57,6 +62,8 @@ const topicSchema = new mongoose.Schema(
 // Indexes
 topicSchema.index({ subjectId: 1, order: 1 });
 topicSchema.index({ subjectId: 1, isActive: 1 });
+topicSchema.index({ subjectId: 1, parentTopicId: 1, order: 1 });
+topicSchema.index({ parentTopicId: 1 });
 topicSchema.index({ title: 1 });
 
 const Topic = mongoose.model('Topic', topicSchema);
