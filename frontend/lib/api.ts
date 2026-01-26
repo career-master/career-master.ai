@@ -302,13 +302,16 @@ class ApiService {
     batches?: string[];
     availableToEveryone?: boolean;
     isActive?: boolean;
-    questions: {
+    level?: 'beginner' | 'intermediate' | 'advanced' | null;
+    questions?: {
       questionText: string;
       options: string[];
       correctOptionIndex: number;
       marks?: number;
       negativeMarks?: number;
     }[];
+    useSections?: boolean;
+    sections?: unknown[];
   }): Promise<ApiResponse> {
     return this.request('/quizzes', {
       method: 'POST',
@@ -331,10 +334,9 @@ class ApiService {
   }
 
   // Get available quizzes for a user (by email)
-  async getAvailableQuizzesForUser(email: string): Promise<ApiResponse> {
-    return this.request(`/quizzes/user/email/${email}`, {
-      method: 'GET',
-    });
+  async getAvailableQuizzesForUser(email: string, level?: 'beginner' | 'intermediate' | 'advanced'): Promise<ApiResponse> {
+    const q = level ? `?level=${level}` : '';
+    return this.request(`/quizzes/user/email/${email}${q}`, { method: 'GET' });
   }
 
   // Submit quiz attempt
@@ -508,6 +510,7 @@ class ApiService {
       negativeMarks?: number;
     }[];
     isActive?: boolean;
+    level?: 'beginner' | 'intermediate' | 'advanced' | null;
   }): Promise<ApiResponse> {
     return this.request(`/quizzes/${id}`, {
       method: 'PUT',
@@ -793,11 +796,12 @@ class ApiService {
   }
 
   // Subjects (admin + user)
-  async getSubjects(params: { page?: number; limit?: number; isActive?: boolean } = {}): Promise<ApiResponse> {
+  async getSubjects(params: { page?: number; limit?: number; isActive?: boolean; level?: 'beginner' | 'intermediate' | 'advanced' } = {}): Promise<ApiResponse> {
     const query = new URLSearchParams();
     if (params.page) query.set('page', String(params.page));
     if (params.limit) query.set('limit', String(params.limit));
     if (params.isActive !== undefined) query.set('isActive', String(params.isActive));
+    if (params.level) query.set('level', params.level);
     const queryString = query.toString();
     return this.request(`/subjects${queryString ? `?${queryString}` : ''}`, { method: 'GET' });
   }

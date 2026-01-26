@@ -40,6 +40,13 @@ class DefaultCourseSeed {
         // Check if topics exist
         const existingTopics = await Topic.find({ subjectId: savedSubject._id });
         if (existingTopics.length > 0) {
+          // Backfill level on existing General Knowledge quiz for filter testing
+          const gkQuiz = await Quiz.findOne({ title: 'General Knowledge Quiz - 20 Questions' });
+          if (gkQuiz && !gkQuiz.level) {
+            gkQuiz.level = 'beginner';
+            await gkQuiz.save();
+            console.log('✅ Set level on existing General Knowledge quiz');
+          }
           console.log('✅ Default course already exists with topics');
           return;
         }
@@ -751,6 +758,7 @@ Mathematics is everywhere in our daily lives and helps us solve problems, make d
         availableToEveryone: true,
         isActive: true,
         useSections: false,
+        level: 'beginner',
         questions: [
           {
             questionType: QUESTION_TYPES.MULTIPLE_CHOICE_SINGLE,

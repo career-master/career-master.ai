@@ -26,7 +26,8 @@ class QuizService {
         availableTo, 
         batches, 
         availableToEveryone,
-        maxAttempts
+        maxAttempts,
+        level
       } = payload;
 
       const quizData = {
@@ -38,6 +39,7 @@ class QuizService {
         maxAttempts: maxAttempts || 999,
         isActive: payload.isActive !== undefined ? payload.isActive : true
       };
+      if (level != null) quizData.level = level;
 
       // Handle sections or flat questions
       if (useSections && sections && Array.isArray(sections) && sections.length > 0) {
@@ -367,6 +369,9 @@ class QuizService {
           ? metadata.batches.split(',').map((b) => b.trim()).filter(Boolean)
           : [];
 
+    const level = (metadata.level === 'beginner' || metadata.level === 'intermediate' || metadata.level === 'advanced')
+      ? metadata.level
+      : undefined;
     const quiz = await QuizRepository.createQuiz({
       title,
       description,
@@ -376,6 +381,7 @@ class QuizService {
       batches,
       availableToEveryone,
       maxAttempts,
+      ...(level ? { level } : {}),
       questions,
       createdBy: userId
     });

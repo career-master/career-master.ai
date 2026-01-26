@@ -56,6 +56,7 @@ type StandaloneQuiz = {
   maxAttempts?: number;
   canAttempt?: boolean;
   isCompleted?: boolean;
+  level?: 'beginner' | 'intermediate' | 'advanced' | null;
 };
 
 export default function DashboardQuizzesPage() {
@@ -79,6 +80,21 @@ export default function DashboardQuizzesPage() {
   const [rootTopicPage, setRootTopicPage] = useState(1);
   // When set: right panel shows ONLY this topic's card (main quiz + sub-topics). Clicking a topic in sidebar sets this.
   const [selectedRootId, setSelectedRootId] = useState<string | null>(null);
+  // User preference: selected levels (multi-select). Empty = show all. Persisted in localStorage.
+  const [selectedLevels, setSelectedLevels] = useState<Set<'beginner' | 'intermediate' | 'advanced'>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    try {
+      const v = localStorage.getItem('quiz_level_preference');
+      if (!v || v === 'all') return new Set();
+      if (['beginner', 'intermediate', 'advanced'].includes(v)) return new Set([v]);
+      const arr = JSON.parse(v);
+      if (Array.isArray(arr)) {
+        const valid = arr.filter((x: string) => ['beginner', 'intermediate', 'advanced'].includes(x));
+        return new Set(valid);
+      }
+    } catch {}
+    return new Set();
+  });
 
   const SUB_TOPICS_PER_PAGE = 4;
   const SUB_SIDEBAR_PER_PAGE = 5;
@@ -102,7 +118,15 @@ export default function DashboardQuizzesPage() {
     }
   }, [authLoading, isAuthenticated, router]);
 
-  // Load subjects and standalone
+  // Persist selected levels to localStorage when they change
+  useEffect(() => {
+    try {
+      const raw = selectedLevels.size === 0 ? 'all' : JSON.stringify([...selectedLevels]);
+      localStorage.setItem('quiz_level_preference', raw);
+    } catch {}
+  }, [selectedLevels]);
+
+  // Load subjects and standalone (no level filter here; level filters only topic quizzes when a subject is selected)
   useEffect(() => {
     if (!isAuthenticated) return;
     const load = async () => {
@@ -213,14 +237,28 @@ export default function DashboardQuizzesPage() {
   const selectedSubject = subjects.find((s) => s._id === selectedSubjectId);
   const showStandaloneOnly = !selectedSubjectId;
 
-  // Build tree: roots (no parent) and their children (parentTopicId = root)
+  // When a subject is selected, filter by selected levels. Empty = show all. Otherwise show only quizzes
+  // whose level is in the selection; quizzes with no level are excluded when any level is selected.
+  const filteredTopicsWithQuizzes = useMemo(() => {
+    if (selectedLevels.size === 0) return topicsWithQuizzes;
+    return topicsWithQuizzes.map((tw) => ({
+      ...tw,
+      quizSets: tw.quizSets.filter((qs) => {
+        const q = qs.quizId && typeof qs.quizId === 'object' ? (qs.quizId as { level?: string }) : null;
+        if (!q) return false;
+        return !!q.level && selectedLevels.has(q.level as 'beginner' | 'intermediate' | 'advanced');
+      }),
+    }));
+  }, [topicsWithQuizzes, selectedLevels]);
+
+  // Build tree: roots (no parent) and their children (parentTopicId = root). Use level-filtered quiz sets.
   const topicTree = useMemo(() => {
-    const roots = topicsWithQuizzes.filter((tw) => !tw.topic.parentTopicId || tw.topic.parentTopicId === null);
+    const roots = filteredTopicsWithQuizzes.filter((tw) => !tw.topic.parentTopicId || tw.topic.parentTopicId === null);
     return roots.map((r) => {
-      const children = topicsWithQuizzes.filter((tw) => tw.topic.parentTopicId === r.topic._id);
+      const children = filteredTopicsWithQuizzes.filter((tw) => tw.topic.parentTopicId === r.topic._id);
       return { ...r, children };
     });
-  }, [topicsWithQuizzes]);
+  }, [filteredTopicsWithQuizzes]);
 
   // Paginated roots for the right-panel topic list (avoids IIFE in JSX)
   const rootsPagination = useMemo(() => {
@@ -295,6 +333,25 @@ export default function DashboardQuizzesPage() {
     return pct >= 60 ? 'completed' : 'attempted';
   };
 
+  // Colored tag for quiz level (Beginner=green, Intermediate=amber, Advanced=rose)
+  const LevelTag = ({ level }: { level: 'beginner' | 'intermediate' | 'advanced' }) => {
+    const styles: Record<string, string> = {
+      beginner: 'bg-emerald-100 text-emerald-800',
+      intermediate: 'bg-amber-100 text-amber-800',
+      advanced: 'bg-rose-100 text-rose-800',
+    };
+    const labels: Record<string, string> = {
+      beginner: 'Beginner',
+      intermediate: 'Intermediate',
+      advanced: 'Advanced',
+    };
+    return (
+      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${styles[level]}`}>
+        {labels[level]}
+      </span>
+    );
+  };
+
   // Helper: normalize quiz from QuizSet for list row
   const quizRow = (qs: QuizSet, progress: TopicProgress | null, canAttempt: boolean) => {
     const quiz = typeof qs.quizId === 'object' ? qs.quizId : null;
@@ -317,6 +374,7 @@ export default function DashboardQuizzesPage() {
       });
     }
     const status = getQuizStatus(progress, String(id));
+    const lvl = (quiz as any)?.level;
     return {
       _id: String(id),
       title: (quiz as any)?.title || 'Quiz',
@@ -325,6 +383,7 @@ export default function DashboardQuizzesPage() {
       totalMarks: marks,
       status,
       canAttempt,
+      level: lvl === 'beginner' || lvl === 'intermediate' || lvl === 'advanced' ? lvl : null,
     };
   };
 
@@ -478,6 +537,7 @@ export default function DashboardQuizzesPage() {
                                         <div className="flex items-center justify-between gap-1 pt-1">
                                           <button
                                             type="button"
+                                            
                                             onClick={() => setSubSidebarPage(root.topic._id, sidebarPage - 1)}
                                             disabled={sidebarPage <= 1}
                                             className="p-1.5 rounded text-gray-500 hover:text-purple-600 hover:bg-purple-50 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -590,7 +650,12 @@ export default function DashboardQuizzesPage() {
                           key={quiz._id}
                           className={`bg-white rounded-xl border border-gray-200 p-5 hover:border-purple-200 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 animate-scale-in ${delayClass}`}
                         >
-                          <h3 className="font-bold text-gray-900 mb-2">{quiz.name || quiz.title || 'Quiz'}</h3>
+                          <div className="flex items-center gap-2 flex-wrap mb-2">
+                            <h3 className="font-bold text-gray-900">{quiz.name || quiz.title || 'Quiz'}</h3>
+                            {quiz.level && (quiz.level === 'beginner' || quiz.level === 'intermediate' || quiz.level === 'advanced') && (
+                              <LevelTag level={quiz.level} />
+                            )}
+                          </div>
                           {quiz.description && <p className="text-sm text-gray-600 line-clamp-2 mb-3">{quiz.description}</p>}
                           <p className="text-sm text-gray-500 mb-4">
                             {quiz.durationMinutes || 30} min · {quiz.questionCount ?? 0} questions
@@ -650,6 +715,44 @@ export default function DashboardQuizzesPage() {
                   >
                     Change subject
                   </button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium text-gray-600">Level</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedLevels(new Set())}
+                      className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+                        selectedLevels.size === 0
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700'
+                      }`}
+                    >
+                      All
+                    </button>
+                    {(['beginner', 'intermediate', 'advanced'] as const).map((l) => (
+                      <button
+                        key={l}
+                        type="button"
+                        onClick={() => {
+                          setSelectedLevels((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(l)) next.delete(l);
+                            else next.add(l);
+                            return next;
+                          });
+                        }}
+                        className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+                          selectedLevels.has(l)
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700'
+                        }`}
+                      >
+                        {l.charAt(0).toUpperCase() + l.slice(1)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {loadingQuizzes ? (
@@ -730,7 +833,10 @@ export default function DashboardQuizzesPage() {
                                   className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 hover:bg-gray-50/80 transition-all duration-200"
                                 >
                                   <div className="flex-1 min-w-0">
-                                    <h4 className="font-semibold text-gray-900">{row.title}</h4>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <h4 className="font-semibold text-gray-900">{row.title}</h4>
+                                      {row.level && <LevelTag level={row.level} />}
+                                    </div>
                                     <p className="text-sm text-gray-500 mt-1">
                                       {row.durationMinutes ? `${row.durationMinutes} min` : '—'} · {row.questionCount} questions · {row.totalMarks} pts
                                       {row.status === 'completed' && (
@@ -789,7 +895,10 @@ export default function DashboardQuizzesPage() {
                                             return (
                                               <div key={row._id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 pl-6 hover:bg-gray-50/80 transition-all duration-200">
                                                 <div className="flex-1 min-w-0">
-                                                  <h4 className="font-semibold text-gray-900">{row.title}</h4>
+                                                  <div className="flex items-center gap-2 flex-wrap">
+                                                    <h4 className="font-semibold text-gray-900">{row.title}</h4>
+                                                    {row.level && <LevelTag level={row.level} />}
+                                                  </div>
                                                   <p className="text-sm text-gray-500 mt-1">
                                                     {row.durationMinutes ? `${row.durationMinutes} min` : '—'} · {row.questionCount} questions · {row.totalMarks} pts
                                                     {row.status === 'completed' && <span className="ml-2 inline-flex items-center gap-1 text-green-600 font-medium"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>Done</span>}
