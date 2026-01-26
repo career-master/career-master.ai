@@ -111,6 +111,8 @@ class ComprehensiveQuizzesSeed {
       let totalTopics = 0;
       let totalQuizzes = 0;
       let totalQuizSets = 0;
+      let levelCounter = 0;
+      const LEVELS = ['beginner', 'intermediate', 'advanced'];
       const processedSubjects = new Map();
 
       // Process each entry
@@ -208,6 +210,7 @@ class ComprehensiveQuizzesSeed {
           // Generate course category ID for this specific topic
           const courseCategoryId = this.generateCourseCategoryId(domain, category, topicName);
 
+          const mainLevel = LEVELS[levelCounter++ % 3];
           if (!quiz) {
             // Create new quiz
             quiz = new Quiz({
@@ -219,10 +222,11 @@ class ComprehensiveQuizzesSeed {
               useSections: false,
               questions: questions,
               createdBy: createdBy,
-              courseCategories: [courseCategoryId] // Link to course category
+              courseCategories: [courseCategoryId], // Link to course category
+              level: mainLevel
             });
             quiz = await quiz.save();
-            console.log(`      ✅ Created quiz: ${quizTitle} (${questions.length} questions)`);
+            console.log(`      ✅ Created quiz: ${quizTitle} (${questions.length} questions) [${mainLevel}]`);
             totalQuizzes++;
           } else {
             // Update existing quiz with new questions (to get topic-specific questions)
@@ -230,8 +234,9 @@ class ComprehensiveQuizzesSeed {
             quiz.questions = questions;
             quiz.courseCategories = [courseCategoryId];
             quiz.description = `Test your knowledge of ${topicName} with this comprehensive practice quiz`;
+            quiz.level = mainLevel;
             await quiz.save();
-            console.log(`      🔄 Updated quiz: ${quizTitle} (${oldQuestionCount} → ${questions.length} questions)`);
+            console.log(`      🔄 Updated quiz: ${quizTitle} (${oldQuestionCount} → ${questions.length} questions) [${mainLevel}]`);
             totalQuizzes++;
           }
 
@@ -298,6 +303,7 @@ class ComprehensiveQuizzesSeed {
 
               const subQuestions = this.generateQuizQuestions(`${topicName} - ${subName}`, category, domain, subject._id);
               const subCourseCatId = this.generateCourseCategoryId(domain, category, `${topicName}_${subName}`);
+              const subLevel = LEVELS[levelCounter++ % 3];
 
               if (!subQuiz) {
                 subQuiz = new Quiz({
@@ -309,15 +315,17 @@ class ComprehensiveQuizzesSeed {
                   useSections: false,
                   questions: subQuestions,
                   createdBy: createdBy,
-                  courseCategories: [subCourseCatId]
+                  courseCategories: [subCourseCatId],
+                  level: subLevel
                 });
                 subQuiz = await subQuiz.save();
-                console.log(`        ✅ Created quiz: ${subQuizTitle} (${subQuestions.length} questions)`);
+                console.log(`        ✅ Created quiz: ${subQuizTitle} (${subQuestions.length} questions) [${subLevel}]`);
                 totalQuizzes++;
               } else {
                 subQuiz.questions = subQuestions;
                 subQuiz.courseCategories = [subCourseCatId];
                 subQuiz.description = `Test your knowledge of ${subName} in ${topicName}`;
+                subQuiz.level = subLevel;
                 await subQuiz.save();
               }
 

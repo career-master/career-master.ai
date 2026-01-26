@@ -195,6 +195,7 @@ const createQuizSchema = z.object({
       .max(999, 'Max attempts cannot exceed 999')
       .optional()
       .default(999),
+    level: z.enum(['beginner', 'intermediate', 'advanced']).optional().nullable(),
     // Quiz structure
     useSections: z.boolean().default(false),
     sections: z.array(sectionSchema).optional(),
@@ -256,6 +257,7 @@ const updateQuizSchema = z.object({
       .min(1, 'Max attempts must be at least 1')
       .max(999, 'Max attempts cannot exceed 999')
       .optional(),
+    level: z.enum(['beginner', 'intermediate', 'advanced']).optional().nullable(),
     isActive: z.boolean().optional(),
     useSections: z.boolean().optional(),
     sections: z.array(sectionSchema).optional(),

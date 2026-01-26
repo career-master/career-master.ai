@@ -31,6 +31,9 @@ class QuizController {
     const defaultMarks = req.body.defaultMarks != null && req.body.defaultMarks !== ''
       ? Number(req.body.defaultMarks)
       : undefined;
+    const level = (req.body.level === 'beginner' || req.body.level === 'intermediate' || req.body.level === 'advanced')
+      ? req.body.level
+      : undefined;
     const metadata = {
       title: req.body.title,
       description: req.body.description,
@@ -40,7 +43,8 @@ class QuizController {
       batches: req.body.batches,
       availableToEveryone: req.body.availableToEveryone === 'true' || req.body.availableToEveryone === true,
       maxAttempts: req.body.maxAttempts ? Number(req.body.maxAttempts) : 999,
-      defaultMarks: Number.isFinite(defaultMarks) ? defaultMarks : undefined
+      defaultMarks: Number.isFinite(defaultMarks) ? defaultMarks : undefined,
+      level
     };
 
     const quiz = await QuizService.createQuizFromExcel(file?.buffer, metadata, userId);

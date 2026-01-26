@@ -40,6 +40,7 @@ export default function AdminCreateQuizPage() {
   const [selectedBatches, setSelectedBatches] = useState<string[]>([]);
   const [batches, setBatches] = useState<any[]>([]);
   const [isActive, setIsActive] = useState(true);
+  const [level, setLevel] = useState<'beginner' | 'intermediate' | 'advanced' | ''>('');
 
   // Link to Subject & Topic (optional: where this quiz appears for students)
   const [subjectId, setSubjectId] = useState('');
@@ -143,6 +144,7 @@ export default function AdminCreateQuizPage() {
         setMaxAttempts(quiz.maxAttempts || 999);
         setSelectedBatches(Array.isArray(quiz.batches) ? quiz.batches : []);
         setIsActive(quiz.isActive !== undefined ? quiz.isActive : true);
+        setLevel(quiz.level === 'beginner' || quiz.level === 'intermediate' || quiz.level === 'advanced' ? quiz.level : '');
         
         // Load sections or questions based on quiz structure
         if (quiz.useSections && Array.isArray(quiz.sections) && quiz.sections.length > 0) {
@@ -338,6 +340,8 @@ export default function AdminCreateQuizPage() {
         maxAttempts: maxAttempts || 999,
         isActive,
       };
+      // Always set level explicitly so it is never dropped (beginner/intermediate/advanced or null)
+      payload.level = (level === 'beginner' || level === 'intermediate' || level === 'advanced') ? level : null;
 
       // Only include dates if checkboxes are enabled
       if (enableAvailableFrom && availableFrom) {
@@ -818,6 +822,9 @@ export default function AdminCreateQuizPage() {
       formData.append('availableToEveryone', String(availableToEveryone));
       formData.append('maxAttempts', String(maxAttempts || 999));
       formData.append('defaultMarks', String(marksPerQuestion));
+      if (level === 'beginner' || level === 'intermediate' || level === 'advanced') {
+        formData.append('level', level);
+      }
       if (!availableToEveryone && selectedBatches.length > 0) {
         formData.append('batches', selectedBatches.join(','));
       }
@@ -1220,16 +1227,32 @@ export default function AdminCreateQuizPage() {
               )}
             </div>
 
-            <div>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                  className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                />
-                <span className="text-sm font-semibold text-gray-700">Active</span>
-              </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={isActive}
+                    onChange={(e) => setIsActive(e.target.checked)}
+                    className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                  />
+                  <span className="text-sm font-semibold text-gray-700">Active</span>
+                </label>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Level (who can see this quiz)</label>
+                <select
+                  value={level}
+                  onChange={(e) => setLevel(e.target.value as 'beginner' | 'intermediate' | 'advanced' | '')}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-red-500 focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">— All (show for all levels) —</option>
+                  <option value="beginner">Basic</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Set whether this quiz is for Basic, Intermediate, or Advanced. Users filter by these on the Practice Quizzes page.</p>
+              </div>
             </div>
 
             <div className="mt-4">
