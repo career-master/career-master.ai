@@ -644,11 +644,18 @@ export default function AdminCreateQuizPage() {
           return;
         }
         
-        // Check if any sections were filtered out due to incomplete questions
+        // Strict validation: do NOT allow saving if any questions were filtered out as incomplete.
+        // This ensures admins must fully fill every question (text, options, correct answers, etc.)
+        // instead of partially filled questions being silently dropped.
         const totalQuestionsBefore = sections.reduce((sum, s) => sum + (s.questions?.length || 0), 0);
         const totalQuestionsAfter = validSections.reduce((sum, s) => sum + s.questions.length, 0);
         if (totalQuestionsBefore > totalQuestionsAfter) {
-          setError(`Warning: ${totalQuestionsBefore - totalQuestionsAfter} incomplete question(s) were removed. Please ensure all questions have question text and correct answers selected before saving.`);
+          const removed = totalQuestionsBefore - totalQuestionsAfter;
+          setError(
+            `There are ${removed} incomplete question(s). Please complete every question (question text, options and correct answers — including MCQ Multiple, Match, Reorder, Hotspot, etc.) before saving the quiz.`
+          );
+          setSaving(false);
+          return;
         }
 
         payload.useSections = true;
