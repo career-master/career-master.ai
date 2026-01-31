@@ -317,7 +317,6 @@ export default function AdminCreateQuizPage() {
       setShowAddSubTopicForm(false);
       setNewSubTopicTitle('');
       setSuccess('Sub-topic added. It is now selected in the dropdown.');
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       setError(err?.message || 'Failed to add sub-topic');
     } finally {
@@ -899,14 +898,42 @@ export default function AdminCreateQuizPage() {
         </div>
 
         <div className="bg-white rounded-xl shadow-lg p-6">
-          {error && (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-          {success && (
-            <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-              {success}
+          {/* Success / Failed popup modal */}
+          {(success || error) && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+              onClick={() => { setSuccess(''); setError(''); }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="modal-title"
+            >
+              <div
+                className={`relative rounded-xl shadow-xl max-w-md w-full p-6 ${
+                  success ? 'bg-green-50 border-2 border-green-200' : 'bg-red-50 border-2 border-red-200'
+                }`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="text-center">
+                  <h3
+                    id="modal-title"
+                    className={`text-lg font-bold mb-3 ${success ? 'text-green-800' : 'text-red-800'}`}
+                  >
+                    {success ? 'Success' : 'Failed'}
+                  </h3>
+                  <p className={`text-sm mb-5 ${success ? 'text-green-700' : 'text-red-700'}`}>
+                    {success || error}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { setSuccess(''); setError(''); }}
+                    className={`px-5 py-2.5 rounded-lg text-sm font-semibold text-white ${
+                      success ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
+                    } transition-colors`}
+                  >
+                    OK
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -936,6 +963,56 @@ export default function AdminCreateQuizPage() {
                 rows={2}
                 placeholder="Short description of the quiz..."
               />
+            </div>
+
+            {/* Level (who can see this quiz) — right below description, radio buttons */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Level (who can see this quiz)
+              </label>
+              <p className="text-xs text-gray-500 mb-2">Set whether this quiz is for Basic, Intermediate, or Advanced. Users filter by these on the Practice Quizzes page.</p>
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="quiz-level"
+                    checked={level === ''}
+                    onChange={() => setLevel('')}
+                    className="border-gray-300 text-red-600 focus:ring-red-500"
+                  />
+                  <span className="text-sm text-gray-700">All (show for all levels)</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="quiz-level"
+                    checked={level === 'beginner'}
+                    onChange={() => setLevel('beginner')}
+                    className="border-gray-300 text-red-600 focus:ring-red-500"
+                  />
+                  <span className="text-sm text-gray-700">Basic</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="quiz-level"
+                    checked={level === 'intermediate'}
+                    onChange={() => setLevel('intermediate')}
+                    className="border-gray-300 text-red-600 focus:ring-red-500"
+                  />
+                  <span className="text-sm text-gray-700">Intermediate</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="quiz-level"
+                    checked={level === 'advanced'}
+                    onChange={() => setLevel('advanced')}
+                    className="border-gray-300 text-red-600 focus:ring-red-500"
+                  />
+                  <span className="text-sm text-gray-700">Advanced</span>
+                </label>
+              </div>
             </div>
 
             {/* Link to Subject & Topic — optional, where this quiz appears for students */}
@@ -1125,7 +1202,9 @@ export default function AdminCreateQuizPage() {
                   <span className="text-gray-500">(required for upload)</span>
                 </label>
               </div>
-              <p className="text-xs text-gray-500">Required for Excel: Quiz name, Duration, Marks per question. Subject/Topic/Sub-topic: optional — if none selected, quiz is not linked.</p>
+              <p className="text-xs text-gray-500">
+                Upload Excel is enabled only when you have filled all required quiz data: <strong>Quiz Title</strong>, <strong>Duration (minutes)</strong>, and <strong>Marks per question</strong> (≥1). If you use availability dates, those must be set too. Subject/Topic/Sub-topic are optional — if none selected, quiz is not linked.
+              </p>
             </div>
             )}
 
@@ -1234,32 +1313,16 @@ export default function AdminCreateQuizPage() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={isActive}
-                    onChange={(e) => setIsActive(e.target.checked)}
-                    className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                  />
-                  <span className="text-sm font-semibold text-gray-700">Active</span>
-                </label>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Level (who can see this quiz)</label>
-                <select
-                  value={level}
-                  onChange={(e) => setLevel(e.target.value as 'beginner' | 'intermediate' | 'advanced' | '')}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-red-500 focus:ring-2 focus:ring-red-500"
-                >
-                  <option value="">— All (show for all levels) —</option>
-                  <option value="beginner">Basic</option>
-                  <option value="intermediate">Intermediate</option>
-                  <option value="advanced">Advanced</option>
-                </select>
-                <p className="text-xs text-gray-500 mt-1">Set whether this quiz is for Basic, Intermediate, or Advanced. Users filter by these on the Practice Quizzes page.</p>
-              </div>
+            <div>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={isActive}
+                  onChange={(e) => setIsActive(e.target.checked)}
+                  className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                />
+                <span className="text-sm font-semibold text-gray-700">Active</span>
+              </label>
             </div>
 
             <div className="mt-4">

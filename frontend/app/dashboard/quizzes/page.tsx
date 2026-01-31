@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
@@ -154,51 +154,79 @@ export default function DashboardQuizzesPage() {
     load();
   }, [isAuthenticated, (user as any)?.email]);
 
-  // When subject selected: load all topics (roots + sub-topics) and for each: quiz sets + progress
+  // Load topics + quiz sets + progress for selected subject (used on mount and when refetching after quiz)
+  const loadTopicsWithProgress = useCallback(async (forceFresh = false) => {
+    if (!selectedSubjectId || !isAuthenticated) return;
+    setLoadingQuizzes(true);
+    const cacheBuster = forceFresh ? Date.now() : undefined;
+    try {
+      const allRes = await apiService.getTopics(selectedSubjectId, true);
+      const all: Topic[] = (allRes.success && Array.isArray(allRes.data)) ? allRes.data : [];
+      const roots = all.filter((t) => !t.parentTopicId || t.parentTopicId === null).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const ordered: Topic[] = [];
+      roots.forEach((r) => {
+        ordered.push(r);
+        const children = all.filter((t) => t.parentTopicId === r._id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        ordered.push(...children);
+      });
+      const inOrder = new Set(ordered.map((t) => t._id));
+      all.forEach((t) => {
+        if (!inOrder.has(t._id)) ordered.push(t);
+      });
+
+      const withData = await Promise.all(
+        ordered.map(async (topic) => {
+          const [qsRes, progRes] = await Promise.all([
+            apiService.getQuizSetsByTopic(topic._id, true),
+            apiService.getTopicProgress(topic._id, cacheBuster).catch(() => ({ success: false, data: null })),
+          ]);
+          const quizSets: QuizSet[] = (qsRes.success && Array.isArray(qsRes.data)) ? qsRes.data : [];
+          const progress: TopicProgress | null = progRes?.success && progRes?.data ? (progRes.data as TopicProgress) : null;
+          return { topic, quizSets, progress };
+        })
+      );
+      setTopicsWithQuizzes(withData);
+    } catch {
+      setTopicsWithQuizzes([]);
+    } finally {
+      setLoadingQuizzes(false);
+    }
+  }, [selectedSubjectId, isAuthenticated]);
+
+  // When subject selected: load topics + progress (always force fresh so progress bars stay current)
   useEffect(() => {
     if (!isAuthenticated || !selectedSubjectId) {
       setTopicsWithQuizzes([]);
       return;
     }
-    const load = async () => {
-      setLoadingQuizzes(true);
-      try {
-        const allRes = await apiService.getTopics(selectedSubjectId, true);
-        const all: Topic[] = (allRes.success && Array.isArray(allRes.data)) ? allRes.data : [];
-        // Sort: roots first by order, then under each root its sub-topics
-        const roots = all.filter((t) => !t.parentTopicId || t.parentTopicId === null).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-        const ordered: Topic[] = [];
-        roots.forEach((r) => {
-          ordered.push(r);
-          const children = all.filter((t) => t.parentTopicId === r._id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-          ordered.push(...children);
-        });
-        // Also add any topics not in roots and not children (fallback)
-        const inOrder = new Set(ordered.map((t) => t._id));
-        all.forEach((t) => {
-          if (!inOrder.has(t._id)) ordered.push(t);
-        });
+    loadTopicsWithProgress(true);
+  }, [selectedSubjectId, isAuthenticated, loadTopicsWithProgress]);
 
-        const withData = await Promise.all(
-          ordered.map(async (topic) => {
-            const [qsRes, progRes] = await Promise.all([
-              apiService.getQuizSetsByTopic(topic._id, true),
-              apiService.getTopicProgress(topic._id).catch(() => ({ success: false, data: null })),
-            ]);
-            const quizSets: QuizSet[] = (qsRes.success && Array.isArray(qsRes.data)) ? qsRes.data : [];
-            const progress: TopicProgress | null = progRes?.success && progRes?.data ? (progRes.data as TopicProgress) : null;
-            return { topic, quizSets, progress };
-          })
-        );
-        setTopicsWithQuizzes(withData);
-      } catch {
-        setTopicsWithQuizzes([]);
-      } finally {
-        setLoadingQuizzes(false);
-      }
+  // Refetch progress when user returns to this page (e.g. after finishing a quiz) so progress bars update
+  useEffect(() => {
+    if (!selectedSubjectId) return;
+    let lastRefetch = 0;
+    const refetch = () => {
+      const now = Date.now();
+      if (now - lastRefetch < 2000) return; // throttle 2s
+      lastRefetch = now;
+      loadTopicsWithProgress(true);
     };
-    load();
-  }, [selectedSubjectId, isAuthenticated]);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refetch();
+    };
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) refetch(); // restored from bfcache (e.g. back button)
+    };
+    window.addEventListener('focus', refetch); // refetch when window gains focus (e.g. after returning from quiz)
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pageshow', onPageShow);
+    return () => {
+      window.removeEventListener('focus', refetch);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pageshow', onPageShow);
+    };
+  }, [selectedSubjectId, loadTopicsWithProgress]);
 
   const userBatches = (user as any)?.batches || [];
   const hasAccess = (s: Subject) =>
@@ -320,6 +348,29 @@ export default function DashboardQuizzesPage() {
     } else {
       router.replace('/dashboard/quizzes', { scroll: false });
     }
+  };
+
+  // Helper: get attempted and passed counts for a topic (for progress bar — bar shows attempted so it updates after retake)
+  const getTopicProgressCounts = (quizSets: QuizSet[], progress: TopicProgress | null) => {
+    const total = quizSets.length;
+    if (!progress?.completedQuizzes?.length || total === 0) return { attempted: 0, passed: 0, total };
+    const attemptedIds = new Set(
+      progress.completedQuizzes.map((c) => String(typeof c.quizId === 'string' ? c.quizId : (c.quizId as any)?._id))
+    );
+    const passedIds = new Set(
+      progress.completedQuizzes
+        .filter((c) => (typeof c.percentage === 'number' ? c.percentage : 0) >= 60)
+        .map((c) => String(typeof c.quizId === 'string' ? c.quizId : (c.quizId as any)?._id))
+    );
+    let attempted = 0;
+    let passed = 0;
+    quizSets.forEach((qs) => {
+      const id = typeof qs.quizId === 'object' ? (qs.quizId as any)?._id : qs.quizId;
+      if (!id) return;
+      if (attemptedIds.has(String(id))) attempted++;
+      if (passedIds.has(String(id))) passed++;
+    });
+    return { attempted, passed, total };
   };
 
   // Helper: get quiz status from progress
@@ -499,6 +550,27 @@ export default function DashboardQuizzesPage() {
                                     <div className="flex-1 min-w-0">
                                       <h4 className="font-semibold text-gray-900 truncate text-sm">{root.topic.title}</h4>
                                       <p className="text-xs text-gray-500">{totalQuizzes} quiz{totalQuizzes !== 1 ? 'zes' : ''}</p>
+                                      {(() => {
+                                        const rootCounts = getTopicProgressCounts(root.quizSets, root.progress);
+                                        const childCounts = root.children.reduce((acc, c) => {
+                                          const { attempted, total } = getTopicProgressCounts(c.quizSets, c.progress);
+                                          return { attempted: acc.attempted + attempted, total: acc.total + total };
+                                        }, { attempted: 0, total: 0 });
+                                        const attempted = rootCounts.attempted + childCounts.attempted;
+                                        const total = rootCounts.total + childCounts.total;
+                                        const pct = total > 0 ? Math.round((attempted / total) * 100) : 0;
+                                        return total > 0 ? (
+                                          <div className="mt-1.5">
+                                            <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                              <div
+                                                className="h-full bg-purple-500 rounded-full transition-all duration-300"
+                                                style={{ width: `${pct}%` }}
+                                              />
+                                            </div>
+                                            <p className="text-[10px] text-gray-500 mt-0.5">{attempted}/{total} attempted</p>
+                                          </div>
+                                        ) : null;
+                                      })()}
                                     </div>
                                     <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -524,13 +596,28 @@ export default function DashboardQuizzesPage() {
                                             setSelectedRootId(root.topic._id);
                                             setTimeout(() => document.getElementById(`topic-${child.topic._id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
                                           }}
-                                          className="w-full text-left rounded-lg border border-gray-100 bg-white/80 hover:bg-purple-50/80 hover:border-purple-200 p-2.5 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-1"
+                                          className="w-full text-left rounded-lg border border-gray-100 bg-white/80 hover:bg-purple-50/80 hover:border-purple-200 p-2.5 flex flex-col gap-1 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-1"
                                         >
-                                          <span className="font-medium text-gray-900 text-sm truncate">{getSubTopicLabel(child.topic.title)}</span>
-                                          <span className="text-xs text-gray-500 flex-shrink-0">{child.quizSets.length} quiz</span>
-                                          <svg className="w-3.5 h-3.5 text-gray-400 ml-auto flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                          </svg>
+                                          <div className="flex items-center gap-2 w-full">
+                                            <span className="font-medium text-gray-900 text-sm truncate flex-1">{getSubTopicLabel(child.topic.title)}</span>
+                                            <span className="text-xs text-gray-500 flex-shrink-0">{child.quizSets.length} quiz</span>
+                                            <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                            </svg>
+                                          </div>
+                                          {(() => {
+                                            const { attempted, total } = getTopicProgressCounts(child.quizSets, child.progress);
+                                            if (total === 0) return null;
+                                            const pct = Math.round((attempted / total) * 100);
+                                            return (
+                                              <div className="w-full">
+                                                <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
+                                                  <div className="h-full bg-purple-500 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
+                                                </div>
+                                                <span className="text-[10px] text-gray-500">{attempted}/{total} attempted</span>
+                                              </div>
+                                            );
+                                          })()}
                                         </button>
                                       ))}
                                       {sidebarNeedsPagination && (
@@ -716,6 +803,35 @@ export default function DashboardQuizzesPage() {
                     Change subject
                   </button>
                 </div>
+
+                {/* Subject-wise progress bar (this subject) */}
+                {(() => {
+                  const subjectAttempted = topicsWithQuizzes.reduce(
+                    (sum, tw) => sum + getTopicProgressCounts(tw.quizSets, tw.progress).attempted,
+                    0
+                  );
+                  const subjectPassed = topicsWithQuizzes.reduce(
+                    (sum, tw) => sum + getTopicProgressCounts(tw.quizSets, tw.progress).passed,
+                    0
+                  );
+                  const subjectTotal = topicsWithQuizzes.reduce((s, tw) => s + tw.quizSets.length, 0);
+                  if (subjectTotal === 0) return null;
+                  const subjectPct = Math.round((subjectAttempted / subjectTotal) * 100);
+                  return (
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-semibold text-gray-700">Subject progress</span>
+                        <span className="text-sm font-bold text-gray-900">{subjectAttempted} / {subjectTotal} attempted{subjectPassed !== subjectAttempted ? ` (${subjectPassed} passed)` : ''}</span>
+                      </div>
+                      <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full transition-all duration-500"
+                          style={{ width: `${subjectPct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium text-gray-600">Level</span>
