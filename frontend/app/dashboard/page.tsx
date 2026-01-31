@@ -52,6 +52,7 @@ interface DashboardStats {
 function SubjectSuggestions({ user }: { user: any }) {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [subjectProgress, setSubjectProgress] = useState<Record<string, { progressPercentage: number; completedTopics: number; totalTopics: number }>>({});
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState<any>(null);
   const router = useRouter();
@@ -111,7 +112,27 @@ function SubjectSuggestions({ user }: { user: any }) {
             return 0;
           });
           
-          setSubjects(sorted.slice(0, 4)); // Show max 4
+          const list = sorted.slice(0, 4); // Show max 4
+          setSubjects(list);
+
+          // Load progress for each subject in parallel
+          const progressRes = await Promise.all(
+            list.map((s: any) =>
+              apiService.getSubjectProgress(s._id).then((r) => ({ subjectId: s._id, res: r }))
+            )
+          );
+          const progressMap: Record<string, { progressPercentage: number; completedTopics: number; totalTopics: number }> = {};
+          progressRes.forEach(({ subjectId, res }) => {
+            if (res.success && res.data && typeof res.data === 'object') {
+              const d = res.data as { progressPercentage?: number; completedTopics?: number; totalTopics?: number };
+              progressMap[subjectId] = {
+                progressPercentage: typeof d.progressPercentage === 'number' ? d.progressPercentage : 0,
+                completedTopics: typeof d.completedTopics === 'number' ? d.completedTopics : 0,
+                totalTopics: typeof d.totalTopics === 'number' ? d.totalTopics : 0,
+              };
+            }
+          });
+          setSubjectProgress(progressMap);
         }
       } catch (err) {
         console.error('Failed to load subjects:', err);
@@ -245,6 +266,29 @@ function SubjectSuggestions({ user }: { user: any }) {
                     </span>
                   )}
                 </div>
+                {/* Subject progress bar */}
+                {!needsRequest && hasSubjectAccess && (() => {
+                  const progress = subjectProgress[subject._id];
+                  const pct = progress ? progress.progressPercentage : 0;
+                  const total = progress?.totalTopics ?? 0;
+                  const completed = progress?.completedTopics ?? 0;
+                  return (
+                    <div className="mt-3">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs font-medium text-gray-600">Progress</span>
+                        <span className="text-xs font-semibold text-gray-900">
+                          {total > 0 ? `${completed} / ${total} topics` : '—'}
+                        </span>
+                      </div>
+                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-[#0dcaf0] to-[#6f42c1] rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(Math.round(pct), 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
             {needsRequest ? (
