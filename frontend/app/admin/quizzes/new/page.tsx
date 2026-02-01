@@ -75,10 +75,22 @@ export default function AdminCreateQuizPage() {
   const [saving, setSaving] = useState(false);
   const [excelUploading, setExcelUploading] = useState(false);
   const [marksPerQuestion, setMarksPerQuestion] = useState(1);
+  const [durationFilledByUser, setDurationFilledByUser] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Upload Excel: enable when user has filled title + duration. Marks come from Excel (optional default below).
+  const hasTitle = String(title ?? '').trim().length > 0;
+  const durationVal = Number(durationMinutes);
+  const hasDuration = durationFilledByUser && Number.isFinite(durationVal) && durationVal >= 1;
+  const canUploadExcel = hasTitle && hasDuration;
+
+  // Show what's missing when Upload is disabled
+  const uploadMissing: string[] = [];
+  if (!hasTitle) uploadMissing.push('Quiz Title');
+  if (!hasDuration) uploadMissing.push('Duration (minutes) ≥ 1');
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -709,6 +721,8 @@ export default function AdminCreateQuizPage() {
         setTitle('');
         setDescription('');
         setDurationMinutes(30);
+        setMarksPerQuestion(1);
+        setDurationFilledByUser(false);
         setAvailableFrom('');
         setAvailableTo('');
         setSelectedBatches([]);
@@ -766,7 +780,7 @@ export default function AdminCreateQuizPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate: Quiz name (title), Duration, Marks per question required
+    // Validate: Quiz name (title) and Duration required. Marks come from Excel (default used if not in sheet).
     if (!title || !title.trim()) {
       setError('Please enter a quiz name (title) before uploading the Excel file.');
       if (e.target) e.target.value = '';
@@ -775,12 +789,6 @@ export default function AdminCreateQuizPage() {
 
     if (!durationMinutes || durationMinutes < 1) {
       setError('Please enter a valid duration (minimum 1 minute) before uploading the Excel file.');
-      if (e.target) e.target.value = '';
-      return;
-    }
-
-    if (!marksPerQuestion || marksPerQuestion < 1) {
-      setError('Please enter Marks per question (at least 1) before uploading the Excel file.');
       if (e.target) e.target.value = '';
       return;
     }
@@ -827,7 +835,7 @@ export default function AdminCreateQuizPage() {
       if (enableAvailableTo && availableTo) formData.append('availableTo', availableTo);
       formData.append('availableToEveryone', String(availableToEveryone));
       formData.append('maxAttempts', String(maxAttempts || 999));
-      formData.append('defaultMarks', String(marksPerQuestion));
+      formData.append('defaultMarks', String(marksPerQuestion || 1));
       if (level === 'beginner' || level === 'intermediate' || level === 'advanced') {
         formData.append('level', level);
       }
@@ -1156,7 +1164,12 @@ export default function AdminCreateQuizPage() {
                   min={1}
                   max={600}
                   value={durationMinutes}
-                  onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                  onChange={(e) => {
+                    setDurationFilledByUser(true);
+                    const v = e.target.value;
+                    if (v === '') setDurationMinutes(30);
+                    else setDurationMinutes(Math.max(1, Math.min(600, Number(v) || 1)));
+                  }}
                   required
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-red-500 focus:ring-2 focus:ring-red-500"
                 />
@@ -1183,27 +1196,43 @@ export default function AdminCreateQuizPage() {
             {!quizId && (
             <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-4">
               <h3 className="text-sm font-bold text-gray-900 mb-2">Create via Excel</h3>
-              <p className="text-xs text-gray-600 mb-3">Download template → add questions &amp; options → set Marks per question → Upload. Topic (above) is optional.</p>
+              <p className="text-xs text-gray-600 mb-3">Download template → add questions &amp; options (marks can be in Excel). <strong>Upload is available after you fill Quiz Title and Duration below.</strong></p>
               <div className="flex flex-wrap items-center gap-3 mb-2">
                 <button type="button" onClick={downloadQuizExcelTemplate} className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-50 transition-colors">Download template</button>
                 <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleUploadExcel} />
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={Boolean(excelUploading || !title?.trim() || !durationMinutes || durationMinutes < 1 || !marksPerQuestion || marksPerQuestion < 1 || (enableAvailableFrom && !availableFrom) || (enableAvailableTo && !availableTo) || (enableAvailableFrom && enableAvailableTo && availableFrom && availableTo && new Date(availableTo) <= new Date(availableFrom)))}
+                  disabled={excelUploading || !canUploadExcel}
                   className="rounded-lg border border-amber-400 bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={!title?.trim() || !durationMinutes || !marksPerQuestion || marksPerQuestion < 1 ? 'Enter Quiz name, Duration (above), Marks per question (≥1). Topic optional.' : ''}
+                  title={canUploadExcel ? 'Upload your Excel file' : uploadMissing.length ? `Fill: ${uploadMissing.join(', ')}` : 'Fill all required data first'}
                 >
-                  {excelUploading ? 'Uploading...' : 'Upload Excel'}
+                  {excelUploading ? 'Uploading...' : canUploadExcel ? 'Upload Excel' : 'Fill all data to upload'}
                 </button>
                 <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <span className="font-medium">Marks per question:</span>
-                  <input type="number" min={1} max={100} value={marksPerQuestion} onChange={(e) => setMarksPerQuestion(Math.max(1, Number(e.target.value) || 1))} className="w-16 rounded border border-gray-300 px-2 py-1 text-sm" />
-                  <span className="text-gray-500">(required for upload)</span>
+                  <span className="font-medium">Default marks (if not in Excel):</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={marksPerQuestion}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === '') setMarksPerQuestion(1);
+                      else setMarksPerQuestion(Math.max(1, Math.min(100, Number(v) || 1)));
+                    }}
+                    className="w-16 rounded border border-gray-300 px-2 py-1 text-sm"
+                  />
+                  <span className="text-gray-500">(optional)</span>
                 </label>
               </div>
+              {!canUploadExcel && uploadMissing.length > 0 && (
+                <p className="text-xs text-amber-800 bg-amber-100/80 rounded-lg px-3 py-2 mb-2">
+                  <strong>To enable Upload, fill:</strong> {uploadMissing.join(', ')}
+                </p>
+              )}
               <p className="text-xs text-gray-500">
-                Upload Excel is enabled only when you have filled all required quiz data: <strong>Quiz Title</strong>, <strong>Duration (minutes)</strong>, and <strong>Marks per question</strong> (≥1). If you use availability dates, those must be set too. Subject/Topic/Sub-topic are optional — if none selected, quiz is not linked.
+                <strong>Required for upload:</strong> Quiz Title, Duration (minutes) ≥ 1. Marks come from your Excel file (or use the default above). If you use &quot;Set Available From&quot; or &quot;Set Available To&quot;, those dates must be set and &quot;Available To&quot; must be after &quot;Available From&quot;. Subject/Topic/Sub-topic are optional.
               </p>
             </div>
             )}
