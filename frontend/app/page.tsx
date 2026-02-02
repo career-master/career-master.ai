@@ -11,15 +11,18 @@ export default function Home() {
   const [counterStats, setCounterStats] = useState({
     students: 0,
     quizzes: 0,
-    success: 0,
-    awards: 0,
+    domains: 0,
+    courses: 0,
   });
 
-  // Slider images (placeholder - replace with actual images)
+  // Slider images with background images
   const sliderImages = [
-    { src: '/api/placeholder/1920/600', alt: 'Learning Platform' },
-    { src: '/api/placeholder/1920/600', alt: 'Quiz System' },
-    { src: '/api/placeholder/1920/600', alt: 'Success Stories' },
+    // { src: '/api/placeholder/1920/600', alt: 'Learning Platform' },
+    // { src: '/api/placeholder/1920/600', alt: 'Quiz System' },
+    // { src: '/api/placeholder/1920/600', alt: 'Success Stories' },
+    { src: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=1920&h=600&fit=crop', alt: 'Learning Platform' },
+    { src: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=1920&h=600&fit=crop', alt: 'Quiz System' },
+    { src: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=1920&h=600&fit=crop', alt: 'Success Stories' },
   ];
 
   // Auto-slide functionality
@@ -32,7 +35,7 @@ export default function Home() {
 
   // Counter animation
   useEffect(() => {
-    const targets = { students: 10000, quizzes: 5000, success: 95, awards: 200 };
+    const targets = { students: 1000, quizzes: 5000, domains: 15, courses: 1500 };
     const duration = 2000;
     const steps = 60;
     const increment = duration / steps;
@@ -44,8 +47,8 @@ export default function Home() {
       setCounterStats({
         students: Math.floor(targets.students * progress),
         quizzes: Math.floor(targets.quizzes * progress),
-        success: Math.floor(targets.success * progress),
-        awards: Math.floor(targets.awards * progress),
+        domains: Math.floor(targets.domains * progress),
+        courses: Math.floor(targets.courses * progress),
       });
       if (step >= steps) clearInterval(timer);
     }, increment);
@@ -86,10 +89,14 @@ export default function Home() {
               index === currentSlide ? 'opacity-100' : 'opacity-0'
             }`}
           >
-            <div className="w-full h-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
-              <div className="text-center text-white px-4">
-                <h2 className="text-4xl md:text-6xl font-bold mb-4">{image.alt}</h2>
-                <p className="text-xl md:text-2xl">Your journey to success starts here</p>
+            <div 
+              className="w-full h-full bg-cover bg-center bg-no-repeat flex items-center justify-center"
+              style={{ backgroundImage: `url('${image.src}')` }}
+            >
+              <div className="absolute inset-0 bg-black/50"></div>
+              <div className="relative text-center text-white px-4 z-10">
+                <h2 className="text-3xl md:text-5xl font-bold mb-4 drop-shadow-lg">{image.alt}</h2>
+                <p className="text-xl md:text-2xl drop-shadow-md">Your journey to success starts here</p>
               </div>
             </div>
           </div>
@@ -143,6 +150,113 @@ export default function Home() {
               </p>
             </div>
           </div>
+
+          {/* Know More Button */}
+          <div className="text-center mt-10">
+            <Link href="/about" className="inline-block px-8 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-colors text-lg shadow-lg hover:shadow-xl">
+              Know More About Us
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Updates, Events & Exams Section */}
+      <section className="py-16 bg-white dark:bg-gray-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Quick Updates Card */}
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg overflow-hidden">
+              <div className="bg-blue-600 text-white py-3 px-4">
+                <h3 className="text-xl font-bold flex items-center">
+                  <span className="mr-2">📢</span> Quick Updates
+                </h3>
+              </div>
+              <div className="h-64 overflow-hidden">
+                <div className="animate-scroll-vertical">
+                  {[
+                    { title: 'New Quiz Added', desc: 'Python Advanced Quiz is now live!', date: 'Jan 28, 2026' },
+                    { title: 'Feature Update', desc: 'Dark mode now available', date: 'Jan 25, 2026' },
+                    { title: 'Performance Boost', desc: 'Faster quiz loading times', date: 'Jan 22, 2026' },
+                    { title: 'New Batch Started', desc: 'GATE 2026 batch registrations open', date: 'Jan 20, 2026' },
+                    { title: 'Mobile App', desc: 'Coming soon on Android & iOS', date: 'Jan 18, 2026' },
+                    { title: 'New Quiz Added', desc: 'Python Advanced Quiz is now live!', date: 'Jan 28, 2026' },
+                    { title: 'Feature Update', desc: 'Dark mode now available', date: 'Jan 25, 2026' },
+                    { title: 'Performance Boost', desc: 'Faster quiz loading times', date: 'Jan 22, 2026' },
+                    { title: 'New Batch Started', desc: 'GATE 2026 batch registrations open', date: 'Jan 20, 2026' },
+                    { title: 'Mobile App', desc: 'Coming soon on Android & iOS', date: 'Jan 18, 2026' },
+                  ].map((update, idx) => (
+                    <div key={idx} className="p-4 border-b border-blue-200 dark:border-gray-600 hover:bg-blue-200 dark:hover:bg-gray-600 transition-colors cursor-pointer">
+                      <p className="font-semibold text-gray-900 dark:text-white">{update.title}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">{update.desc}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{update.date}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Events Card */}
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg overflow-hidden">
+              <div className="bg-purple-600 text-white py-3 px-4">
+                <h3 className="text-xl font-bold flex items-center">
+                  <span className="mr-2">📅</span> Online Trainings
+                </h3>
+              </div>
+              <div className="h-64 overflow-hidden">
+                <div className="animate-scroll-vertical-reverse">
+                  {[
+                    { title: 'GATE Prep Session', desc: 'Live session with experts', date: 'Feb 5, 2026 - 10:00 AM' },
+                    { title: 'Career Guidance Webinar', desc: 'Choose your right path', date: 'Feb 8, 2026 - 3:00 PM' },
+                    { title: 'Mock Test Series', desc: 'Full-length practice tests', date: 'Feb 12, 2026 - 9:00 AM' },
+                    { title: 'Interview Skills Workshop', desc: 'Crack your next interview', date: 'Feb 15, 2026 - 2:00 PM' },
+                    { title: 'Coding Bootcamp', desc: '3-day intensive program', date: 'Feb 20-22, 2026' },
+                    { title: 'GATE Prep Session', desc: 'Live session with experts', date: 'Feb 5, 2026 - 10:00 AM' },
+                    { title: 'Career Guidance Webinar', desc: 'Choose your right path', date: 'Feb 8, 2026 - 3:00 PM' },
+                    { title: 'Mock Test Series', desc: 'Full-length practice tests', date: 'Feb 12, 2026 - 9:00 AM' },
+                    { title: 'Interview Skills Workshop', desc: 'Crack your next interview', date: 'Feb 15, 2026 - 2:00 PM' },
+                    { title: 'Coding Bootcamp', desc: '3-day intensive program', date: 'Feb 20-22, 2026' },
+                  ].map((event, idx) => (
+                    <div key={idx} className="p-4 border-b border-purple-200 dark:border-gray-600 hover:bg-purple-200 dark:hover:bg-gray-600 transition-colors cursor-pointer">
+                      <p className="font-semibold text-gray-900 dark:text-white">{event.title}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">{event.desc}</p>
+                      <p className="text-xs text-purple-600 dark:text-purple-400 mt-1 font-medium">{event.date}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Latest Competitive Exams Card */}
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg overflow-hidden">
+              <div className="bg-blue-600 text-white py-3 px-4">
+                <h3 className="text-xl font-bold flex items-center">
+                  <span className="mr-2">🎯</span> Latest Exams
+                </h3>
+              </div>
+              <div className="h-64 overflow-hidden">
+                <div className="animate-scroll-vertical">
+                  {[
+                    { title: 'UPSC CSE 2026', desc: 'Prelims: May 25, 2026', status: 'Applications Open' },
+                    { title: 'SSC CGL 2026', desc: 'Tier-1: April 10, 2026', status: 'Notification Out' },
+                    { title: 'GATE 2026', desc: 'Exam: Feb 1-16, 2026', status: 'Admit Card Released' },
+                    { title: 'CAT 2026', desc: 'Exam: Nov 24, 2026', status: 'Coming Soon' },
+                    { title: 'JEE Main 2026', desc: 'Session 1: Jan 2026', status: 'Results Declared' },
+                    { title: 'UPSC CSE 2026', desc: 'Prelims: May 25, 2026', status: 'Applications Open' },
+                    { title: 'SSC CGL 2026', desc: 'Tier-1: April 10, 2026', status: 'Notification Out' },
+                    { title: 'GATE 2026', desc: 'Exam: Feb 1-16, 2026', status: 'Admit Card Released' },
+                    { title: 'CAT 2026', desc: 'Exam: Nov 24, 2026', status: 'Coming Soon' },
+                    { title: 'JEE Main 2026', desc: 'Session 1: Jan 2026', status: 'Results Declared' },
+                  ].map((exam, idx) => (
+                    <div key={idx} className="p-4 border-b border-blue-200 dark:border-gray-600 hover:bg-blue-200 dark:hover:bg-gray-600 transition-colors cursor-pointer">
+                      <p className="font-semibold text-gray-900 dark:text-white">{exam.title}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">{exam.desc}</p>
+                      <span className="inline-block text-xs bg-blue-600 text-white px-2 py-1 rounded mt-1">{exam.status}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -152,19 +266,19 @@ export default function Home() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div>
               <div className="text-4xl md:text-5xl font-bold mb-2">{counterStats.students.toLocaleString()}+</div>
-              <div className="text-lg">Active Students</div>
+              <div className="text-lg">Active Visitors</div>
             </div>
             <div>
               <div className="text-4xl md:text-5xl font-bold mb-2">{counterStats.quizzes.toLocaleString()}+</div>
               <div className="text-lg">Quizzes Available</div>
             </div>
             <div>
-              <div className="text-4xl md:text-5xl font-bold mb-2">{counterStats.success}%</div>
-              <div className="text-lg">Success Rate</div>
+              <div className="text-4xl md:text-5xl font-bold mb-2">{counterStats.domains.toLocaleString()}+</div>
+              <div className="text-lg"> Domains</div>
             </div>
             <div>
-              <div className="text-4xl md:text-5xl font-bold mb-2">{counterStats.awards}+</div>
-              <div className="text-lg">Awards Won</div>
+              <div className="text-4xl md:text-5xl font-bold mb-2">{counterStats.courses.toLocaleString()}+</div>
+              <div className="text-lg">Courses</div>
             </div>
           </div>
         </div>
@@ -238,7 +352,7 @@ export default function Home() {
               'Ph.D Scholars',
               'Competitive Exam Aspirants',
               'Working Professionals',
-              'Career Changers',
+              'Job Seekers',
             ].map((category, index) => (
               <div key={index} className="bg-white dark:bg-gray-700 p-4 rounded-lg shadow-md text-center hover:scale-105 transition-transform cursor-pointer">
                 <div className="text-3xl mb-2">🎓</div>
