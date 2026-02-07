@@ -87,7 +87,7 @@ export default function Menubar() {
     { label: 'Kids Olympiads', href: '/tests/kids-olympiads' },
     { label: 'Govt. Exams', href: '/tests/govt-exams' },
     { label: 'Entrance Exams', href: '/tests/entrance-exams' },
-    { label: 'Computers', href: '/tests/computers' },
+    { label: 'Computer Technology', href: '/tests/computers' },
     { label: 'Others', href: '/tests/others' },
   ];
 

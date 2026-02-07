@@ -10,7 +10,7 @@ export default function AboutPage() {
       <Menubar />
 
       {/* Hero Section */}
-      <section className="py-16 bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
+      <section className="py-12 bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">About Us</h1>
           <p className="text-xl text-blue-100">Empowering learners to achieve their dreams</p>
@@ -18,23 +18,16 @@ export default function AboutPage() {
       </section>
 
       {/* Vision Section */}
-      <section id="vision" className="py-20 bg-gray-50 dark:bg-gray-800">
+      <section id="vision" className="py-12 bg-gray-50 dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div className="grid md:grid-cols-2 gap-8 items-center">
             <div>
               <div className="flex items-center mb-6">
                 <span className="text-5xl mr-4">🎯</span>
                 <h2 className="text-4xl font-bold text-gray-900 dark:text-white">Our Vision</h2>
               </div>
-              <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed mb-6">
-                To become the leading platform for comprehensive education and career development, empowering learners
-                at every stage of their journey. We envision a world where quality education is accessible to everyone,
-                regardless of their background or location.
-              </p>
-              <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
-                Our vision extends beyond just providing quizzes and tests. We aim to create a holistic learning
-                ecosystem that nurtures curiosity, builds confidence, and prepares students for the challenges of
-                tomorrow.
+              <p className="text-xl text-gray-700 dark:text-gray-300 leading-relaxed">
+                To become a global AI-powered learning ecosystem that empowers learners of all ages to achieve academic excellence, career success, and lifelong growth.
               </p>
             </div>
             <div className="bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl p-8 text-white shadow-2xl">
@@ -42,19 +35,19 @@ export default function AboutPage() {
               <ul className="space-y-3">
                 <li className="flex items-start">
                   <span className="mr-2">✓</span>
-                  <span>Democratize quality education for all</span>
+                  <span>Global AI-powered learning ecosystem</span>
                 </li>
                 <li className="flex items-start">
                   <span className="mr-2">✓</span>
-                  <span>Bridge the gap between learning and career success</span>
+                  <span>Academic excellence & career success</span>
                 </li>
                 <li className="flex items-start">
                   <span className="mr-2">✓</span>
-                  <span>Create lifelong learners and achievers</span>
+                  <span>Intelligent personalized learning</span>
                 </li>
                 <li className="flex items-start">
                   <span className="mr-2">✓</span>
-                  <span>Foster innovation in education technology</span>
+                  <span>Data-driven insights & innovation</span>
                 </li>
               </ul>
             </div>
@@ -63,9 +56,9 @@ export default function AboutPage() {
       </section>
 
       {/* Mission Section */}
-      <section id="mission" className="py-20 bg-white dark:bg-gray-900">
+      <section id="mission" className="py-12 bg-white dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div className="grid md:grid-cols-2 gap-8 items-center">
             <div className="order-2 md:order-1 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-8 text-white shadow-2xl">
               <h3 className="text-2xl font-bold mb-4">Our Commitments</h3>
               <ul className="space-y-3">
@@ -92,30 +85,59 @@ export default function AboutPage() {
                 <span className="text-5xl mr-4">🚀</span>
                 <h2 className="text-4xl font-bold text-gray-900 dark:text-white">Our Mission</h2>
               </div>
-              <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed mb-6">
-                To provide accessible, high-quality educational resources and assessments that help students achieve
-                their academic and career goals. We are committed to delivering personalized learning experiences
-                that adapt to each student's unique needs and pace.
-              </p>
-              <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
-                Through our comprehensive quiz system, real-time analytics, and expert guidance, we empower students
-                to track their progress, identify areas for improvement, and achieve excellence in their chosen fields.
-              </p>
+              <ul className="space-y-4">
+                <li className="flex items-start">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center mr-3 mt-0.5 text-sm">✓</span>
+                  <p className="text-gray-700 dark:text-gray-300">
+                    To deliver AI-driven personalized learning paths that adapt to every learner&apos;s strengths, weaknesses, and goals.
+                  </p>
+                </li>
+                <li className="flex items-start">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center mr-3 mt-0.5 text-sm">✓</span>
+                  <p className="text-gray-700 dark:text-gray-300">
+                    To provide smart quizzes, progress analytics, and performance dashboards that help learners track, analyze, and improve continuously.
+                  </p>
+                </li>
+                <li className="flex items-start">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center mr-3 mt-0.5 text-sm">✓</span>
+                  <p className="text-gray-700 dark:text-gray-300">
+                    To make learning engaging through gamification, including badges, levels, streaks, and leaderboards.
+                  </p>
+                </li>
+                <li className="flex items-start">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center mr-3 mt-0.5 text-sm">✓</span>
+                  <p className="text-gray-700 dark:text-gray-300">
+                    To support learners from Class 3 to PhD and professionals, across academics, competitive exams, and skill development.
+                  </p>
+                </li>
+                <li className="flex items-start">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center mr-3 mt-0.5 text-sm">✓</span>
+                  <p className="text-gray-700 dark:text-gray-300">
+                    To enable educators and institutions with actionable insights to improve teaching effectiveness and learner outcomes.
+                  </p>
+                </li>
+                <li className="flex items-start">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center mr-3 mt-0.5 text-sm">✓</span>
+                  <p className="text-gray-700 dark:text-gray-300">
+                    To foster a culture of continuous improvement, curiosity, and confidence through technology-powered education.
+                  </p>
+                </li>
+              </ul>
             </div>
           </div>
         </div>
       </section>
 
       {/* Why We Section */}
-      <section id="why-we" className="py-20 bg-gray-50 dark:bg-gray-800">
+      <section id="why-we" className="py-12 bg-gray-50 dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
+          <div className="text-center mb-8">
             <span className="text-5xl">💪</span>
             <h2 className="text-4xl font-bold mt-4 text-gray-900 dark:text-white">Why Choose Us?</h2>
             <div className="w-24 h-1 bg-orange-500 mx-auto mt-4"></div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 mb-12">
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white dark:bg-gray-700 p-8 rounded-xl shadow-lg text-center hover:scale-105 transition-transform">
               <div className="text-5xl mb-4">🤖</div>
               <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">AI-Powered Learning</h3>

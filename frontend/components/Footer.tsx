@@ -19,13 +19,42 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           {/* Column 1: Branding & Social Media */}
           <div>
-            <div className="flex items-center space-x-2 mb-4">
-              <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-              <span className="text-xl font-bold">CareerMaster</span>
+            <div className="flex items-center space-x-3 mb-4">
+              {/* Logo Icon - Rocket with Ascending Path */}
+              <div className="w-11 h-11 flex-shrink-0">
+                <svg viewBox="0 0 50 50" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="footerRocketGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#f97316" />
+                      <stop offset="100%" stopColor="#fbbf24" />
+                    </linearGradient>
+                    <linearGradient id="footerFlameGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#ef4444" />
+                      <stop offset="100%" stopColor="#f97316" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx="25" cy="25" r="23" fill="white" opacity="0.1"/>
+                  <rect x="8" y="38" width="8" height="6" rx="1" fill="white" opacity="0.3"/>
+                  <rect x="18" y="32" width="8" height="12" rx="1" fill="white" opacity="0.5"/>
+                  <rect x="28" y="26" width="8" height="18" rx="1" fill="white" opacity="0.7"/>
+                  <path d="M38 8c0 0-2 4-2 10s2 10 2 10c0 0 2-4 2-10s-2-10-2-10z" fill="url(#footerRocketGrad)"/>
+                  <circle cx="38" cy="14" r="3" fill="white"/>
+                  <path d="M34 22l4 6 4-6" fill="url(#footerFlameGrad)"/>
+                  <circle cx="12" cy="12" r="1.5" fill="#fbbf24"/>
+                  <circle cx="20" cy="8" r="1" fill="#fbbf24"/>
+                  <circle cx="8" cy="22" r="1" fill="#fbbf24"/>
+                </svg>
+              </div>
+              <div className="flex flex-col leading-tight">
+                <div className="flex items-baseline">
+                  <span className="text-xl font-black tracking-tight text-white">Career</span>
+                  <span className="text-xl font-black tracking-tight text-orange-400">Master</span>
+                  <span className="text-lg font-bold text-cyan-400 ml-0.5">.AI</span>
+                </div>
+                <span className="text-[9px] text-gray-400 tracking-[0.2em] font-medium">LEARN • GROW • SUCCEED</span>
+              </div>
             </div>
-            <p className="text-white mb-4">Expanding minds through comprehensive education</p>
+            <p className="text-gray-300 mb-4">AI-powered learning for academic excellence & lifelong growth</p>
             <div className="flex space-x-3">
               <a href="#" className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors">
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -55,35 +84,43 @@ export default function Footer() {
             <h3 className="text-orange-400 font-bold text-lg mb-4 underline">Explore</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/quizzes" className="flex items-center text-white hover:text-orange-400 transition-colors">
+                <Link href="/" className="flex items-center text-gray-300 hover:text-orange-400 transition-colors">
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                   </svg>
-                  Quizzes
+                  Home
                 </Link>
               </li>
               <li>
-                <Link href="/stories" className="flex items-center text-white hover:text-orange-400 transition-colors">
+                <Link href="/#about" className="flex items-center text-gray-300 hover:text-orange-400 transition-colors">
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  Stories
+                  About Us
                 </Link>
               </li>
               <li>
-                <Link href="/gk" className="flex items-center text-white hover:text-orange-400 transition-colors">
+                <Link href="/#why-choose" className="flex items-center text-gray-300 hover:text-orange-400 transition-colors">
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                   </svg>
-                  General Knowledge
+                  Features
                 </Link>
               </li>
               <li>
-                <Link href="/tech" className="flex items-center text-white hover:text-orange-400 transition-colors">
+                <Link href="/#pricing" className="flex items-center text-gray-300 hover:text-orange-400 transition-colors">
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  Technology
+                  Pricing
+                </Link>
+              </li>
+              <li>
+                <Link href="/#clients" className="flex items-center text-gray-300 hover:text-orange-400 transition-colors">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  Clients
                 </Link>
               </li>
             </ul>
@@ -91,25 +128,10 @@ export default function Footer() {
 
           {/* Column 3: Support Links */}
           <div>
-            <h3 className="text-white font-bold text-lg mb-4">Support</h3>
+            <h3 className="text-orange-400 font-bold text-lg mb-4 underline">Support</h3>
             <ul className="space-y-2">
-              <li>
-                <Link href="/festivals" className="flex items-center text-white hover:text-orange-400 transition-colors">
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  Festivals
-                </Link>
-              </li>
-              <li>
-                <Link href="/names" className="flex items-center text-white hover:text-orange-400 transition-colors">
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                  Names
-                </Link>
-              </li>
+           
+            
               <li>
                 <Link href="/contact" className="flex items-center text-white hover:text-orange-400 transition-colors">
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -133,7 +155,7 @@ export default function Footer() {
           <div>
             <h3 className="text-orange-400 font-bold text-lg mb-4 underline">Stay Updated</h3>
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <p className="text-white text-sm mb-3">Subscribe to our newsletter for latest updates</p>
+              <p className="text-gray-300 text-sm mb-3">Subscribe to our newsletter for latest updates</p>
               <form onSubmit={handleSubscribe} className="space-y-2">
                 <input
                   type="email"
@@ -158,13 +180,13 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div className="border-t border-slate-700 pt-6 mt-8 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-white text-sm mb-4 md:mb-0">
+          <p className="text-gray-400 text-sm mb-4 md:mb-0">
             © {new Date().getFullYear()} CareerMaster.AI. All rights reserved.
           </p>
           <div className="flex space-x-4 text-sm">
-            <Link href="/privacy" className="text-white hover:text-orange-400 transition-colors">Privacy Policy</Link>
-            <Link href="/terms" className="text-white hover:text-orange-400 transition-colors">Terms of Service</Link>
-            <Link href="/cookies" className="text-white hover:text-orange-400 transition-colors">Cookie Policy</Link>
+            <Link href="/privacy" className="text-gray-300 hover:text-orange-400 transition-colors">Privacy Policy</Link>
+            <Link href="/terms" className="text-gray-300 hover:text-orange-400 transition-colors">Terms of Service</Link>
+            <Link href="/cookies" className="text-gray-300 hover:text-orange-400 transition-colors">Cookie Policy</Link>
           </div>
         </div>
       </div>
