@@ -31,7 +31,7 @@ class QuizController {
     const defaultMarks = req.body.defaultMarks != null && req.body.defaultMarks !== ''
       ? Number(req.body.defaultMarks)
       : undefined;
-    const level = (req.body.level === 'beginner' || req.body.level === 'intermediate' || req.body.level === 'advanced')
+    const level = (req.body.level === 'basic' || req.body.level === 'hard')
       ? req.body.level
       : undefined;
     const metadata = {

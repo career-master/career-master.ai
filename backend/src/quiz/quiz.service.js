@@ -369,7 +369,7 @@ class QuizService {
           ? metadata.batches.split(',').map((b) => b.trim()).filter(Boolean)
           : [];
 
-    const level = (metadata.level === 'beginner' || metadata.level === 'intermediate' || metadata.level === 'advanced')
+    const level = (metadata.level === 'basic' || metadata.level === 'hard')
       ? metadata.level
       : undefined;
     const quiz = await QuizRepository.createQuiz({

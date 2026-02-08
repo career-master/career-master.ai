@@ -29,7 +29,7 @@ type Subject = {
   title: string;
   description?: string;
   category?: string;
-  level?: 'beginner' | 'intermediate' | 'advanced';
+  level?: 'basic' | 'hard';
   requiresApproval?: boolean;
   order?: number;
   isActive?: boolean;
@@ -106,14 +106,12 @@ function SortableSubjectItem({ subject, onDelete }: { subject: Subject; onDelete
                 {subject.level && (
                   <span
                     className={`text-xs px-2 py-1 rounded-md font-medium ${
-                      subject.level === 'beginner'
+                      subject.level === 'basic'
                         ? 'bg-green-50 text-green-700'
-                        : subject.level === 'intermediate'
-                        ? 'bg-yellow-50 text-yellow-700'
                         : 'bg-red-50 text-red-700'
                     }`}
                   >
-                    {subject.level}
+                    {subject.level.charAt(0).toUpperCase() + subject.level.slice(1)}
                   </span>
                 )}
                 <span className="text-xs text-gray-500">Order: {subject.order ?? 0}</span>
@@ -264,7 +262,7 @@ export default function SubjectsListPage() {
 
   // Get unique categories and levels for filters
   const categories = Array.from(new Set(subjects.map((s) => s.category).filter(Boolean)));
-  const levels = ['beginner', 'intermediate', 'advanced'];
+  const levels = ['basic', 'hard'];
 
   if (loading) {
     return (

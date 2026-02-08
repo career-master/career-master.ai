@@ -70,8 +70,8 @@ async function startServer() {
       // Continue even if comprehensive seeding fails
     }
 
-    // Seed level-test quizzes (Beginner/Intermediate/Advanced per subject for filter testing)
-    console.log('🔄 Seeding level-test quizzes (beginner/intermediate/advanced per subject)...');
+    // Seed level-test quizzes (Basic/Hard per subject for filter testing)
+    console.log('🔄 Seeding level-test quizzes (basic/hard per subject)...');
     try {
       const LevelTestQuizzesSeed = require('./src/admin/level-test-quizzes.seed');
       await LevelTestQuizzesSeed.seedLevelTestQuizzes();

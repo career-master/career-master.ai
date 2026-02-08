@@ -13,7 +13,7 @@ type Subject = {
   title: string;
   description?: string;
   category?: string;
-  level?: 'beginner' | 'intermediate' | 'advanced';
+  level?: 'basic' | 'hard';
   thumbnail?: string;
   batches?: string[];
   requiresApproval?: boolean;
@@ -152,7 +152,7 @@ export default function SubjectsPage() {
 
   // Get unique categories and levels for filters
   const categories = Array.from(new Set(subjects.map((s) => s.category).filter(Boolean)));
-  const levels = ['beginner', 'intermediate', 'advanced'];
+  const levels = ['basic', 'hard'];
 
   if (authLoading || loading) {
     return (
@@ -321,14 +321,12 @@ export default function SubjectsPage() {
                           {subject.level && (
                             <span
                               className={`text-xs px-2.5 py-1 rounded-full font-semibold ml-2 flex-shrink-0 ${
-                                subject.level === 'beginner'
+                                subject.level === 'basic'
                                   ? 'bg-green-100 text-green-700 border border-green-200'
-                                  : subject.level === 'intermediate'
-                                  ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
                                   : 'bg-red-100 text-red-700 border border-red-200'
                               }`}
                             >
-                              {subject.level}
+                              {subject.level.charAt(0).toUpperCase() + subject.level.slice(1)}
                             </span>
                           )}
                         </div>

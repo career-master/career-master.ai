@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 
-type LevelFilter = '' | 'beginner' | 'intermediate' | 'advanced';
+type LevelFilter = '' | 'basic' | 'hard';
 
 export default function AdminQuizzesPage() {
   const { user, isAuthenticated } = useAuth();
@@ -53,7 +53,7 @@ export default function AdminQuizzesPage() {
   const handleLevelChange = async (quizId: string, value: string) => {
     setUpdatingLevelId(quizId);
     try {
-      const level = value === '' ? null : (value as 'beginner' | 'intermediate' | 'advanced');
+      const level = value === '' ? null : (value as 'basic' | 'hard');
       await apiService.updateQuiz(quizId, { level });
       await loadQuizzes(page);
     } catch (err: any) {
@@ -96,9 +96,8 @@ export default function AdminQuizzesPage() {
                 className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500"
               >
                 <option value="">All</option>
-                <option value="beginner">Basic</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="advanced">Advanced</option>
+                <option value="basic">Basic</option>
+                <option value="hard">Hard</option>
               </select>
             </div>
           </div>
@@ -107,7 +106,7 @@ export default function AdminQuizzesPage() {
           ) : filteredQuizzes.length === 0 ? (
             <p className="text-sm text-gray-500">
               {filterLevel
-                ? `No quizzes for ${filterLevel === 'beginner' ? 'Basic' : filterLevel === 'intermediate' ? 'Intermediate' : 'Advanced'}.`
+                ? `No quizzes for ${filterLevel === 'basic' ? 'Basic' : 'Hard'}.`
                 : 'No quizzes created yet.'}
             </p>
           ) : (
@@ -154,9 +153,8 @@ export default function AdminQuizzesPage() {
                             className="rounded border border-gray-300 px-2 py-0.5 text-[11px] text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500 disabled:opacity-60"
                           >
                             <option value="">All</option>
-                            <option value="beginner">Basic</option>
-                            <option value="intermediate">Intermediate</option>
-                            <option value="advanced">Advanced</option>
+                            <option value="basic">Basic</option>
+                            <option value="hard">Hard</option>
                           </select>
                         </div>
                         {quiz.batches && quiz.batches.length > 0 && (

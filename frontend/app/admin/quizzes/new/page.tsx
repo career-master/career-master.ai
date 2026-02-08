@@ -40,7 +40,7 @@ export default function AdminCreateQuizPage() {
   const [selectedBatches, setSelectedBatches] = useState<string[]>([]);
   const [batches, setBatches] = useState<any[]>([]);
   const [isActive, setIsActive] = useState(true);
-  const [level, setLevel] = useState<'beginner' | 'intermediate' | 'advanced' | ''>('');
+  const [level, setLevel] = useState<'basic' | 'hard' | ''>('');
 
   // Link to Subject & Topic (optional: where this quiz appears for students)
   const [subjectId, setSubjectId] = useState('');
@@ -156,7 +156,7 @@ export default function AdminCreateQuizPage() {
         setMaxAttempts(quiz.maxAttempts || 999);
         setSelectedBatches(Array.isArray(quiz.batches) ? quiz.batches : []);
         setIsActive(quiz.isActive !== undefined ? quiz.isActive : true);
-        setLevel(quiz.level === 'beginner' || quiz.level === 'intermediate' || quiz.level === 'advanced' ? quiz.level : '');
+        setLevel(quiz.level === 'basic' || quiz.level === 'hard' ? quiz.level : '');
         
         // Load sections or questions based on quiz structure
         if (quiz.useSections && Array.isArray(quiz.sections) && quiz.sections.length > 0) {
@@ -351,8 +351,8 @@ export default function AdminCreateQuizPage() {
         maxAttempts: maxAttempts || 999,
         isActive,
       };
-      // Always set level explicitly so it is never dropped (beginner/intermediate/advanced or null)
-      payload.level = (level === 'beginner' || level === 'intermediate' || level === 'advanced') ? level : null;
+      // Always set level explicitly so it is never dropped (basic/hard or null)
+      payload.level = (level === 'basic' || level === 'hard') ? level : null;
 
       // Only include dates if checkboxes are enabled
       if (enableAvailableFrom && availableFrom) {
@@ -836,7 +836,7 @@ export default function AdminCreateQuizPage() {
       formData.append('availableToEveryone', String(availableToEveryone));
       formData.append('maxAttempts', String(maxAttempts || 999));
       formData.append('defaultMarks', String(marksPerQuestion || 1));
-      if (level === 'beginner' || level === 'intermediate' || level === 'advanced') {
+      if (level === 'basic' || level === 'hard') {
         formData.append('level', level);
       }
       if (!availableToEveryone && selectedBatches.length > 0) {
@@ -978,7 +978,7 @@ export default function AdminCreateQuizPage() {
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Level (who can see this quiz)
               </label>
-              <p className="text-xs text-gray-500 mb-2">Set whether this quiz is for Basic, Intermediate, or Advanced. Users filter by these on the Practice Quizzes page.</p>
+              <p className="text-xs text-gray-500 mb-2">Set whether this quiz is Basic or Hard. Users filter by these on the Practice Quizzes page.</p>
               <div className="flex flex-wrap gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -994,8 +994,8 @@ export default function AdminCreateQuizPage() {
                   <input
                     type="radio"
                     name="quiz-level"
-                    checked={level === 'beginner'}
-                    onChange={() => setLevel('beginner')}
+                    checked={level === 'basic'}
+                    onChange={() => setLevel('basic')}
                     className="border-gray-300 text-red-600 focus:ring-red-500"
                   />
                   <span className="text-sm text-gray-700">Basic</span>
@@ -1004,21 +1004,11 @@ export default function AdminCreateQuizPage() {
                   <input
                     type="radio"
                     name="quiz-level"
-                    checked={level === 'intermediate'}
-                    onChange={() => setLevel('intermediate')}
+                    checked={level === 'hard'}
+                    onChange={() => setLevel('hard')}
                     className="border-gray-300 text-red-600 focus:ring-red-500"
                   />
-                  <span className="text-sm text-gray-700">Intermediate</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="quiz-level"
-                    checked={level === 'advanced'}
-                    onChange={() => setLevel('advanced')}
-                    className="border-gray-300 text-red-600 focus:ring-red-500"
-                  />
-                  <span className="text-sm text-gray-700">Advanced</span>
+                  <span className="text-sm text-gray-700">Hard</span>
                 </label>
               </div>
             </div>

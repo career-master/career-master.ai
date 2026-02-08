@@ -12,7 +12,7 @@ type Subject = {
   title: string;
   description?: string;
   category?: string;
-  level?: 'beginner' | 'intermediate' | 'advanced';
+  level?: 'basic' | 'hard';
 };
 
 type Topic = {
@@ -192,10 +192,8 @@ export default function SubjectDetailPage() {
             {subject.level && (
                   <span
                     className={`text-sm px-3 py-1.5 rounded-lg font-medium ${
-                      subject.level === 'beginner'
+                      subject.level === 'basic'
                         ? 'bg-green-50 text-green-700'
-                        : subject.level === 'intermediate'
-                        ? 'bg-yellow-50 text-yellow-700'
                         : 'bg-red-50 text-red-700'
                     }`}
                   >

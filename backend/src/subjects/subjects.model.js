@@ -28,8 +28,8 @@ const subjectSchema = new mongoose.Schema(
     },
     level: {
       type: String,
-      enum: ['beginner', 'intermediate', 'advanced'],
-      default: 'beginner'
+      enum: ['basic', 'hard'],
+      default: 'basic'
     },
     batches: {
       type: [String], // Batch codes this subject is assigned to; empty means available to all

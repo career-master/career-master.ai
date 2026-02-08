@@ -8,7 +8,7 @@ const { QUESTION_TYPES } = require('../quiz/question-types.config');
 /**
  * Level Test Quizzes Seed
  * Creates Beginner, Intermediate, and Advanced quizzes for each subject
- * so the level filter (All / Beginner / Intermediate / Advanced) can be tested.
+ * so the level filter (All / Basic / Hard) can be tested.
  * Each quiz has 5 simple placeholder questions.
  */
 class LevelTestQuizzesSeed {
@@ -21,7 +21,7 @@ class LevelTestQuizzesSeed {
       }
       const createdBy = adminUser._id;
 
-      const LEVELS = ['beginner', 'intermediate', 'advanced'];
+      const LEVELS = ['basic', 'hard'];
       const subjects = await Subject.find({ isActive: true }).sort({ order: 1 });
       let created = 0;
       let linked = 0;
@@ -40,7 +40,7 @@ class LevelTestQuizzesSeed {
           levelPracticeTopic = new Topic({
             subjectId: subject._id,
             title: 'Level Practice',
-            description: `${subject.title} level filter practice — Beginner, Intermediate, Advanced tests.`,
+            description: `${subject.title} level filter practice — Basic and Hard tests.`,
             order: (maxOrder?.order ?? 0) + 1,
             requiredQuizzesToUnlock: 0,
             isActive: true,
