@@ -112,7 +112,7 @@ class ComprehensiveQuizzesSeed {
       let totalQuizzes = 0;
       let totalQuizSets = 0;
       let levelCounter = 0;
-      const LEVELS = ['beginner', 'intermediate', 'advanced'];
+      const LEVELS = ['basic', 'hard'];
       const processedSubjects = new Map();
 
       // Process each entry
@@ -139,7 +139,7 @@ class ComprehensiveQuizzesSeed {
               title: subjectTitle,
               description: `Comprehensive ${subjectTitle} learning resources with quizzes and practice tests`,
               category: subjectCategory,
-              level: 'beginner',
+              level: 'basic',
               isActive: true,
               requiresApproval: false,
               createdBy: createdBy,
@@ -210,7 +210,7 @@ class ComprehensiveQuizzesSeed {
           // Generate course category ID for this specific topic
           const courseCategoryId = this.generateCourseCategoryId(domain, category, topicName);
 
-          const mainLevel = LEVELS[levelCounter++ % 3];
+          const mainLevel = LEVELS[levelCounter++ % 2];
           if (!quiz) {
             // Create new quiz
             quiz = new Quiz({
@@ -303,7 +303,7 @@ class ComprehensiveQuizzesSeed {
 
               const subQuestions = this.generateQuizQuestions(`${topicName} - ${subName}`, category, domain, subject._id);
               const subCourseCatId = this.generateCourseCategoryId(domain, category, `${topicName}_${subName}`);
-              const subLevel = LEVELS[levelCounter++ % 3];
+              const subLevel = LEVELS[levelCounter++ % 2];
 
               if (!subQuiz) {
                 subQuiz = new Quiz({

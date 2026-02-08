@@ -302,7 +302,7 @@ class ApiService {
     batches?: string[];
     availableToEveryone?: boolean;
     isActive?: boolean;
-    level?: 'beginner' | 'intermediate' | 'advanced' | null;
+    level?: 'basic' | 'hard' | null;
     questions?: {
       questionText: string;
       options: string[];
@@ -334,7 +334,7 @@ class ApiService {
   }
 
   // Get available quizzes for a user (by email)
-  async getAvailableQuizzesForUser(email: string, level?: 'beginner' | 'intermediate' | 'advanced'): Promise<ApiResponse> {
+  async getAvailableQuizzesForUser(email: string, level?: 'basic' | 'hard'): Promise<ApiResponse> {
     const q = level ? `?level=${level}` : '';
     return this.request(`/quizzes/user/email/${email}${q}`, { method: 'GET' });
   }
@@ -510,7 +510,7 @@ class ApiService {
       negativeMarks?: number;
     }[];
     isActive?: boolean;
-    level?: 'beginner' | 'intermediate' | 'advanced' | null;
+    level?: 'basic' | 'hard' | null;
   }): Promise<ApiResponse> {
     return this.request(`/quizzes/${id}`, {
       method: 'PUT',
@@ -796,7 +796,7 @@ class ApiService {
   }
 
   // Subjects (admin + user)
-  async getSubjects(params: { page?: number; limit?: number; isActive?: boolean; level?: 'beginner' | 'intermediate' | 'advanced' } = {}): Promise<ApiResponse> {
+  async getSubjects(params: { page?: number; limit?: number; isActive?: boolean; level?: 'basic' | 'hard' } = {}): Promise<ApiResponse> {
     const query = new URLSearchParams();
     if (params.page) query.set('page', String(params.page));
     if (params.limit) query.set('limit', String(params.limit));
@@ -811,7 +811,7 @@ class ApiService {
     description?: string;
     thumbnail?: string;
     category?: string;
-    level?: 'beginner' | 'intermediate' | 'advanced';
+    level?: 'basic' | 'hard';
     requiresApproval?: boolean;
     order?: number;
     isActive?: boolean;
@@ -853,7 +853,7 @@ class ApiService {
     description?: string;
     thumbnail?: string;
     category?: string;
-    level?: 'beginner' | 'intermediate' | 'advanced';
+    level?: 'basic' | 'hard';
     requiresApproval?: boolean;
     order?: number;
     isActive?: boolean;

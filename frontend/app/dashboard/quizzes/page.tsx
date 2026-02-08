@@ -56,7 +56,7 @@ type StandaloneQuiz = {
   maxAttempts?: number;
   canAttempt?: boolean;
   isCompleted?: boolean;
-  level?: 'beginner' | 'intermediate' | 'advanced' | null;
+  level?: 'basic' | 'hard' | null;
 };
 
 export default function DashboardQuizzesPage() {
@@ -81,15 +81,15 @@ export default function DashboardQuizzesPage() {
   // When set: right panel shows ONLY this topic's card (main quiz + sub-topics). Clicking a topic in sidebar sets this.
   const [selectedRootId, setSelectedRootId] = useState<string | null>(null);
   // User preference: selected levels (multi-select). Empty = show all. Persisted in localStorage.
-  const [selectedLevels, setSelectedLevels] = useState<Set<'beginner' | 'intermediate' | 'advanced'>>(() => {
+  const [selectedLevels, setSelectedLevels] = useState<Set<'basic' | 'hard'>>(() => {
     if (typeof window === 'undefined') return new Set();
     try {
       const v = localStorage.getItem('quiz_level_preference');
       if (!v || v === 'all') return new Set();
-      if (['beginner', 'intermediate', 'advanced'].includes(v)) return new Set([v]);
+      if (['basic', 'hard'].includes(v)) return new Set([v]);
       const arr = JSON.parse(v);
       if (Array.isArray(arr)) {
-        const valid = arr.filter((x: string) => ['beginner', 'intermediate', 'advanced'].includes(x));
+        const valid = arr.filter((x: string) => ['basic', 'hard'].includes(x));
         return new Set(valid);
       }
     } catch {}
@@ -274,7 +274,7 @@ export default function DashboardQuizzesPage() {
       quizSets: tw.quizSets.filter((qs) => {
         const q = qs.quizId && typeof qs.quizId === 'object' ? (qs.quizId as { level?: string }) : null;
         if (!q) return false;
-        return !!q.level && selectedLevels.has(q.level as 'beginner' | 'intermediate' | 'advanced');
+        return !!q.level && selectedLevels.has(q.level as 'basic' | 'hard');
       }),
     }));
   }, [topicsWithQuizzes, selectedLevels]);
@@ -384,17 +384,15 @@ export default function DashboardQuizzesPage() {
     return pct >= 60 ? 'completed' : 'attempted';
   };
 
-  // Colored tag for quiz level (Beginner=green, Intermediate=amber, Advanced=rose)
-  const LevelTag = ({ level }: { level: 'beginner' | 'intermediate' | 'advanced' }) => {
+  // Colored tag for quiz level (Basic=green, Hard=rose)
+  const LevelTag = ({ level }: { level: 'basic' | 'hard' }) => {
     const styles: Record<string, string> = {
-      beginner: 'bg-emerald-100 text-emerald-800',
-      intermediate: 'bg-amber-100 text-amber-800',
-      advanced: 'bg-rose-100 text-rose-800',
+      basic: 'bg-emerald-100 text-emerald-800',
+      hard: 'bg-rose-100 text-rose-800',
     };
     const labels: Record<string, string> = {
-      beginner: 'Beginner',
-      intermediate: 'Intermediate',
-      advanced: 'Advanced',
+      basic: 'Basic',
+      hard: 'Hard',
     };
     return (
       <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${styles[level]}`}>
@@ -434,7 +432,7 @@ export default function DashboardQuizzesPage() {
       totalMarks: marks,
       status,
       canAttempt,
-      level: lvl === 'beginner' || lvl === 'intermediate' || lvl === 'advanced' ? lvl : null,
+      level: lvl === 'basic' || lvl === 'hard' ? lvl : null,
     };
   };
 
@@ -739,7 +737,7 @@ export default function DashboardQuizzesPage() {
                         >
                           <div className="flex items-center gap-2 flex-wrap mb-2">
                             <h3 className="font-bold text-gray-900">{quiz.name || quiz.title || 'Quiz'}</h3>
-                            {quiz.level && (quiz.level === 'beginner' || quiz.level === 'intermediate' || quiz.level === 'advanced') && (
+                            {quiz.level && (quiz.level === 'basic' || quiz.level === 'hard') && (
                               <LevelTag level={quiz.level} />
                             )}
                           </div>
@@ -847,7 +845,7 @@ export default function DashboardQuizzesPage() {
                     >
                       All
                     </button>
-                    {(['beginner', 'intermediate', 'advanced'] as const).map((l) => (
+                    {(['basic', 'hard'] as const).map((l) => (
                       <button
                         key={l}
                         type="button"

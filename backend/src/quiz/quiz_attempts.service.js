@@ -320,7 +320,7 @@ class QuizAttemptService {
   /**
    * Get available quizzes for a user
    * @param {string} userEmail
-   * @param {string} [level] - 'beginner' | 'intermediate' | 'advanced'. If set, only quizzes with that level or no level are returned.
+   * @param {string} [level] - 'basic' | 'hard'. If set, only quizzes with that level or no level are returned.
    * @returns {Promise<Array>}
    */
   static async getAvailableQuizzesForUser(userEmail, level) {
