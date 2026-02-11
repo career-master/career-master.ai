@@ -20,39 +20,13 @@ export default function Footer() {
           {/* Column 1: Branding & Social Media */}
           <div>
             <div className="flex items-center space-x-3 mb-4">
-              {/* Logo Icon - Rocket with Ascending Path */}
-              <div className="w-11 h-11 flex-shrink-0">
-                <svg viewBox="0 0 50 50" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <linearGradient id="footerRocketGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#f97316" />
-                      <stop offset="100%" stopColor="#fbbf24" />
-                    </linearGradient>
-                    <linearGradient id="footerFlameGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="#ef4444" />
-                      <stop offset="100%" stopColor="#f97316" />
-                    </linearGradient>
-                  </defs>
-                  <circle cx="25" cy="25" r="23" fill="white" opacity="0.1"/>
-                  <rect x="8" y="38" width="8" height="6" rx="1" fill="white" opacity="0.3"/>
-                  <rect x="18" y="32" width="8" height="12" rx="1" fill="white" opacity="0.5"/>
-                  <rect x="28" y="26" width="8" height="18" rx="1" fill="white" opacity="0.7"/>
-                  <path d="M38 8c0 0-2 4-2 10s2 10 2 10c0 0 2-4 2-10s-2-10-2-10z" fill="url(#footerRocketGrad)"/>
-                  <circle cx="38" cy="14" r="3" fill="white"/>
-                  <path d="M34 22l4 6 4-6" fill="url(#footerFlameGrad)"/>
-                  <circle cx="12" cy="12" r="1.5" fill="#fbbf24"/>
-                  <circle cx="20" cy="8" r="1" fill="#fbbf24"/>
-                  <circle cx="8" cy="22" r="1" fill="#fbbf24"/>
-                </svg>
-              </div>
-              <div className="flex flex-col leading-tight">
-                <div className="flex items-baseline">
-                  <span className="text-xl font-black tracking-tight text-white">Career</span>
-                  <span className="text-xl font-black tracking-tight text-orange-400">Master</span>
-                  <span className="text-lg font-bold text-cyan-400 ml-0.5">.AI</span>
-                </div>
-                <span className="text-[9px] text-gray-400 tracking-[0.2em] font-medium">LEARN • GROW • SUCCEED</span>
-              </div>
+              {/* Logo Image */}
+              <img 
+                src="/logo.jpeg" 
+                alt="CareerMaster.AI Logo" 
+                className="h-12 w-auto"
+              />
+              <span className="text-[9px] text-gray-400 tracking-[0.2em] font-medium">LEARN • GROW • SUCCEED</span>
             </div>
             <p className="text-gray-300 mb-4">AI-powered learning for academic excellence & lifelong growth</p>
             <div className="flex space-x-3">

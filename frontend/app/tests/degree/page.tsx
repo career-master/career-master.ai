@@ -1,7 +1,7 @@
 'use client';
 
 import Menubar from '@/components/Menubar';
-import Footer from '@/components/Footer';
+import SimpleFooter from '@/components/SimpleFooter';
 
 export default function DegreePage() {
   const degreeTypes = [
@@ -246,7 +246,7 @@ export default function DegreePage() {
         </section>
       </main>
 
-      <Footer />
+      <SimpleFooter />
     </div>
   );
 }

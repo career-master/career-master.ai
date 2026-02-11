@@ -1,7 +1,7 @@
 'use client';
 
 import Menubar from '@/components/Menubar';
-import Footer from '@/components/Footer';
+import SimpleFooter from '@/components/SimpleFooter';
 
 export default function TenPlus2Page() {
   const boards = [
@@ -280,7 +280,7 @@ export default function TenPlus2Page() {
         </section>
       </main>
 
-      <Footer />
+      <SimpleFooter />
     </div>
   );
 }

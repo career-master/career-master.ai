@@ -1,7 +1,7 @@
 'use client';
 
 import Menubar from '@/components/Menubar';
-import Footer from '@/components/Footer';
+import SimpleFooter from '@/components/SimpleFooter';
 
 export default function OthersPage() {
   const domains = [
@@ -303,7 +303,7 @@ export default function OthersPage() {
         </section>
       </main>
 
-      <Footer />
+      <SimpleFooter />
     </div>
   );
 }

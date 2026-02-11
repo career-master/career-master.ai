@@ -1,7 +1,7 @@
 'use client';
 
 import Menubar from '@/components/Menubar';
-import Footer from '@/components/Footer';
+import SimpleFooter from '@/components/SimpleFooter';
 
 export default function Class310Page() {
   const boards = [
@@ -260,7 +260,7 @@ export default function Class310Page() {
         </section>
       </main>
 
-      <Footer />
+      <SimpleFooter />
     </div>
   );
 }

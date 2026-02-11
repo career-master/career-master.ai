@@ -1,7 +1,7 @@
 'use client';
 
 import Menubar from '@/components/Menubar';
-import Footer from '@/components/Footer';
+import SimpleFooter from '@/components/SimpleFooter';
 
 export default function ComputerTechnologyPage() {
   const techDomains = [
@@ -284,7 +284,7 @@ export default function ComputerTechnologyPage() {
         </section>
       </main>
 
-      <Footer />
+      <SimpleFooter />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import Menubar from '@/components/Menubar';
-import Footer from '@/components/Footer';
+import SimpleFooter from '@/components/SimpleFooter';
 
 export default function KidsOlympiadsPage() {
   const olympiadOrganizations = [
@@ -236,7 +236,7 @@ export default function KidsOlympiadsPage() {
         </section>
       </main>
 
-      <Footer />
+      <SimpleFooter />
     </div>
   );
 }
