@@ -302,13 +302,16 @@ class ApiService {
     batches?: string[];
     availableToEveryone?: boolean;
     isActive?: boolean;
-    questions: {
+    level?: 'basic' | 'hard' | null;
+    questions?: {
       questionText: string;
       options: string[];
       correctOptionIndex: number;
       marks?: number;
       negativeMarks?: number;
     }[];
+    useSections?: boolean;
+    sections?: unknown[];
   }): Promise<ApiResponse> {
     return this.request('/quizzes', {
       method: 'POST',
@@ -331,10 +334,9 @@ class ApiService {
   }
 
   // Get available quizzes for a user (by email)
-  async getAvailableQuizzesForUser(email: string): Promise<ApiResponse> {
-    return this.request(`/quizzes/user/email/${email}`, {
-      method: 'GET',
-    });
+  async getAvailableQuizzesForUser(email: string, level?: 'basic' | 'hard'): Promise<ApiResponse> {
+    const q = level ? `?level=${level}` : '';
+    return this.request(`/quizzes/user/email/${email}${q}`, { method: 'GET' });
   }
 
   // Submit quiz attempt
@@ -508,6 +510,7 @@ class ApiService {
       negativeMarks?: number;
     }[];
     isActive?: boolean;
+    level?: 'basic' | 'hard' | null;
   }): Promise<ApiResponse> {
     return this.request(`/quizzes/${id}`, {
       method: 'PUT',
@@ -793,11 +796,12 @@ class ApiService {
   }
 
   // Subjects (admin + user)
-  async getSubjects(params: { page?: number; limit?: number; isActive?: boolean } = {}): Promise<ApiResponse> {
+  async getSubjects(params: { page?: number; limit?: number; isActive?: boolean; level?: 'basic' | 'hard' } = {}): Promise<ApiResponse> {
     const query = new URLSearchParams();
     if (params.page) query.set('page', String(params.page));
     if (params.limit) query.set('limit', String(params.limit));
     if (params.isActive !== undefined) query.set('isActive', String(params.isActive));
+    if (params.level) query.set('level', params.level);
     const queryString = query.toString();
     return this.request(`/subjects${queryString ? `?${queryString}` : ''}`, { method: 'GET' });
   }
@@ -807,7 +811,7 @@ class ApiService {
     description?: string;
     thumbnail?: string;
     category?: string;
-    level?: 'beginner' | 'intermediate' | 'advanced';
+    level?: 'basic' | 'hard';
     requiresApproval?: boolean;
     order?: number;
     isActive?: boolean;
@@ -849,7 +853,7 @@ class ApiService {
     description?: string;
     thumbnail?: string;
     category?: string;
-    level?: 'beginner' | 'intermediate' | 'advanced';
+    level?: 'basic' | 'hard';
     requiresApproval?: boolean;
     order?: number;
     isActive?: boolean;
@@ -866,10 +870,19 @@ class ApiService {
   }
 
   // Topics
-  async getTopics(subjectId?: string, isActive?: boolean): Promise<ApiResponse> {
+  async getTopics(
+    subjectId?: string,
+    isActive?: boolean,
+    parentTopicId?: string | 'roots' | null
+  ): Promise<ApiResponse> {
     const query = new URLSearchParams();
     if (subjectId) query.set('subjectId', subjectId);
     if (isActive !== undefined) query.set('isActive', String(isActive));
+    if (parentTopicId === 'roots' || parentTopicId === null) {
+      query.set('parentTopicId', 'roots');
+    } else if (parentTopicId && parentTopicId !== 'roots') {
+      query.set('parentTopicId', parentTopicId);
+    }
     const qs = query.toString();
     return this.request(`/topics${qs ? `?${qs}` : ''}`, { method: 'GET' });
   }
@@ -881,6 +894,7 @@ class ApiService {
     order?: number;
     prerequisites?: string[];
     requiredQuizzesToUnlock?: number;
+    parentTopicId?: string | null;
     isActive?: boolean;
   }): Promise<ApiResponse> {
     return this.request('/topics', { method: 'POST', body: JSON.stringify(payload) });
@@ -893,6 +907,7 @@ class ApiService {
     order?: number;
     prerequisites?: string[];
     requiredQuizzesToUnlock?: number;
+    parentTopicId?: string | null;
     isActive?: boolean;
   }>): Promise<ApiResponse> {
     return this.request(`/topics/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
@@ -959,6 +974,10 @@ class ApiService {
     return this.request(`/quiz-sets/topic/${topicId}${qs ? `?${qs}` : ''}`, { method: 'GET' });
   }
 
+  async getQuizSetsByQuiz(quizId: string): Promise<ApiResponse> {
+    return this.request(`/quiz-sets/quiz/${quizId}`, { method: 'GET' });
+  }
+
   async createQuizSet(payload: {
     topicId: string;
     quizId: string;
@@ -977,6 +996,10 @@ class ApiService {
     isActive?: boolean;
   }>): Promise<ApiResponse> {
     return this.request(`/quiz-sets/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+  }
+
+  async deleteQuizSet(id: string): Promise<ApiResponse> {
+    return this.request(`/quiz-sets/${id}`, { method: 'DELETE' });
   }
 }
 

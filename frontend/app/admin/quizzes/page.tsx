@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 
+type LevelFilter = '' | 'basic' | 'hard';
+
 export default function AdminQuizzesPage() {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
@@ -12,6 +14,8 @@ export default function AdminQuizzesPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [filterLevel, setFilterLevel] = useState<LevelFilter>('');
+  const [updatingLevelId, setUpdatingLevelId] = useState<string | null>(null);
   
   const loadQuizzes = useCallback(async (pageNumber: number) => {
     try {
@@ -42,6 +46,23 @@ export default function AdminQuizzesPage() {
     loadQuizzes(1);
   }, [isAuthenticated, user, router, loadQuizzes]);
 
+  const filteredQuizzes = filterLevel
+    ? quizzes.filter((q) => q.level === filterLevel)
+    : quizzes;
+
+  const handleLevelChange = async (quizId: string, value: string) => {
+    setUpdatingLevelId(quizId);
+    try {
+      const level = value === '' ? null : (value as 'basic' | 'hard');
+      await apiService.updateQuiz(quizId, { level });
+      await loadQuizzes(page);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to update level');
+    } finally {
+      setUpdatingLevelId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
@@ -65,15 +86,33 @@ export default function AdminQuizzesPage() {
 
         {/* Existing Quizzes List */}
         <div className="bg-white rounded-xl shadow-lg p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Existing Quizzes</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h2 className="text-lg font-bold text-gray-900">Existing Quizzes</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Level:</span>
+              <select
+                value={filterLevel}
+                onChange={(e) => setFilterLevel(e.target.value as LevelFilter)}
+                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+              >
+                <option value="">All</option>
+                <option value="basic">Basic</option>
+                <option value="hard">Hard</option>
+              </select>
+            </div>
+          </div>
           {loading ? (
             <p className="text-sm text-gray-500">Loading quizzes...</p>
-          ) : quizzes.length === 0 ? (
-            <p className="text-sm text-gray-500">No quizzes created yet.</p>
+          ) : filteredQuizzes.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              {filterLevel
+                ? `No quizzes for ${filterLevel === 'basic' ? 'Basic' : 'Hard'}.`
+                : 'No quizzes created yet.'}
+            </p>
           ) : (
             <>
               <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1 mb-4">
-                {quizzes.map((quiz) => (
+                {filteredQuizzes.map((quiz) => (
                   <div
                     key={quiz._id}
                     className="rounded-lg border border-gray-200 p-3 hover:bg-gray-50 transition-colors"
@@ -96,8 +135,8 @@ export default function AdminQuizzesPage() {
                         {quiz.description}
                       </p>
                     )}
-                    <div className="flex items-center justify-between mt-2">
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between mt-2 flex-wrap gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span
                           className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                             quiz.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
@@ -105,6 +144,19 @@ export default function AdminQuizzesPage() {
                         >
                           {quiz.isActive ? 'ACTIVE' : 'INACTIVE'}
                         </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-gray-500">Level:</span>
+                          <select
+                            value={quiz.level || ''}
+                            onChange={(e) => handleLevelChange(quiz._id, e.target.value)}
+                            disabled={updatingLevelId === quiz._id}
+                            className="rounded border border-gray-300 px-2 py-0.5 text-[11px] text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500 disabled:opacity-60"
+                          >
+                            <option value="">All</option>
+                            <option value="basic">Basic</option>
+                            <option value="hard">Hard</option>
+                          </select>
+                        </div>
                         {quiz.batches && quiz.batches.length > 0 && (
                           <span className="text-[10px] text-gray-500">
                             Batches: {quiz.batches.join(', ')}

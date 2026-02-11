@@ -52,6 +52,7 @@ interface DashboardStats {
 function SubjectSuggestions({ user }: { user: any }) {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [subjectProgress, setSubjectProgress] = useState<Record<string, { progressPercentage: number; completedTopics: number; totalTopics: number }>>({});
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState<any>(null);
   const router = useRouter();
@@ -111,7 +112,27 @@ function SubjectSuggestions({ user }: { user: any }) {
             return 0;
           });
           
-          setSubjects(sorted.slice(0, 4)); // Show max 4
+          const list = sorted.slice(0, 4); // Show max 4
+          setSubjects(list);
+
+          // Load progress for each subject in parallel
+          const progressRes = await Promise.all(
+            list.map((s: any) =>
+              apiService.getSubjectProgress(s._id).then((r) => ({ subjectId: s._id, res: r }))
+            )
+          );
+          const progressMap: Record<string, { progressPercentage: number; completedTopics: number; totalTopics: number }> = {};
+          progressRes.forEach(({ subjectId, res }) => {
+            if (res.success && res.data && typeof res.data === 'object') {
+              const d = res.data as { progressPercentage?: number; completedTopics?: number; totalTopics?: number };
+              progressMap[subjectId] = {
+                progressPercentage: typeof d.progressPercentage === 'number' ? d.progressPercentage : 0,
+                completedTopics: typeof d.completedTopics === 'number' ? d.completedTopics : 0,
+                totalTopics: typeof d.totalTopics === 'number' ? d.totalTopics : 0,
+              };
+            }
+          });
+          setSubjectProgress(progressMap);
         }
       } catch (err) {
         console.error('Failed to load subjects:', err);
@@ -206,10 +227,11 @@ function SubjectSuggestions({ user }: { user: any }) {
           const needsRequest = requiresRequest(subject);
           const hasSubjectAccess = hasAccess(subject);
           
+          const d = ['animate-delay-1', 'animate-delay-2', 'animate-delay-3', 'animate-delay-4'][index % 4];
           return (
             <div
               key={subject._id}
-              className={`bg-white rounded-xl shadow-lg p-5 border-l-4 ${color.border} relative overflow-hidden hover:shadow-xl transition-all ${needsRequest ? '' : 'cursor-pointer'}`}
+              className={`bg-white rounded-xl shadow-lg p-5 border-l-4 ${color.border} relative overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 animate-scale-in ${d} ${needsRequest ? '' : 'cursor-pointer'}`}
               onClick={needsRequest ? undefined : () => router.push(`/dashboard/subjects/${subject._id}`)}
             >
             <div className="absolute top-3 -right-8 bg-gradient-to-r from-[#0dcaf0] to-[#6f42c1] text-white text-xs px-8 py-1.5 transform rotate-45 shadow-lg font-bold">
@@ -244,6 +266,29 @@ function SubjectSuggestions({ user }: { user: any }) {
                     </span>
                   )}
                 </div>
+                {/* Subject progress bar */}
+                {!needsRequest && hasSubjectAccess && (() => {
+                  const progress = subjectProgress[subject._id];
+                  const pct = progress ? progress.progressPercentage : 0;
+                  const total = progress?.totalTopics ?? 0;
+                  const completed = progress?.completedTopics ?? 0;
+                  return (
+                    <div className="mt-3">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs font-medium text-gray-600">Progress</span>
+                        <span className="text-xs font-semibold text-gray-900">
+                          {total > 0 ? `${completed} / ${total} topics` : '—'}
+                        </span>
+                      </div>
+                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-[#0dcaf0] to-[#6f42c1] rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(Math.round(pct), 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
             {needsRequest ? (
@@ -551,7 +596,7 @@ export default function DashboardPage() {
       <div className="container mx-auto px-4 my-4">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           {/* Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 animate-fade-in">
             <div className="bg-white rounded-xl shadow-lg p-6 mb-4 sticky top-4 border border-gray-100">
               <div className="text-center mb-5">
                 <div className="w-20 h-20 bg-gradient-to-r from-[#6f42c1] to-[#e83e8c] rounded-full flex items-center justify-center mx-auto mb-3 shadow-md">
@@ -664,11 +709,13 @@ export default function DashboardPage() {
                   { icon: 'bolt', label: 'Quick Quiz' },
                   { icon: 'chart', label: 'Progress' },
                   { icon: 'report', label: 'Reports', link: '/dashboard/reports' },
-                ].map((action) => (
+                ].map((action, idx) => {
+                  const dc = ['animate-delay-1', 'animate-delay-2', 'animate-delay-3', 'animate-delay-4', 'animate-delay-5'][idx % 5];
+                  return (
                   <button
                     key={action.label}
                     onClick={() => action.link && router.push(action.link)}
-                    className="bg-white border border-gray-200 rounded-lg p-3 text-center hover:bg-purple-600 hover:text-white hover:border-purple-600 transition-all"
+                    className={`bg-white border border-gray-200 rounded-lg p-3 text-center hover:bg-purple-600 hover:text-white hover:border-purple-600 transition-all duration-200 animate-fade-in ${dc}`}
                   >
                     <svg className="w-6 h-6 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       {action.icon === 'robot' && (
@@ -686,7 +733,7 @@ export default function DashboardPage() {
                     </svg>
                     <div className="text-xs font-medium">{action.label}</div>
                   </button>
-                ))}
+                  );})}
               </div>
             </div>
 
@@ -698,9 +745,9 @@ export default function DashboardPage() {
           </div>
 
           {/* Main Content Area */}
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3 animate-fade-in animate-delay-1">
             {/* AI Mentor Section */}
-            <div className="bg-white rounded-xl shadow-lg p-6 mb-4 border-l-4 border-purple-500 relative overflow-hidden">
+            <div className="bg-white rounded-xl shadow-lg p-6 mb-4 border-l-4 border-purple-500 relative overflow-hidden animate-fade-in">
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-100 to-pink-100 opacity-50 rounded-bl-full"></div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
                 <div className="md:col-span-2">
@@ -776,7 +823,10 @@ export default function DashboardPage() {
                   borderColor: 'border-yellow-500' 
                 },
               ].map((stat) => (
-                <div key={stat.title} className={`bg-white rounded-xl shadow-lg p-5 border-t-4 ${stat.borderColor} hover:shadow-xl transition-all`}>
+                <div
+                  key={stat.title}
+                  className={`bg-white rounded-xl shadow-lg p-5 border-t-4 ${stat.borderColor} hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 animate-scale-in`}
+                >
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
                       <h6 className="text-gray-600 text-xs mb-2 font-semibold uppercase tracking-wide">{stat.title}</h6>

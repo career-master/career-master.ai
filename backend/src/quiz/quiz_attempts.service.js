@@ -320,9 +320,10 @@ class QuizAttemptService {
   /**
    * Get available quizzes for a user
    * @param {string} userEmail
+   * @param {string} [level] - 'basic' | 'hard'. If set, only quizzes with that level or no level are returned.
    * @returns {Promise<Array>}
    */
-  static async getAvailableQuizzesForUser(userEmail) {
+  static async getAvailableQuizzesForUser(userEmail, level) {
     try {
       // Get user
       const user = await User.findOne({ email: userEmail }).lean();
@@ -351,6 +352,9 @@ class QuizAttemptService {
         }
         // Check if quiz is active
         if (!quiz.isActive) return false;
+
+        // Filter by level: if user chose a level, include only quizzes with that level or no level
+        if (level && quiz.level && quiz.level !== level) return false;
 
         // Check date range
         if (quiz.availableFrom && now < quiz.availableFrom) return false;

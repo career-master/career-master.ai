@@ -30,7 +30,7 @@ const createSubjectSchema = z.object({
       .optional(),
     level: z
       .union([
-        z.enum(['beginner', 'intermediate', 'advanced']),
+        z.enum(['basic', 'hard']),
         z.literal('')
       ])
       .optional(),

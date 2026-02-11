@@ -26,35 +26,104 @@ class TechnologyQuizzesSeed {
 
       const createdBy = adminUser._id;
 
-      // Technology categories data structure
+      // Technologies: each category = one subject, each tech = one topic (matches Programing Languages | C, Full Stack | HTML, etc.)
+      const technologiesData = {
+        'Programming Languages': ['C', 'C++', 'JAVA', 'PYTHON', 'PHP', 'C#', 'RUBY', 'GO', 'RUST'],
+        'Full Stack': [
+          'HTML', 'CSS', 'JAVASCRIPT', 'BOOTSTRAP', 'NODEJS', 'EXPRESSJS', 'REACTJS', 'NEXTJS', 'TAILWIND',
+          'TYPESCRIPT', 'DART', 'ANGULAR', 'VUEJS', 'SPRING BOOT', 'DJANGO', 'FLASK', 'ASP.NET',
+          'MATERIAL UI', 'CHAKRA UI', 'SASS'
+        ],
+        'Databases': ['MONGODB', 'MYSQL', 'ORACLE', 'SQL SERVER', 'FIREBASE', 'POSTGRESQL', 'MARIADB', 'REDIS', 'CASSANDRA', 'ELASTICSEARCH'],
+        'Mobile Development': ['SWIFT', 'KOTLIN', 'FLUTTER', 'REACT NATIVE'],
+        'AI': ['R', 'PYTHON', 'JULIA', 'SCALA'],
+        'Testing': ['JUNIT', 'JEST', 'PYTEST', 'SELENIUM', 'CYPRESS'],
+        'Cloud Computing': ['AWS', 'AZURE', 'GOOGLE CLOUD']
+      };
+
+      // Seed technologies: one subject per category, topics = tech names
+      for (const [categoryName, techList] of Object.entries(technologiesData)) {
+        console.log(`\n📚 Technology: ${categoryName}`);
+        let subject = await Subject.findOne({ title: categoryName, category: 'Technology', createdBy: createdBy });
+        if (!subject) {
+          subject = new Subject({
+            title: categoryName,
+            description: `Learn and practice ${categoryName.toLowerCase()} with quizzes and study material`,
+            category: 'Technology',
+            level: 'basic',
+            isActive: true,
+            requiresApproval: false,
+            createdBy: createdBy,
+            order: totalSubjects + 1,
+            courseCategories: []
+          });
+          subject = await subject.save();
+          console.log(`  ✅ Subject: ${categoryName}`);
+          totalSubjects++;
+        }
+        for (let i = 0; i < techList.length; i++) {
+          const techName = techList[i];
+          let topic = await Topic.findOne({ subjectId: subject._id, title: techName, createdBy: createdBy });
+          if (!topic) {
+            topic = new Topic({
+              subjectId: subject._id,
+              title: techName,
+              description: `Practice ${techName} with quizzes and theory`,
+              order: i + 1,
+              requiredQuizzesToUnlock: 0,
+              isActive: true,
+              createdBy: createdBy
+            });
+            topic = await topic.save();
+            totalTopics++;
+            console.log(`    ✅ Topic: ${techName}`);
+          }
+          let cheatsheet = await Cheatsheet.findOne({ topicId: topic._id });
+          if (!cheatsheet) {
+            cheatsheet = new Cheatsheet({
+              topicId: topic._id,
+              content: this.generateCheatsheetContent(techName, categoryName),
+              contentType: 'markdown',
+              createdBy: createdBy
+            });
+            await cheatsheet.save();
+          }
+          const quizTitle = `${techName} - Practice Quiz`;
+          let quiz = await Quiz.findOne({ title: quizTitle, createdBy: createdBy });
+          if (!quiz) {
+            quiz = new Quiz({
+              title: quizTitle,
+              description: `Test your knowledge of ${techName}`,
+              durationMinutes: 30,
+              availableToEveryone: true,
+              isActive: true,
+              useSections: false,
+              questions: this.generateQuizQuestions(techName, categoryName),
+              createdBy: createdBy,
+              courseCategories: []
+            });
+            quiz = await quiz.save();
+            totalQuizzes++;
+            console.log(`    ✅ Quiz: ${quizTitle}`);
+          }
+          let quizSet = await QuizSet.findOne({ topicId: topic._id, quizId: quiz._id });
+          if (!quizSet) {
+            quizSet = new QuizSet({
+              topicId: topic._id,
+              quizId: quiz._id,
+              setName: `${techName} Practice`,
+              order: 1,
+              isActive: true,
+              assignedBy: createdBy
+            });
+            await quizSet.save();
+            totalQuizSets++;
+          }
+        }
+      }
+
+      // Other domains (MATHS, SCIENCE, Olympiads, etc.): one subject per domain, topic = "Category - Name"
       const technologyData = {
-        'Technology': {
-          'PROGRAMMING LANGAUGES': [
-            'C', 'C++', 'JAVA', 'PYTHON', 'PHP', 'C#', 'RUBY', 'GO', 'RUST'
-          ],
-          'FULL STACK': [
-            'HTML', 'CSS', 'JAVASCRIPT', 'BOOTSTRAP', 'NODEJS', 'EXPRESSJS', 
-            'REACTJS', 'NEXTJS', 'TAILWIND', 'TYPESCRIPT', 'DART', 'ANGULAR', 
-            'VUEJS', 'SPRING BOOT', 'DJANGO', 'FLASK', 'ASP.NET', 'MATERIAL UI', 
-            'CHAKRA UI', 'SASS'
-          ],
-          'DATABASES': [
-            'MONGODB', 'MYSQL', 'ORACLE', 'SQL SERVER', 'FIREBASE', 'POSTGRESQL', 
-            'MARIADB', 'REDIS', 'CASSANDRA', 'ELASTICSEARCH'
-          ],
-          'MOBILE DEVELOPMENT': [
-            'SWIFT', 'KOTLIN', 'FLUTTER', 'REACT NATIVE'
-          ],
-          'AI': [
-            'R', 'PYTHON', 'JULIA', 'SCALA'
-          ],
-          'TESTING': [
-            'JUNIT', 'JEST', 'PYTEST', 'SELENIUM', 'CYPRESS'
-          ],
-          'CLOUD COMPUTING': [
-            'AWS', 'AZURE', 'GOOGLE CLOUD'
-          ]
-        },
         'MATHS': {
           'MATHS': ['3 CLASS']
         },
@@ -103,7 +172,7 @@ class TechnologyQuizzesSeed {
             title: domain,
             description: `Comprehensive ${domain} learning resources with quizzes and practice tests`,
             category: domain,
-            level: 'beginner',
+            level: 'basic',
             isActive: true,
             requiresApproval: false,
             createdBy: createdBy,
@@ -207,7 +276,7 @@ class TechnologyQuizzesSeed {
                 setName: `${topicName} Practice Set`,
                 order: 1,
                 isActive: true,
-                createdBy: createdBy
+                assignedBy: createdBy
               });
               await newQuizSet.save();
               console.log(`    ✅ Created quiz set linking quiz to topic`);

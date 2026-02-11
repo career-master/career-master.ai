@@ -324,6 +324,13 @@ const quizSchema = new mongoose.Schema(
     courseCategories: {
       type: [String], // Array of course category IDs (e.g., "Maths_10", "JEE MAIN", "Technology_Programming Languages_JavaScript")
       default: []
+    },
+    // Quiz level: basic | hard. Optional: if null/undefined, shown for all level preferences.
+    level: {
+      type: String,
+      enum: ['basic', 'hard'],
+      required: false,
+      default: null
     }
   },
   {

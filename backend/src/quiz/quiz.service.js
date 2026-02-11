@@ -26,7 +26,8 @@ class QuizService {
         availableTo, 
         batches, 
         availableToEveryone,
-        maxAttempts
+        maxAttempts,
+        level
       } = payload;
 
       const quizData = {
@@ -38,6 +39,7 @@ class QuizService {
         maxAttempts: maxAttempts || 999,
         isActive: payload.isActive !== undefined ? payload.isActive : true
       };
+      if (level != null) quizData.level = level;
 
       // Handle sections or flat questions
       if (useSections && sections && Array.isArray(sections) && sections.length > 0) {
@@ -254,7 +256,10 @@ class QuizService {
       const optionD = row.optionD || row.OptionD || row.D || '';
       const correctOption = (row.correctOption || row.Correct || row.correct || '').toString().trim().toUpperCase();
       const questionType = (row.type || row.Type || row.TYPE || 'multiple_choice_single').toString().trim().toLowerCase();
-      const marks = Number(row.marks || row.Marks || 1);
+      const rawMarks = row.marks ?? row.Marks;
+      const marks = (rawMarks !== '' && rawMarks != null && !Number.isNaN(Number(rawMarks)))
+        ? Number(rawMarks)
+        : (metadata.defaultMarks ?? 1);
       const negativeMarks = Number(row.negativeMarks || row.NegativeMarks || 0);
 
       // Skip if no question text
@@ -364,6 +369,9 @@ class QuizService {
           ? metadata.batches.split(',').map((b) => b.trim()).filter(Boolean)
           : [];
 
+    const level = (metadata.level === 'basic' || metadata.level === 'hard')
+      ? metadata.level
+      : undefined;
     const quiz = await QuizRepository.createQuiz({
       title,
       description,
@@ -373,6 +381,7 @@ class QuizService {
       batches,
       availableToEveryone,
       maxAttempts,
+      ...(level ? { level } : {}),
       questions,
       createdBy: userId
     });

@@ -23,7 +23,7 @@ class SubjectService {
       description: description || undefined,
       thumbnail: thumbnail || undefined,
       category: category || undefined,
-      level: level || 'beginner',
+      level: level || 'basic',
       batches: Array.isArray(batches) ? batches.filter(Boolean) : [],
       requiresApproval: requiresApproval !== undefined ? requiresApproval : true,
       order: order || 0,

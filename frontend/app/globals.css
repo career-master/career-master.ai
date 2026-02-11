@@ -43,7 +43,7 @@ body {
 /* Hide scrollbar for IE, Edge and Firefox */
 .scrollbar-hide {
   -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
+  scrollbar-width: none; /* Firefoxs */ 
 }
 
 @layer utilities {
@@ -81,6 +81,61 @@ body {
   .animate-fadeinup {
     animation: fadeInUp 0.8s ease-out forwards;
   }
+
+  @keyframes slide-in-right {
+    from {
+      opacity: 0;
+      transform: translateX(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    } 
+  }
+
+  .animate-slide-in-right {
+    animation: slide-in-right 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+
+  @keyframes slide-in-left {
+    from {
+      opacity: 0;
+      transform: translateX(-12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .animate-slide-in-left {
+    animation: slide-in-left 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .animate-scale-in {
+    animation: scale-in 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+
+  /* Stagger delays for list animations */
+  .animate-delay-1 { animation-delay: 40ms; }
+  .animate-delay-2 { animation-delay: 80ms; }
+  .animate-delay-3 { animation-delay: 120ms; }
+  .animate-delay-4 { animation-delay: 160ms; }
+  .animate-delay-5 { animation-delay: 200ms; }
+  .animate-delay-6 { animation-delay: 240ms; }
+  .animate-delay-7 { animation-delay: 280ms; }
+  .animate-delay-8 { animation-delay: 320ms; }
 
   /* 3D transform utilities */
   .transform-style-3d {
@@ -164,6 +219,17 @@ body {
     animation-play-state: paused;
   }
 
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-in,
+    .animate-fadeinup,
+    .animate-slide-in-right,
+    .animate-slide-in-left,
+    .animate-scale-in {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+  }
   /* Glossy effect */
   .glossy {
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));

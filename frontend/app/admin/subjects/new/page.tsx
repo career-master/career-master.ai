@@ -11,7 +11,7 @@ type Subject = {
   title: string;
   description?: string;
   category?: string;
-  level?: 'beginner' | 'intermediate' | 'advanced';
+  level?: 'basic' | 'hard';
   requiresApproval?: boolean;
   order?: number;
   thumbnail?: string;
@@ -1531,9 +1531,8 @@ export default function SubjectsBuilderPage() {
                   }
                 >
                   <option value="">Level (optional)</option>
-                  <option value="beginner">Beginner</option>
-                  <option value="intermediate">Intermediate</option>
-                  <option value="advanced">Advanced</option>
+                  <option value="basic">Basic</option>
+                  <option value="hard">Hard</option>
                 </select>
               </div>
               <div className="flex items-center justify-between text-sm">

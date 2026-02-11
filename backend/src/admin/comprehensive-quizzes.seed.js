@@ -8,6 +8,22 @@ const { QUESTION_TYPES } = require('../quiz/question-types.config');
 const { getQuestionsForTopic } = require('./question-bank');
 
 /**
+ * Sub-topics: when a topic is in this map, we create child topics (e.g. C - Intro, MONGODB - CRUD Operations)
+ * each with their own quiz. Key = parent topic name, value = array of sub-topic names.
+ * PROGRAMMING LANGAUGES: C, C++, JAVA, PYTHON.
+ * DATABASES: MONGODB (and optionally MYSQL, etc.).
+ */
+const SUB_TOPICS_MAP = {
+  // Programming Languages
+  'C': ['Intro', 'Data Types', 'Operators', 'Control Flow', 'Functions', 'Pointers', 'Arrays & Strings'],
+  'C++': ['Intro', 'OOP Basics', 'Inheritance', 'Templates', 'STL'],
+  'JAVA': ['Intro', 'OOP', 'Collections', 'Exceptions', 'Multithreading'],
+  'PYTHON': ['Intro', 'Data Types', 'Functions', 'OOP', 'Modules'],
+  // Databases
+  'MONGODB': ['Intro', 'CRUD Operations', 'Aggregation', 'Indexes', 'Data Modeling']
+};
+
+/**
  * Comprehensive Quizzes Seed
  * Creates subjects, topics, quizzes, and quiz sets based on the provided data structure
  * 
@@ -95,50 +111,53 @@ class ComprehensiveQuizzesSeed {
       let totalTopics = 0;
       let totalQuizzes = 0;
       let totalQuizSets = 0;
+      let levelCounter = 0;
+      const LEVELS = ['basic', 'hard'];
       const processedSubjects = new Map();
 
       // Process each entry
       for (const entry of seedData) {
         const { domain, category, topics } = entry;
+        const isTechnology = domain === 'Technology';
 
-        // Get or create subject for this domain
-        let subject = processedSubjects.get(domain);
-        
+        // Technology: one subject per category (Programming Languages, Full Stack, etc.) with category="Technology"
+        // Others: one subject per domain (MATHS, SCIENCE, Olympiad, etc.)
+        const subjectKey = isTechnology ? `Technology::${category}` : domain;
+        let subject = processedSubjects.get(subjectKey);
+
         if (!subject) {
-          subject = await Subject.findOne({ 
-            title: domain,
-            createdBy: createdBy
+          const subjectTitle = isTechnology ? category : domain;
+          const subjectCategory = isTechnology ? 'Technology' : domain;
+          subject = await Subject.findOne({
+            title: subjectTitle,
+            ...(isTechnology ? { category: 'Technology' } : {}),
+            createdBy
           });
 
           if (!subject) {
-            // For subjects, use empty array (available to all) or category-level IDs
-            // We'll set courseCategories at the quiz level for more granular control
             subject = new Subject({
-              title: domain,
-              description: `Comprehensive ${domain} learning resources with quizzes and practice tests`,
-              category: domain,
-              level: 'beginner',
+              title: subjectTitle,
+              description: `Comprehensive ${subjectTitle} learning resources with quizzes and practice tests`,
+              category: subjectCategory,
+              level: 'basic',
               isActive: true,
               requiresApproval: false,
               createdBy: createdBy,
               order: totalSubjects + 1,
-              courseCategories: [] // Empty = available to all users
+              courseCategories: []
             });
             subject = await subject.save();
-            console.log(`✅ Created subject: ${domain}`);
+            console.log(`✅ Created subject: ${subjectTitle}`);
             totalSubjects++;
-          } else {
-            console.log(`ℹ️  Subject already exists: ${domain}`);
           }
-          
-          processedSubjects.set(domain, subject);
+          processedSubjects.set(subjectKey, subject);
         }
 
-        // Process each topic in this category
-        for (const topicName of topics) {
-          const fullTopicName = `${category} - ${topicName}`;
-          
-          // Find or create topic
+        // Process each topic: Technology = tech name only (C, HTML); Others = "Category - Name"
+        for (let i = 0; i < topics.length; i++) {
+          const topicName = topics[i];
+          const fullTopicName = isTechnology ? topicName : `${category} - ${topicName}`;
+
           let topic = await Topic.findOne({
             subjectId: subject._id,
             title: fullTopicName,
@@ -151,7 +170,7 @@ class ComprehensiveQuizzesSeed {
               title: fullTopicName,
               description: `Learn and practice ${topicName} with comprehensive quizzes and theory content`,
               order: totalTopics + 1,
-              requiredQuizzesToUnlock: 0, // Immediately accessible
+              requiredQuizzesToUnlock: 0,
               isActive: true,
               createdBy: createdBy
             });
@@ -191,6 +210,7 @@ class ComprehensiveQuizzesSeed {
           // Generate course category ID for this specific topic
           const courseCategoryId = this.generateCourseCategoryId(domain, category, topicName);
 
+          const mainLevel = LEVELS[levelCounter++ % 2];
           if (!quiz) {
             // Create new quiz
             quiz = new Quiz({
@@ -202,10 +222,11 @@ class ComprehensiveQuizzesSeed {
               useSections: false,
               questions: questions,
               createdBy: createdBy,
-              courseCategories: [courseCategoryId] // Link to course category
+              courseCategories: [courseCategoryId], // Link to course category
+              level: mainLevel
             });
             quiz = await quiz.save();
-            console.log(`      ✅ Created quiz: ${quizTitle} (${questions.length} questions)`);
+            console.log(`      ✅ Created quiz: ${quizTitle} (${questions.length} questions) [${mainLevel}]`);
             totalQuizzes++;
           } else {
             // Update existing quiz with new questions (to get topic-specific questions)
@@ -213,8 +234,9 @@ class ComprehensiveQuizzesSeed {
             quiz.questions = questions;
             quiz.courseCategories = [courseCategoryId];
             quiz.description = `Test your knowledge of ${topicName} with this comprehensive practice quiz`;
+            quiz.level = mainLevel;
             await quiz.save();
-            console.log(`      🔄 Updated quiz: ${quizTitle} (${oldQuestionCount} → ${questions.length} questions)`);
+            console.log(`      🔄 Updated quiz: ${quizTitle} (${oldQuestionCount} → ${questions.length} questions) [${mainLevel}]`);
             totalQuizzes++;
           }
 
@@ -244,6 +266,84 @@ class ComprehensiveQuizzesSeed {
           // Verify the link was created
           if (!quizSet && !await QuizSet.findOne({ topicId: topic._id, quizId: quiz._id })) {
             throw new Error(`Failed to create QuizSet linking quiz "${quizTitle}" to topic "${fullTopicName}"`);
+          }
+
+          // Sub-topics: for PROGRAMMING LANGAUGES or DATABASES topics in SUB_TOPICS_MAP, create child topics + quizzes
+          const subTopicNames = isTechnology && (category === 'PROGRAMMING LANGAUGES' || category === 'DATABASES') ? (SUB_TOPICS_MAP[topicName] || null) : null;
+          if (subTopicNames && subTopicNames.length > 0) {
+            for (let sIdx = 0; sIdx < subTopicNames.length; sIdx++) {
+              const subName = subTopicNames[sIdx];
+              const subTitle = `${topicName} - ${subName}`;
+
+              let subTopic = await Topic.findOne({
+                subjectId: subject._id,
+                parentTopicId: topic._id,
+                title: subTitle,
+                createdBy: createdBy
+              });
+
+              if (!subTopic) {
+                subTopic = new Topic({
+                  subjectId: subject._id,
+                  parentTopicId: topic._id,
+                  title: subTitle,
+                  description: `Learn and practice ${subName} in ${topicName}`,
+                  order: totalTopics + 1,
+                  requiredQuizzesToUnlock: 0,
+                  isActive: true,
+                  createdBy: createdBy
+                });
+                subTopic = await subTopic.save();
+                console.log(`      ✅ Created sub-topic: ${subTitle}`);
+                totalTopics++;
+              }
+
+              const subQuizTitle = `${topicName} - ${subName} - Practice Quiz`;
+              let subQuiz = await Quiz.findOne({ title: subQuizTitle, createdBy: createdBy });
+
+              const subQuestions = this.generateQuizQuestions(`${topicName} - ${subName}`, category, domain, subject._id);
+              const subCourseCatId = this.generateCourseCategoryId(domain, category, `${topicName}_${subName}`);
+              const subLevel = LEVELS[levelCounter++ % 2];
+
+              if (!subQuiz) {
+                subQuiz = new Quiz({
+                  title: subQuizTitle,
+                  description: `Test your knowledge of ${subName} in ${topicName}`,
+                  durationMinutes: 15,
+                  availableToEveryone: true,
+                  isActive: true,
+                  useSections: false,
+                  questions: subQuestions,
+                  createdBy: createdBy,
+                  courseCategories: [subCourseCatId],
+                  level: subLevel
+                });
+                subQuiz = await subQuiz.save();
+                console.log(`        ✅ Created quiz: ${subQuizTitle} (${subQuestions.length} questions) [${subLevel}]`);
+                totalQuizzes++;
+              } else {
+                subQuiz.questions = subQuestions;
+                subQuiz.courseCategories = [subCourseCatId];
+                subQuiz.description = `Test your knowledge of ${subName} in ${topicName}`;
+                subQuiz.level = subLevel;
+                await subQuiz.save();
+              }
+
+              let subQuizSet = await QuizSet.findOne({ topicId: subTopic._id, quizId: subQuiz._id });
+              if (!subQuizSet) {
+                subQuizSet = new QuizSet({
+                  topicId: subTopic._id,
+                  quizId: subQuiz._id,
+                  setName: `${subName} Practice Set`,
+                  order: sIdx + 1,
+                  isActive: true,
+                  assignedBy: createdBy
+                });
+                await subQuizSet.save();
+                console.log(`        ✅ Created quiz set for sub-topic`);
+                totalQuizSets++;
+              }
+            }
           }
         }
       }

@@ -69,6 +69,15 @@ async function startServer() {
       console.warn('⚠️  Warning: Could not seed comprehensive quizzes:', error.message);
       // Continue even if comprehensive seeding fails
     }
+
+    // Seed level-test quizzes (Basic/Hard per subject for filter testing)
+    console.log('🔄 Seeding level-test quizzes (basic/hard per subject)...');
+    try {
+      const LevelTestQuizzesSeed = require('./src/admin/level-test-quizzes.seed');
+      await LevelTestQuizzesSeed.seedLevelTestQuizzes();
+    } catch (error) {
+      console.warn('⚠️  Warning: Could not seed level-test quizzes:', error.message);
+    }
     
     // Optional: Verify all quizzes are linked to topics (can be enabled for debugging)
     // Uncomment the following lines to run verification after seeding:

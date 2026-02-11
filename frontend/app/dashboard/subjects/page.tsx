@@ -13,7 +13,7 @@ type Subject = {
   title: string;
   description?: string;
   category?: string;
-  level?: 'beginner' | 'intermediate' | 'advanced';
+  level?: 'basic' | 'hard';
   thumbnail?: string;
   batches?: string[];
   requiresApproval?: boolean;
@@ -25,6 +25,7 @@ export default function SubjectsPage() {
   const router = useRouter();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [subjectProgress, setSubjectProgress] = useState<Record<string, { progressPercentage: number; completedTopics: number; totalTopics: number }>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('');
   const [filterLevel, setFilterLevel] = useState<string>('');
@@ -46,7 +47,26 @@ export default function SubjectsPage() {
       setLoading(true);
       const res = await apiService.getSubjects({ page: 1, limit: 100, isActive: true });
       if (res.success && res.data?.items) {
-        setSubjects(res.data.items);
+        const list = res.data.items;
+        setSubjects(list);
+        // Load progress for each subject in parallel
+        const progressRes = await Promise.all(
+          list.map((s: Subject) =>
+            apiService.getSubjectProgress(s._id).then((r) => ({ subjectId: s._id, res: r }))
+          )
+        );
+        const progressMap: Record<string, { progressPercentage: number; completedTopics: number; totalTopics: number }> = {};
+        progressRes.forEach(({ subjectId, res }) => {
+          if (res.success && res.data && typeof res.data === 'object') {
+            const d = res.data as { progressPercentage?: number; completedTopics?: number; totalTopics?: number };
+            progressMap[subjectId] = {
+              progressPercentage: typeof d.progressPercentage === 'number' ? d.progressPercentage : 0,
+              completedTopics: typeof d.completedTopics === 'number' ? d.completedTopics : 0,
+              totalTopics: typeof d.totalTopics === 'number' ? d.totalTopics : 0,
+            };
+          }
+        });
+        setSubjectProgress(progressMap);
       } else {
         toast.error('Failed to load subjects');
       }
@@ -132,7 +152,7 @@ export default function SubjectsPage() {
 
   // Get unique categories and levels for filters
   const categories = Array.from(new Set(subjects.map((s) => s.category).filter(Boolean)));
-  const levels = ['beginner', 'intermediate', 'advanced'];
+  const levels = ['basic', 'hard'];
 
   if (authLoading || loading) {
     return (
@@ -147,21 +167,9 @@ export default function SubjectsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <style jsx global>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 animate-fade-in">
           <h1 className="text-4xl font-bold text-gray-900 mb-3">Subjects & Topics</h1>
           <p className="text-lg text-gray-600 mb-6">
             Explore comprehensive learning materials organized by subjects. Master each topic at your own pace.
@@ -265,10 +273,7 @@ export default function SubjectsPage() {
                     return (
                     <div
                       key={subject._id}
-                      className="group bg-white rounded-xl border border-gray-200 shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col h-full min-w-0"
-                      style={{
-                        animation: `fadeInUp 0.5s ease-out ${index * 0.1}s both`
-                      }}
+                      className={`group bg-white rounded-xl border border-gray-200 shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col h-full min-w-0 hover:-translate-y-0.5 animate-fadeinup ${['animate-delay-1', 'animate-delay-2', 'animate-delay-3', 'animate-delay-4', 'animate-delay-5', 'animate-delay-6'][index % 6]}`}
                     >
                       {/* Thumbnail - Top */}
                       <div className="h-48 bg-gradient-to-br from-purple-500 to-blue-500 relative overflow-hidden flex-shrink-0">
@@ -316,20 +321,42 @@ export default function SubjectsPage() {
                           {subject.level && (
                             <span
                               className={`text-xs px-2.5 py-1 rounded-full font-semibold ml-2 flex-shrink-0 ${
-                                subject.level === 'beginner'
+                                subject.level === 'basic'
                                   ? 'bg-green-100 text-green-700 border border-green-200'
-                                  : subject.level === 'intermediate'
-                                  ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
                                   : 'bg-red-100 text-red-700 border border-red-200'
                               }`}
                             >
-                              {subject.level}
+                              {subject.level.charAt(0).toUpperCase() + subject.level.slice(1)}
                             </span>
                           )}
                         </div>
                         {subject.description && (
                           <p className="text-sm text-gray-600 line-clamp-3 mb-4 flex-1 leading-relaxed">{subject.description}</p>
                         )}
+
+                        {/* Subject progress bar */}
+                        {hasSubjectAccess && (() => {
+                          const progress = subjectProgress[subject._id];
+                          const pct = progress ? progress.progressPercentage : 0;
+                          const total = progress?.totalTopics ?? 0;
+                          const completed = progress?.completedTopics ?? 0;
+                          return (
+                            <div className="mb-4">
+                              <div className="flex justify-between items-center mb-1.5">
+                                <span className="text-xs font-medium text-gray-600">Progress</span>
+                                <span className="text-xs font-semibold text-gray-900">
+                                  {total > 0 ? `${completed} / ${total} topics` : '—'}
+                                </span>
+                              </div>
+                              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full transition-all duration-500"
+                                  style={{ width: `${Math.min(Math.round(pct), 100)}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                         {/* CTA */}
                         <div className="mt-auto pt-4 border-t border-gray-100">

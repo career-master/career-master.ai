@@ -45,7 +45,10 @@ class QuizAttemptController {
    */
   static getAvailableQuizzes = asyncHandler(async (req, res) => {
     const { email } = req.params;
-    const quizzes = await QuizAttemptService.getAvailableQuizzesForUser(email);
+    const level = req.query.level && ['basic', 'hard'].includes(String(req.query.level))
+      ? String(req.query.level)
+      : undefined;
+    const quizzes = await QuizAttemptService.getAvailableQuizzesForUser(email, level);
 
     res.status(200).json({
       success: true,
