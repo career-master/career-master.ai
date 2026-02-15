@@ -1,11 +1,21 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 
+const DOMAINS = [
+  '3 CLASS', '4 CLASS', '5 CLASS', '6 CLASS', '7 CLASS', '8 CLASS', '9 CLASS', '10 CLASS',
+  'INTER (10+2)', 'Technology', 'Olympiad Exams',
+  'National Level (All-India) Government Exams', 'STATE LEVEL GOVT EXAMS', 'STATE LEVEL ENTRANCE EXAMS',
+  'National Level (All-India) Entrance Exams',
+];
+
 type LevelFilter = '' | 'basic' | 'hard';
+
+const subjectInDomain = (s: any, domain: string) =>
+  s.domain === domain || (domain === 'Technology' && s.category === 'Technology');
 
 export default function AdminQuizzesPage() {
   const { user, isAuthenticated } = useAuth();
@@ -15,12 +25,36 @@ export default function AdminQuizzesPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [filterLevel, setFilterLevel] = useState<LevelFilter>('');
+  const [filterDomain, setFilterDomain] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterSubjectId, setFilterSubjectId] = useState('');
+  const [filterTopicId, setFilterTopicId] = useState('');
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [filterTopics, setFilterTopics] = useState<any[]>([]);
   const [updatingLevelId, setUpdatingLevelId] = useState<string | null>(null);
-  
+
+  const categoriesInDomain = useMemo(() => {
+    if (!filterDomain) return [];
+    const list = subjects.filter((s: any) => subjectInDomain(s, filterDomain));
+    const cats = Array.from(new Set(list.map((s: any) => s.category).filter(Boolean))) as string[];
+    return cats.filter((c) => c !== 'Technology' && c !== 'Olympiad Exams');
+  }, [subjects, filterDomain]);
+
+  const subjectsForFilter = useMemo(() => {
+    let list = subjects.filter((s: any) => filterDomain ? subjectInDomain(s, filterDomain) : true);
+    if (filterDomain && filterDomain !== 'Olympiad Exams' && filterCategory) list = list.filter((s: any) => s.category === filterCategory);
+    return list;
+  }, [subjects, filterDomain, filterCategory]);
+
   const loadQuizzes = useCallback(async (pageNumber: number) => {
     try {
       setLoading(true);
-      const res = await apiService.getQuizzes(pageNumber, 10);
+      const opts: { all?: boolean; domain?: string; subjectId?: string; topicId?: string } = {};
+      if (filterTopicId) opts.topicId = filterTopicId;
+      else if (filterSubjectId) opts.subjectId = filterSubjectId;
+      else if (filterDomain) opts.domain = filterDomain;
+      else opts.all = true;
+      const res = await apiService.getQuizzes(pageNumber, 10, opts);
       if (res.success && res.data) {
         const payload: any = res.data;
         setQuizzes(Array.isArray(payload.items) ? payload.items : []);
@@ -32,7 +66,7 @@ export default function AdminQuizzesPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filterDomain, filterSubjectId, filterTopicId]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -43,8 +77,31 @@ export default function AdminQuizzesPage() {
       router.push('/dashboard');
       return;
     }
+    (async () => {
+      const res = await apiService.getSubjects({ limit: 500 });
+      if (res.success && res.data?.items) setSubjects(res.data.items);
+    })();
+  }, [isAuthenticated, user, router]);
+
+  useEffect(() => {
+    if (!filterSubjectId) {
+      setFilterTopics([]);
+      setFilterTopicId('');
+      return;
+    }
+    (async () => {
+      const res = await apiService.getTopics(filterSubjectId);
+      if (res.success && res.data) {
+        const list = Array.isArray(res.data) ? res.data : (res.data as any)?.items ?? [];
+        setFilterTopics(list);
+      } else setFilterTopics([]);
+    })();
+  }, [filterSubjectId]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user?.roles?.includes('super_admin')) return;
     loadQuizzes(1);
-  }, [isAuthenticated, user, router, loadQuizzes]);
+  }, [isAuthenticated, user, loadQuizzes]);
 
   const filteredQuizzes = filterLevel
     ? quizzes.filter((q) => q.level === filterLevel)
@@ -88,17 +145,87 @@ export default function AdminQuizzesPage() {
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <h2 className="text-lg font-bold text-gray-900">Existing Quizzes</h2>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Level:</span>
-              <select
-                value={filterLevel}
-                onChange={(e) => setFilterLevel(e.target.value as LevelFilter)}
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500"
-              >
-                <option value="">All</option>
-                <option value="basic">Basic</option>
-                <option value="hard">Hard</option>
-              </select>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm text-gray-600">Domain:</span>
+                <select
+                  value={filterDomain}
+                  onChange={(e) => {
+                    setFilterDomain(e.target.value);
+                    setFilterCategory('');
+                    setFilterSubjectId('');
+                    setFilterTopicId('');
+                  }}
+                  className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                >
+                  <option value="">All</option>
+                  {DOMAINS.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+              {filterDomain && filterDomain !== 'Olympiad Exams' && categoriesInDomain.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm text-gray-600">Category:</span>
+                  <select
+                    value={filterCategory}
+                    onChange={(e) => {
+                      setFilterCategory(e.target.value);
+                      setFilterSubjectId('');
+                      setFilterTopicId('');
+                    }}
+                    className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                  >
+                    <option value="">All</option>
+                    {categoriesInDomain.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm text-gray-600">Subject:</span>
+                <select
+                  value={filterSubjectId}
+                  onChange={(e) => {
+                    setFilterSubjectId(e.target.value);
+                    setFilterTopicId('');
+                  }}
+                  className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500 min-w-[120px]"
+                >
+                  <option value="">All</option>
+                  {subjectsForFilter.map((s) => (
+                    <option key={s._id} value={s._id}>{s.title}</option>
+                  ))}
+                </select>
+              </div>
+              {filterSubjectId && filterTopics.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm text-gray-600">Topic:</span>
+                  <select
+                    value={filterTopicId}
+                    onChange={(e) => setFilterTopicId(e.target.value)}
+                    className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500 min-w-[120px]"
+                  >
+                    <option value="">All</option>
+                    {filterTopics.map((t) => (
+                      <option key={t._id} value={t._id}>{t.title}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm text-gray-600">Level:</span>
+                <select
+                  value={filterLevel}
+                  onChange={(e) => setFilterLevel(e.target.value as LevelFilter)}
+                  className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                >
+                  <option value="">All</option>
+                  <option value="basic">Basic</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
             </div>
           </div>
           {loading ? (

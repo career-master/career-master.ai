@@ -16,12 +16,13 @@ class SubjectService {
       throw new ErrorHandler(401, 'User ID is required to create a subject');
     }
 
-    const { title, description, thumbnail, category, level, requiresApproval, order, batches } = payload;
+    const { title, description, thumbnail, domain, category, level, requiresApproval, order, batches } = payload;
 
     const subjectData = {
       title,
       description: description || undefined,
       thumbnail: thumbnail || undefined,
+      domain: domain || undefined,
       category: category || undefined,
       level: level || 'basic',
       batches: Array.isArray(batches) ? batches.filter(Boolean) : [],
@@ -92,11 +93,14 @@ class SubjectService {
    * @param {Array<string>} userSelectedCourses - User's selected course categories (optional, for filtering)
    */
   static async getSubjectsPaginated(options = {}, userBatches = [], userRoles = [], userSelectedCourses = []) {
-    const { page = 1, limit = 10, isActive, category, level } = options;
+    const { page = 1, limit = 10, isActive, domain, category, level } = options;
     const filter = {};
 
     if (isActive !== undefined) {
       filter.isActive = isActive === 'true' || isActive === true;
+    }
+    if (domain) {
+      filter.domain = domain;
     }
     if (category) {
       filter.category = category;

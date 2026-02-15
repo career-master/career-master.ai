@@ -17,6 +17,11 @@ const createSubjectSchema = z.object({
       .max(2000, 'Description cannot exceed 2000 characters')
       .trim()
       .optional(),
+    domain: z
+      .string()
+      .max(100, 'Domain cannot exceed 100 characters')
+      .trim()
+      .optional(),
     thumbnail: z
       .union([
         z.string().url('Thumbnail must be a valid URL'),

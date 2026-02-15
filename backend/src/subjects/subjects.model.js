@@ -21,6 +21,12 @@ const subjectSchema = new mongoose.Schema(
       type: String, // URL to thumbnail image
       default: ''
     },
+    // High-level domain from QUIZ TOPICS LIST.xlsx (e.g. "3 CLASS", "TECHNOLOGY", "STATE LEVEL ENTRANCE EXAMS")
+    domain: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Domain cannot exceed 100 characters']
+    },
     category: {
       type: String,
       trim: true,
@@ -67,6 +73,7 @@ const subjectSchema = new mongoose.Schema(
 subjectSchema.index({ title: 1 });
 subjectSchema.index({ isActive: 1 });
 subjectSchema.index({ category: 1 });
+subjectSchema.index({ domain: 1 });
 subjectSchema.index({ createdAt: -1 });
 
 const Subject = mongoose.model('Subject', subjectSchema);

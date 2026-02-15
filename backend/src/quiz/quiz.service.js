@@ -185,13 +185,47 @@ class QuizService {
 
   /**
    * Get all quizzes
-   * Excludes quizzes that are part of quiz sets (those should only show in subject/topic pages)
+   * Optional filters: domain, subjectId, topicId (filter by link via QuizSet/Topic/Subject).
+   * When any filter is set, returns only quizzes linked to matching topic/subject/domain; otherwise excludes linked quizzes.
    */
-  static async getQuizzes({ page = 1, limit = 10, excludeQuizSets = true } = {}) {
-    // Get all quiz IDs that are part of quiz sets
+  static async getQuizzes({ page = 1, limit = 10, excludeQuizSets = true, domain, subjectId, topicId } = {}) {
+    const QuizSet = require('../quiz-sets/quiz-sets.model');
+    const Topic = require('../topics/topics.model');
+    const Subject = require('../subjects/subjects.model');
+
+    if (topicId || subjectId || domain) {
+      let topicIds = null;
+      if (topicId) {
+        topicIds = [topicId];
+      } else if (subjectId) {
+        const topics = await Topic.find({ subjectId }).select('_id').lean();
+        topicIds = topics.map(t => t._id.toString());
+      } else if (domain) {
+        const subjects = await Subject.find({ domain }).select('_id').lean();
+        const subjectIds = subjects.map(s => s._id.toString());
+        const topics = await Topic.find({ subjectId: { $in: subjectIds } }).select('_id').lean();
+        topicIds = topics.map(t => t._id.toString());
+      }
+      if (topicIds && topicIds.length > 0) {
+        const quizSets = await QuizSet.find({ topicId: { $in: topicIds } }).select('quizId').lean();
+        const includeQuizIds = [...new Set(quizSets.map(qs => qs.quizId?.toString()).filter(Boolean))];
+        return QuizRepository.getQuizzesPaginated({
+          activeOnly: false,
+          page,
+          limit,
+          includeQuizIds: includeQuizIds.length > 0 ? includeQuizIds : []
+        });
+      }
+      return QuizRepository.getQuizzesPaginated({
+        activeOnly: false,
+        page,
+        limit,
+        includeQuizIds: []
+      });
+    }
+
     let excludeQuizIds = [];
     if (excludeQuizSets) {
-      const QuizSet = require('../quiz-sets/quiz-sets.model');
       const quizSets = await QuizSet.find({ isActive: true }).select('quizId').lean();
       excludeQuizIds = quizSets.map(qs => qs.quizId.toString());
     }
@@ -200,7 +234,8 @@ class QuizService {
       activeOnly: false,
       page,
       limit,
-      excludeQuizIds
+      excludeQuizIds,
+      includeQuizIds: null
     });
   }
 

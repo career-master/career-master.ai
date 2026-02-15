@@ -10,6 +10,7 @@ type Subject = {
   title: string;
   description?: string;
   category?: string;
+  domain?: string;
   thumbnail?: string;
   batches?: string[];
 };
@@ -66,6 +67,8 @@ export default function DashboardQuizzesPage() {
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
+  const [filterDomain, setFilterDomain] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
   const [topicsWithQuizzes, setTopicsWithQuizzes] = useState<TopicWithQuizzes[]>([]);
   const [standaloneQuizzes, setStandaloneQuizzes] = useState<StandaloneQuiz[]>([]);
   const [loading, setLoading] = useState(true);
@@ -232,17 +235,53 @@ export default function DashboardQuizzesPage() {
   const hasAccess = (s: Subject) =>
     !s.batches || s.batches.length === 0 || userBatches.some((b: string) => s.batches?.includes(b));
 
-  // Group subjects by category (like subjects page)
-  const groupedByCategory = useMemo(() => {
-    const filtered = subjects.filter((s) => {
-      const q = (searchQuery || '').toLowerCase();
-      if (!q) return true;
-      return (
-        s.title.toLowerCase().includes(q) ||
-        (s.description || '').toLowerCase().includes(q) ||
-        (s.category || '').toLowerCase().includes(q)
-      );
+  // Domains from subjects (sorted: classes, INTER, Technology, Olympiad, others)
+  const DOMAIN_ORDER = [
+    '3 CLASS', '4 CLASS', '5 CLASS', '6 CLASS', '7 CLASS', '8 CLASS', '9 CLASS', '10 CLASS',
+    'INTER (10+2)', 'Technology', 'Olympiad Exams',
+    'National Level (All-India) Government Exams', 'STATE LEVEL GOVT EXAMS', 'STATE LEVEL ENTRANCE EXAMS',
+    'National Level (All-India) Entrance Exams',
+  ];
+  const domainsFromSubjects = useMemo(() => {
+    const set = new Set<string>();
+    subjects.forEach((s) => {
+      if (s.domain) set.add(s.domain);
+      if (s.domain === 'Technology' && s.category === 'Technology') set.add('Technology');
     });
+    return DOMAIN_ORDER.filter((d) => set.has(d));
+  }, [subjects]);
+
+  // Categories in selected domain (for filter pills; hide for Olympiad)
+  const categoriesInDomain = useMemo(() => {
+    if (!filterDomain) return [];
+    const list = subjects.filter(
+      (s) => s.domain === filterDomain || (filterDomain === 'Technology' && s.category === 'Technology')
+    );
+    const cats = Array.from(new Set(list.map((s) => s.category).filter(Boolean))) as string[];
+    return cats.filter((c) => c !== 'Technology' && c !== 'Olympiad Exams');
+  }, [subjects, filterDomain]);
+
+  // Filter subjects by domain, category, search; then group by category
+  const groupedByCategory = useMemo(() => {
+    let filtered = subjects;
+    if (filterDomain) {
+      filtered = filtered.filter(
+        (s) => s.domain === filterDomain || (filterDomain === 'Technology' && s.category === 'Technology')
+      );
+    }
+    if (filterDomain && filterDomain !== 'Olympiad Exams' && filterCategory) {
+      filtered = filtered.filter((s) => s.category === filterCategory);
+    }
+    const q = (searchQuery || '').toLowerCase();
+    if (q) {
+      filtered = filtered.filter(
+        (s) =>
+          s.title.toLowerCase().includes(q) ||
+          (s.description || '').toLowerCase().includes(q) ||
+          (s.category || '').toLowerCase().includes(q) ||
+          (s.domain || '').toLowerCase().includes(q)
+      );
+    }
     const acc: Record<string, Subject[]> = {};
     filtered.forEach((s) => {
       const cat = s.category || 'Uncategorized';
@@ -250,7 +289,7 @@ export default function DashboardQuizzesPage() {
       acc[cat].push(s);
     });
     return acc;
-  }, [subjects, searchQuery]);
+  }, [subjects, searchQuery, filterDomain, filterCategory]);
 
   const filteredStandalone = useMemo(() => {
     const q = (searchQuery || '').toLowerCase();
@@ -455,8 +494,8 @@ export default function DashboardQuizzesPage() {
           <p className="text-lg text-gray-600 mb-2">
             Pick a subject → see topics → take a quiz. Simple.
           </p>
-          <p className="text-sm text-gray-500 mb-4">Subjects on the left → Quizzes on the right</p>
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+          <p className="text-sm text-gray-500 mb-4">Filter below, then pick a subject on the left</p>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-4">
             <div className="relative">
               <input
                 type="text"
@@ -468,6 +507,40 @@ export default function DashboardQuizzesPage() {
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
+            </div>
+            {/* Dropdown filters below search */}
+            <div className="flex flex-wrap items-center gap-3 pt-1 border-t border-gray-100">
+              <span className="text-sm font-medium text-gray-600">Filter:</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">Domain</span>
+                  <select
+                    value={filterDomain}
+                    onChange={(e) => { setFilterDomain(e.target.value); setFilterCategory(''); }}
+                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-w-[140px]"
+                  >
+                    <option value="">All domains</option>
+                    {domainsFromSubjects.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </label>
+                {filterDomain && filterDomain !== 'Olympiad Exams' && categoriesInDomain.length > 0 && (
+                  <label className="flex items-center gap-2">
+                    <span className="text-sm text-gray-500">Category</span>
+                    <select
+                      value={filterCategory}
+                      onChange={(e) => setFilterCategory(e.target.value)}
+                      className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-w-[140px]"
+                    >
+                      <option value="">All</option>
+                      {categoriesInDomain.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -653,15 +726,18 @@ export default function DashboardQuizzesPage() {
                   </div>
                 </div>
               ) : (
-                /* No subject selected: categories + subjects */
-                <div key="subjects-view" className="animate-slide-in-left">
+                /* No subject selected: sidebar = subjects only (filters are in dropdowns above) */
+                <div key="subjects-view" className="animate-slide-in-left flex flex-col h-full">
                   <div className="bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-3">
                     <h2 className="text-lg font-bold text-white">Pick a subject</h2>
-                    <p className="text-purple-100 text-sm mt-0.5">Choose one to see its quizzes</p>
+                    <p className="text-purple-100 text-sm mt-0.5">Use filters above to narrow down</p>
                   </div>
-                  <div className="p-3 max-h-[calc(100vh-320px)] overflow-y-auto">
+                  <div className="flex-1 overflow-y-auto p-3 max-h-[calc(100vh-320px)]">
+                    {/* Subjects grouped by category */}
                     {Object.keys(groupedByCategory).length === 0 ? (
-                      <p className="text-sm text-gray-500 py-6 text-center">No subjects yet</p>
+                      <p className="text-sm text-gray-500 py-6 text-center">
+                        {filterDomain || filterCategory ? 'No subjects in this filter. Try another domain or category.' : 'No subjects yet'}
+                      </p>
                     ) : (
                       <div className="space-y-5">
                         {Object.entries(groupedByCategory).map(([category, categorySubjects]) => (
@@ -715,7 +791,7 @@ export default function DashboardQuizzesPage() {
             </div>
           </div>
 
-          {/* Right: Topics-wise list of quizzes (when subject selected) or Other Quizzes */}
+          {/* Right: Categories (when domain selected) + Topics/Quizzes or Quick quizzes */}
           <div className="lg:col-span-3 animate-fade-in animate-delay-1">
             {showStandaloneOnly ? (
               <div className="space-y-6">

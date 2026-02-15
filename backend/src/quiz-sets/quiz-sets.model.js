@@ -28,6 +28,10 @@ const quizSetSchema = new mongoose.Schema(
       type: Number,
       default: 0 // Order within the topic
     },
+    quizNumber: {
+      type: Number,
+      default: null // Admin-defined quiz number (e.g. for display/ordering)
+    },
     isActive: {
       type: Boolean,
       default: true
