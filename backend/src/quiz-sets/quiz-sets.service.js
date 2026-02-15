@@ -17,7 +17,7 @@ class QuizSetService {
       throw new ErrorHandler(401, 'User ID is required to create a quiz set');
     }
 
-    const { topicId, quizId, setName, order } = payload;
+    const { topicId, quizId, setName, order, quizNumber } = payload;
 
     // Verify quiz exists
     const quiz = await Quiz.findById(quizId);
@@ -30,6 +30,7 @@ class QuizSetService {
       quizId,
       setName: setName || 'Quiz Set',
       order: order !== undefined ? order : 0,
+      quizNumber: quizNumber !== undefined && quizNumber !== null && quizNumber !== '' ? Number(quizNumber) : undefined,
       assignedBy: userId,
       isActive: payload.isActive !== undefined ? payload.isActive : true
     };

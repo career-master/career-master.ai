@@ -10,8 +10,7 @@ const { getQuestionsForTopic } = require('./question-bank');
 /**
  * Sub-topics: when a topic is in this map, we create child topics (e.g. C - Intro, MONGODB - CRUD Operations)
  * each with their own quiz. Key = parent topic name, value = array of sub-topic names.
- * PROGRAMMING LANGAUGES: C, C++, JAVA, PYTHON.
- * DATABASES: MONGODB (and optionally MYSQL, etc.).
+ * Covers Technology domain: categories (subjects) → topics → sub-topics.
  */
 const SUB_TOPICS_MAP = {
   // Programming Languages
@@ -19,9 +18,87 @@ const SUB_TOPICS_MAP = {
   'C++': ['Intro', 'OOP Basics', 'Inheritance', 'Templates', 'STL'],
   'JAVA': ['Intro', 'OOP', 'Collections', 'Exceptions', 'Multithreading'],
   'PYTHON': ['Intro', 'Data Types', 'Functions', 'OOP', 'Modules'],
+  'PHP': ['Intro', 'Syntax', 'Functions', 'OOP', 'Database with MySQL'],
+  'C#': ['Intro', 'OOP', 'LINQ', 'ASP.NET Basics', 'Collections'],
+  'RUBY': ['Intro', 'Syntax', 'Blocks & Iterators', 'OOP', 'Rails Basics'],
+  'GO': ['Intro', 'Types', 'Concurrency', 'Packages', 'Interfaces'],
+  'RUST': ['Intro', 'Ownership', 'Structs & Enums', 'Error Handling', 'Concurrency'],
+
+  // Full Stack
+  'HTML': ['Structure', 'Forms', 'Semantic HTML', 'Accessibility', 'Media'],
+  'CSS': ['Selectors', 'Layout Flex Grid', 'Responsive', 'Animations', 'Preprocessors'],
+  'JAVASCRIPT': ['Basics', 'DOM', 'Async', 'ES6+', 'Modules'],
+  'BOOTSTRAP': ['Grid', 'Components', 'Utilities', 'Customization', 'Responsive'],
+  'NODEJS': ['Basics', 'Express', 'NPM', 'File System', 'Async'],
+  'EXPRESSJS': ['Routing', 'Middleware', 'REST API', 'Error Handling', 'Security'],
+  'REACTJS': ['Components', 'Hooks', 'State', 'Routing', 'Context'],
+  'NEXTJS': ['Pages', 'API Routes', 'SSR', 'Routing', 'Deployment'],
+  'TAILWIND': ['Utility-First', 'Layout', 'Responsive', 'Components', 'Customization'],
+  'TYPESCRIPT': ['Types', 'Interfaces', 'Generics', 'Config', 'with React'],
+  'DART': ['Basics', 'OOP', 'Async', 'Flutter Basics', 'Null Safety'],
+  'ANGULAR': ['Components', 'Services', 'Routing', 'Forms', 'RxJS'],
+  'VUEJS': ['Components', 'Composition API', 'Routing', 'State', 'Vuex Pinia'],
+  'SPRING BOOT': ['Basics', 'REST', 'Data JPA', 'Security', 'Testing'],
+  'DJANGO': ['Models', 'Views', 'Templates', 'REST', 'Admin'],
+  'FLASK': ['Routing', 'Templates', 'Forms', 'Database', 'REST'],
+  'ASP.NET': ['MVC', 'API', 'Entity Framework', 'Identity', 'Deployment'],
+  'MATERIAL UI': ['Components', 'Theming', 'Layout', 'Data Display', 'Responsive'],
+  'CHAKRA UI': ['Components', 'Theming', 'Layout', 'Forms', 'Responsive'],
+  'SASS': ['Variables', 'Nesting', 'Mixins', 'Partials', 'Functions'],
+
   // Databases
-  'MONGODB': ['Intro', 'CRUD Operations', 'Aggregation', 'Indexes', 'Data Modeling']
+  'MONGODB': ['Intro', 'CRUD Operations', 'Aggregation', 'Indexes', 'Data Modeling'],
+  'MYSQL': ['Intro', 'Queries', 'Joins', 'Indexes', 'Transactions'],
+  'ORACLE': ['Intro', 'PL/SQL', 'Administration', 'Performance', 'Security'],
+  'SQL SERVER': ['Intro', 'T-SQL', 'Administration', 'SSIS', 'Security'],
+  'FIREBASE': ['Auth', 'Firestore', 'Realtime DB', 'Storage', 'Hosting'],
+  'POSTGRESQL': ['Intro', 'Advanced Queries', 'Indexes', 'JSON', 'Extensions'],
+  'MARIADB': ['Intro', 'Compatibility', 'Replication', 'Storage Engines', 'Security'],
+  'REDIS': ['Data Types', 'Caching', 'Pub/Sub', 'Persistence', 'Cluster'],
+  'CASSANDRA': ['Data Model', 'CQL', 'Architecture', 'Tuning', 'Consistency'],
+  'ELASTICSEARCH': ['Indexing', 'Search', 'Aggregations', 'Mapping', 'Performance'],
+
+  // Mobile Development
+  'SWIFT': ['Basics', 'OOP', 'UIKit', 'SwiftUI', 'Concurrency'],
+  'KOTLIN': ['Basics', 'OOP', 'Android', 'Coroutines', 'Null Safety'],
+  'FLUTTER': ['Widgets', 'State', 'Navigation', 'APIs', 'Testing'],
+  'REACT NATIVE': ['Components', 'Navigation', 'State', 'Native Modules', 'Performance'],
+
+  // AI
+  'R': ['Basics', 'Data Frames', 'Visualization', 'Statistics', 'Modeling'],
+  'JULIA': ['Basics', 'Data Science', 'Plotting', 'Parallelism', 'Packages'],
+  'SCALA': ['Basics', 'OOP', 'Functional', 'Collections', 'Concurrency'],
+
+  // Testing
+  'JUNIT': ['Basics', 'Assertions', 'Annotations', 'Parameterized', 'Mocking'],
+  'JEST': ['Setup', 'Matchers', 'Mocking', 'Async', 'Snapshots'],
+  'PYTEST': ['Fixtures', 'Assertions', 'Parametrize', 'Plugins', 'Coverage'],
+  'SELENIUM': ['Locators', 'Actions', 'Waits', 'Page Object', 'Cross-Browser'],
+  'CYPRESS': ['Selectors', 'Commands', 'Fixtures', 'API Testing', 'Best Practices'],
+
+  // Cloud Computing
+  'AWS': ['EC2', 'S3', 'Lambda', 'IAM', 'RDS'],
+  'AZURE': ['VMs', 'Storage', 'Functions', 'AD', 'Cosmos DB'],
+  'GOOGLE CLOUD': ['Compute Engine', 'Cloud Storage', 'Functions', 'IAM', 'BigQuery']
 };
+
+/** Technology: one subject per tech (C, C++, HTML). Category = PROGRAMMING LANGAUGES, FULL STACK, etc. Topics = from SUB_TOPICS_MAP. */
+const TECHNOLOGY_CATEGORIES = [
+  { category: 'PROGRAMMING LANGAUGES', techNames: ['C', 'C++', 'JAVA', 'PYTHON', 'PHP', 'C#', 'RUBY', 'GO', 'RUST'] },
+  { category: 'FULL STACK', techNames: ['HTML', 'CSS', 'JAVASCRIPT', 'BOOTSTRAP', 'NODEJS', 'EXPRESSJS', 'REACTJS', 'NEXTJS', 'TAILWIND', 'TYPESCRIPT', 'DART', 'ANGULAR', 'VUEJS', 'SPRING BOOT', 'DJANGO', 'FLASK', 'ASP.NET', 'MATERIAL UI', 'CHAKRA UI', 'SASS'] },
+  { category: 'DATABASES', techNames: ['MONGODB', 'MYSQL', 'ORACLE', 'SQL SERVER', 'FIREBASE', 'POSTGRESQL', 'MARIADB', 'REDIS', 'CASSANDRA', 'ELASTICSEARCH'] },
+  { category: 'MOBILE DEVELOPMENT', techNames: ['SWIFT', 'KOTLIN', 'FLUTTER', 'REACT NATIVE'] },
+  { category: 'AI', techNames: ['R', 'PYTHON', 'JULIA', 'SCALA'] },
+  { category: 'TESTING', techNames: ['JUNIT', 'JEST', 'PYTEST', 'SELENIUM', 'CYPRESS'] },
+  { category: 'CLOUD COMPUTING', techNames: ['AWS', 'AZURE', 'GOOGLE CLOUD'] }
+];
+
+/** Olympiad Exams: one subject per exam (NLSTSE, INO, SOF, etc.). Domain & Category = Olympiad Exams. */
+const OLYMPIAD_EXAM_NAMES = [
+  'NTSE', 'NLSTSE', 'INO', 'SOF', 'NBO', 'NIMO', 'IOEL', 'IOS', 'IOM',
+  'SILVERZONE', 'UIEO', 'UCO', 'ICSO', 'IGKO', 'IEO', 'NSO', 'IMO', 'NCERT', 'ISTSE'
+];
+const OLYMPIAD_TOPICS = ['Syllabus & Pattern', 'Practice Tests', 'Previous Papers'];
 
 /**
  * Comprehensive Quizzes Seed
@@ -47,54 +124,106 @@ class ComprehensiveQuizzesSeed {
 
       const createdBy = adminUser._id;
 
-      // Data structure based on your requirements
+      // Data structure: Domain → Category → Subject (title) / Topics (list)
+      // Technology: one Subject per tech (C, C++, HTML) so Subject dropdown shows C, C++; Category = PROGRAMMING LANGAUGES etc.; Topics = Intro, Data Types (from SUB_TOPICS_MAP)
+      const technologyEntries = TECHNOLOGY_CATEGORIES.flatMap(({ category, techNames }) =>
+        techNames.map((tech) => ({
+          domain: 'Technology',
+          category,
+          subjectTitle: tech,
+          subjectCategory: category,
+          topics: SUB_TOPICS_MAP[tech] || [tech]
+        }))
+      );
       const seedData = [
-        // Technology - Programming Languages
-        { domain: 'Technology', category: 'PROGRAMMING LANGAUGES', topics: ['C', 'C++', 'JAVA', 'PYTHON', 'PHP', 'C#', 'RUBY', 'GO', 'RUST'] },
-        
-        // Technology - Full Stack
-        { domain: 'Technology', category: 'FULL STACK', topics: [
-          'HTML', 'CSS', 'JAVASCRIPT', 'BOOTSTRAP', 'NODEJS', 'EXPRESSJS', 
-          'REACTJS', 'NEXTJS', 'TAILWIND', 'TYPESCRIPT', 'DART', 'ANGULAR', 
-          'VUEJS', 'SPRING BOOT', 'DJANGO', 'FLASK', 'ASP.NET', 'MATERIAL UI', 
-          'CHAKRA UI', 'SASS'
-        ]},
-        
-        // Technology - Databases
-        { domain: 'Technology', category: 'DATABASES', topics: [
-          'MONGODB', 'MYSQL', 'ORACLE', 'SQL SERVER', 'FIREBASE', 'POSTGRESQL', 
-          'MARIADB', 'REDIS', 'CASSANDRA', 'ELASTICSEARCH'
-        ]},
-        
-        // Technology - Mobile Development
-        { domain: 'Technology', category: 'MOBILE DEVELOPMENT', topics: [
-          'SWIFT', 'KOTLIN', 'FLUTTER', 'REACT NATIVE'
-        ]},
-        
-        // Technology - AI
-        { domain: 'Technology', category: 'AI', topics: ['R', 'PYTHON', 'JULIA', 'SCALA'] },
-        
-        // Technology - Testing
-        { domain: 'Technology', category: 'TESTING', topics: ['JUNIT', 'JEST', 'PYTEST', 'SELENIUM', 'CYPRESS'] },
-        
-        // Technology - Cloud Computing
-        { domain: 'Technology', category: 'CLOUD COMPUTING', topics: ['AWS', 'AZURE', 'GOOGLE CLOUD'] },
-        
-        // Maths
-        { domain: 'MATHS', category: 'MATHS', topics: ['3 CLASS'] },
-        
-        // Science
-        { domain: 'SCIENCE', category: 'SCIENCE', topics: ['3 CLASS'] },
-        
-        // Social
-        { domain: 'SOCIAL', category: 'SOCIAL', topics: ['3 CLASS'] },
-        
-        // Olympiad Exams
-        { domain: 'Olympiad Exams', category: 'Olympiad Exams', topics: [
-          'NTSE', 'NLSTSE', 'INO', 'SOF', 'NBO', 'NIMO', 'IOEL', 'IOS', 'IOM', 
-          'SILVERZONE', 'UIEO', 'UCO', 'ICSO', 'IGKO', 'IEO', 'NSO', 'IMO'
-        ]},
-        
+        ...technologyEntries,
+
+        // Academic classes 3–10 (Domain = class, Category = ACADEMIC)
+        // Class 3
+        { domain: '3 CLASS', category: 'ACADEMIC', subjectTitle: 'MATHS-3', subjectCategory: 'ACADEMIC', topics: ['Numbers and Operations', 'Geometry and Measurement', 'Data Handling and Patterns'] },
+        { domain: '3 CLASS', category: 'ACADEMIC', subjectTitle: 'SCIENCE-3', subjectCategory: 'ACADEMIC', topics: ['Living Things and Habitat', 'Matter and Materials', 'Environment and Weather'] },
+        { domain: '3 CLASS', category: 'ACADEMIC', subjectTitle: 'SOCIAL-3', subjectCategory: 'ACADEMIC', topics: ['Family and Community', 'Our Country and States', 'History and Culture'] },
+        { domain: '3 CLASS', category: 'ACADEMIC', subjectTitle: 'ENGLISH-3', subjectCategory: 'ACADEMIC', topics: ['Grammar and Sentences', 'Reading Comprehension', 'Writing Skills'] },
+        { domain: '3 CLASS', category: 'ACADEMIC', subjectTitle: 'TELUGU-3', subjectCategory: 'ACADEMIC', topics: ['Grammar and Vocabulary', 'Reading Comprehension', 'Writing Practice'] },
+        { domain: '3 CLASS', category: 'ACADEMIC', subjectTitle: 'HINDI-3', subjectCategory: 'ACADEMIC', topics: ['Grammar and Vocabulary', 'Reading Comprehension', 'Writing Practice'] },
+
+        // Class 4
+        { domain: '4 CLASS', category: 'ACADEMIC', subjectTitle: 'MATHS-4', subjectCategory: 'ACADEMIC', topics: ['Numbers and Operations', 'Geometry and Measurement', 'Data Handling and Patterns'] },
+        { domain: '4 CLASS', category: 'ACADEMIC', subjectTitle: 'SCIENCE-4', subjectCategory: 'ACADEMIC', topics: ['Living Things and Habitat', 'Matter and Materials', 'Environment and Weather'] },
+        { domain: '4 CLASS', category: 'ACADEMIC', subjectTitle: 'SOCIAL-4', subjectCategory: 'ACADEMIC', topics: ['Family and Community', 'Our Country and States', 'History and Culture'] },
+        { domain: '4 CLASS', category: 'ACADEMIC', subjectTitle: 'ENGLISH-4', subjectCategory: 'ACADEMIC', topics: ['Grammar and Sentences', 'Reading Comprehension', 'Writing Skills'] },
+        { domain: '4 CLASS', category: 'ACADEMIC', subjectTitle: 'TELUGU-4', subjectCategory: 'ACADEMIC', topics: ['Grammar and Vocabulary', 'Reading Comprehension', 'Writing Practice'] },
+        { domain: '4 CLASS', category: 'ACADEMIC', subjectTitle: 'HINDI-4', subjectCategory: 'ACADEMIC', topics: ['Grammar and Vocabulary', 'Reading Comprehension', 'Writing Practice'] },
+
+        // Class 5
+        { domain: '5 CLASS', category: 'ACADEMIC', subjectTitle: 'MATHS-5', subjectCategory: 'ACADEMIC', topics: ['Numbers and Operations', 'Geometry and Measurement', 'Data Handling and Patterns'] },
+        { domain: '5 CLASS', category: 'ACADEMIC', subjectTitle: 'SCIENCE-5', subjectCategory: 'ACADEMIC', topics: ['Living Things and Habitat', 'Matter and Materials', 'Environment and Weather'] },
+        { domain: '5 CLASS', category: 'ACADEMIC', subjectTitle: 'SOCIAL-5', subjectCategory: 'ACADEMIC', topics: ['Family and Community', 'Our Country and States', 'History and Culture'] },
+        { domain: '5 CLASS', category: 'ACADEMIC', subjectTitle: 'ENGLISH-5', subjectCategory: 'ACADEMIC', topics: ['Grammar and Sentences', 'Reading Comprehension', 'Writing Skills'] },
+        { domain: '5 CLASS', category: 'ACADEMIC', subjectTitle: 'TELUGU-5', subjectCategory: 'ACADEMIC', topics: ['Grammar and Vocabulary', 'Reading Comprehension', 'Writing Practice'] },
+        { domain: '5 CLASS', category: 'ACADEMIC', subjectTitle: 'HINDI-5', subjectCategory: 'ACADEMIC', topics: ['Grammar and Vocabulary', 'Reading Comprehension', 'Writing Practice'] },
+
+        // Class 6
+        { domain: '6 CLASS', category: 'ACADEMIC', subjectTitle: 'MATHS-6', subjectCategory: 'ACADEMIC', topics: ['Numbers and Operations', 'Geometry and Measurement', 'Data Handling and Patterns'] },
+        { domain: '6 CLASS', category: 'ACADEMIC', subjectTitle: 'SCIENCE-6', subjectCategory: 'ACADEMIC', topics: ['Living Things and Habitat', 'Matter and Materials', 'Environment and Weather'] },
+        { domain: '6 CLASS', category: 'ACADEMIC', subjectTitle: 'SOCIAL-6', subjectCategory: 'ACADEMIC', topics: ['Family and Community', 'Our Country and States', 'History and Culture'] },
+        { domain: '6 CLASS', category: 'ACADEMIC', subjectTitle: 'ENGLISH-6', subjectCategory: 'ACADEMIC', topics: ['Grammar and Sentences', 'Reading Comprehension', 'Writing Skills'] },
+        { domain: '6 CLASS', category: 'ACADEMIC', subjectTitle: 'TELUGU-6', subjectCategory: 'ACADEMIC', topics: ['Grammar and Vocabulary', 'Reading Comprehension', 'Writing Practice'] },
+        { domain: '6 CLASS', category: 'ACADEMIC', subjectTitle: 'HINDI-6', subjectCategory: 'ACADEMIC', topics: ['Grammar and Vocabulary', 'Reading Comprehension', 'Writing Practice'] },
+
+        // Class 7
+        { domain: '7 CLASS', category: 'ACADEMIC', subjectTitle: 'MATHS-7', subjectCategory: 'ACADEMIC', topics: ['Numbers and Operations', 'Geometry and Measurement', 'Data Handling and Patterns'] },
+        { domain: '7 CLASS', category: 'ACADEMIC', subjectTitle: 'SCIENCE-7', subjectCategory: 'ACADEMIC', topics: ['Living Things and Habitat', 'Matter and Materials', 'Environment and Weather'] },
+        { domain: '7 CLASS', category: 'ACADEMIC', subjectTitle: 'SOCIAL-7', subjectCategory: 'ACADEMIC', topics: ['Family and Community', 'Our Country and States', 'History and Culture'] },
+        { domain: '7 CLASS', category: 'ACADEMIC', subjectTitle: 'ENGLISH-7', subjectCategory: 'ACADEMIC', topics: ['Grammar and Sentences', 'Reading Comprehension', 'Writing Skills'] },
+        { domain: '7 CLASS', category: 'ACADEMIC', subjectTitle: 'TELUGU-7', subjectCategory: 'ACADEMIC', topics: ['Grammar and Vocabulary', 'Reading Comprehension', 'Writing Practice'] },
+        { domain: '7 CLASS', category: 'ACADEMIC', subjectTitle: 'HINDI-7', subjectCategory: 'ACADEMIC', topics: ['Grammar and Vocabulary', 'Reading Comprehension', 'Writing Practice'] },
+
+        // Class 8
+        { domain: '8 CLASS', category: 'ACADEMIC', subjectTitle: 'MATHS-8', subjectCategory: 'ACADEMIC', topics: ['Numbers and Operations', 'Geometry and Measurement', 'Data Handling and Patterns'] },
+        { domain: '8 CLASS', category: 'ACADEMIC', subjectTitle: 'SCIENCE-8', subjectCategory: 'ACADEMIC', topics: ['Living Things and Habitat', 'Matter and Materials', 'Environment and Weather'] },
+        { domain: '8 CLASS', category: 'ACADEMIC', subjectTitle: 'SOCIAL-8', subjectCategory: 'ACADEMIC', topics: ['Family and Community', 'Our Country and States', 'History and Culture'] },
+        { domain: '8 CLASS', category: 'ACADEMIC', subjectTitle: 'ENGLISH-8', subjectCategory: 'ACADEMIC', topics: ['Grammar and Sentences', 'Reading Comprehension', 'Writing Skills'] },
+        { domain: '8 CLASS', category: 'ACADEMIC', subjectTitle: 'TELUGU-8', subjectCategory: 'ACADEMIC', topics: ['Grammar and Vocabulary', 'Reading Comprehension', 'Writing Practice'] },
+        { domain: '8 CLASS', category: 'ACADEMIC', subjectTitle: 'HINDI-8', subjectCategory: 'ACADEMIC', topics: ['Grammar and Vocabulary', 'Reading Comprehension', 'Writing Practice'] },
+
+        // Class 9
+        { domain: '9 CLASS', category: 'ACADEMIC', subjectTitle: 'MATHS-9', subjectCategory: 'ACADEMIC', topics: ['Numbers and Operations', 'Geometry and Measurement', 'Data Handling and Patterns'] },
+        { domain: '9 CLASS', category: 'ACADEMIC', subjectTitle: 'SCIENCE-9', subjectCategory: 'ACADEMIC', topics: ['Living Things and Habitat', 'Matter and Materials', 'Environment and Weather'] },
+        { domain: '9 CLASS', category: 'ACADEMIC', subjectTitle: 'SOCIAL-9', subjectCategory: 'ACADEMIC', topics: ['Family and Community', 'Our Country and States', 'History and Culture'] },
+        { domain: '9 CLASS', category: 'ACADEMIC', subjectTitle: 'ENGLISH-9', subjectCategory: 'ACADEMIC', topics: ['Grammar and Sentences', 'Reading Comprehension', 'Writing Skills'] },
+        { domain: '9 CLASS', category: 'ACADEMIC', subjectTitle: 'TELUGU-9', subjectCategory: 'ACADEMIC', topics: ['Grammar and Vocabulary', 'Reading Comprehension', 'Writing Practice'] },
+        { domain: '9 CLASS', category: 'ACADEMIC', subjectTitle: 'HINDI-9', subjectCategory: 'ACADEMIC', topics: ['Grammar and Vocabulary', 'Reading Comprehension', 'Writing Practice'] },
+
+        // Class 10
+        { domain: '10 CLASS', category: 'ACADEMIC', subjectTitle: 'MATHS-10', subjectCategory: 'ACADEMIC', topics: ['Numbers and Operations', 'Geometry and Measurement', 'Data Handling and Patterns'] },
+        { domain: '10 CLASS', category: 'ACADEMIC', subjectTitle: 'SCIENCE-10', subjectCategory: 'ACADEMIC', topics: ['Living Things and Habitat', 'Matter and Materials', 'Environment and Weather'] },
+        { domain: '10 CLASS', category: 'ACADEMIC', subjectTitle: 'SOCIAL-10', subjectCategory: 'ACADEMIC', topics: ['Family and Community', 'Our Country and States', 'History and Culture'] },
+        { domain: '10 CLASS', category: 'ACADEMIC', subjectTitle: 'ENGLISH-10', subjectCategory: 'ACADEMIC', topics: ['Grammar and Sentences', 'Reading Comprehension', 'Writing Skills'] },
+        { domain: '10 CLASS', category: 'ACADEMIC', subjectTitle: 'TELUGU-10', subjectCategory: 'ACADEMIC', topics: ['Grammar and Vocabulary', 'Reading Comprehension', 'Writing Practice'] },
+        { domain: '10 CLASS', category: 'ACADEMIC', subjectTitle: 'HINDI-10', subjectCategory: 'ACADEMIC', topics: ['Grammar and Vocabulary', 'Reading Comprehension', 'Writing Practice'] },
+
+        // INTER (10+2) - Grade 11 & 12
+        { domain: 'INTER (10+2)', category: 'ACADEMIC', subjectTitle: 'MATHS-11', subjectCategory: 'ACADEMIC', topics: ['Sets and Functions', 'Algebra', 'Coordinate Geometry', 'Calculus Basics', 'Trigonometry'] },
+        { domain: 'INTER (10+2)', category: 'ACADEMIC', subjectTitle: 'PHYSICS-11', subjectCategory: 'ACADEMIC', topics: ['Units and Measurement', 'Kinematics', 'Laws of Motion', 'Work Energy and Power', 'System of Particles'] },
+        { domain: 'INTER (10+2)', category: 'ACADEMIC', subjectTitle: 'CHEMISTRY-11', subjectCategory: 'ACADEMIC', topics: ['Basic Concepts', 'Structure of Atom', 'Classification of Elements', 'Chemical Bonding', 'States of Matter'] },
+        { domain: 'INTER (10+2)', category: 'ACADEMIC', subjectTitle: 'BOTANY-11', subjectCategory: 'ACADEMIC', topics: ['Cell Biology', 'Plant Kingdom', 'Morphology of Flowering Plants', 'Anatomy of Flowering Plants', 'Cell Division'] },
+        { domain: 'INTER (10+2)', category: 'ACADEMIC', subjectTitle: 'ZOOLOZY-11', subjectCategory: 'ACADEMIC', topics: ['Animal Kingdom', 'Structural Organisation', 'Cell and Cell Cycle', 'Digestion and Absorption', 'Breathing and Exchange of Gases'] },
+        { domain: 'INTER (10+2)', category: 'ACADEMIC', subjectTitle: 'MATHS-12', subjectCategory: 'ACADEMIC', topics: ['Relations and Functions', 'Algebra', 'Calculus', 'Vectors and 3D Geometry', 'Linear Programming'] },
+        { domain: 'INTER (10+2)', category: 'ACADEMIC', subjectTitle: 'PHYSICS-12', subjectCategory: 'ACADEMIC', topics: ['Electrostatics', 'Current Electricity', 'Magnetic Effects', 'Electromagnetic Induction', 'Optics and Waves'] },
+        { domain: 'INTER (10+2)', category: 'ACADEMIC', subjectTitle: 'CHEMISTRY-12', subjectCategory: 'ACADEMIC', topics: ['Solid State', 'Solutions', 'Electrochemistry', 'Chemical Kinetics', 'Organic Chemistry'] },
+        { domain: 'INTER (10+2)', category: 'ACADEMIC', subjectTitle: 'BOTANY-12', subjectCategory: 'ACADEMIC', topics: ['Reproduction in Plants', 'Genetics and Evolution', 'Biology in Human Welfare', 'Ecosystem', 'Biodiversity'] },
+        { domain: 'INTER (10+2)', category: 'ACADEMIC', subjectTitle: 'ZOOLOZY-12', subjectCategory: 'ACADEMIC', topics: ['Reproduction', 'Genetics and Evolution', 'Biology and Human Welfare', 'Biotechnology', 'Ecology'] },
+
+        // Olympiad Exams: Domain = Olympiad Exams, Category = Olympiad Exams, Subject = NTSE, NLSTSE, INO, etc. (one per exam)
+        ...OLYMPIAD_EXAM_NAMES.map((examName) => ({
+          domain: 'Olympiad Exams',
+          category: 'Olympiad Exams',
+          subjectTitle: examName,
+          subjectCategory: 'Olympiad Exams',
+          topics: OLYMPIAD_TOPICS
+        })),
+
         // National Level Government Exams
         { domain: 'National Level (All-India) Government Exams', category: 'National Level (All-India) Government Exams', topics: ['UPSC', 'SSC'] },
         
@@ -119,25 +248,37 @@ class ComprehensiveQuizzesSeed {
       for (const entry of seedData) {
         const { domain, category, topics } = entry;
         const isTechnology = domain === 'Technology';
+        const explicitSubjectTitle = entry.subjectTitle;
+        const explicitSubjectCategory = entry.subjectCategory;
 
-        // Technology: one subject per category (Programming Languages, Full Stack, etc.) with category="Technology"
-        // Others: one subject per domain (MATHS, SCIENCE, Olympiad, etc.)
-        const subjectKey = isTechnology ? `Technology::${category}` : domain;
+        const subjectDomain = domain;
+        const subjectTitle = explicitSubjectTitle || (isTechnology ? category : domain);
+        const subjectCategory = explicitSubjectCategory || (isTechnology ? 'Technology' : domain);
+
+        // Technology: one subject per tech (C, C++, HTML) so Subject dropdown shows tech names; key = Technology::SubjectTitle
+        // Others: one subject per domain, or per (domain + subjectTitle) when provided (class-wise academics)
+        const subjectKey = explicitSubjectTitle
+          ? `${subjectDomain}::${subjectTitle}`
+          : isTechnology
+            ? `Technology::${category}`
+            : subjectTitle;
+
         let subject = processedSubjects.get(subjectKey);
 
         if (!subject) {
-          const subjectTitle = isTechnology ? category : domain;
-          const subjectCategory = isTechnology ? 'Technology' : domain;
-          subject = await Subject.findOne({
+          const findQuery = {
             title: subjectTitle,
-            ...(isTechnology ? { category: 'Technology' } : {}),
+            category: subjectCategory,
             createdBy
-          });
+          };
+
+          subject = await Subject.findOne(findQuery);
 
           if (!subject) {
             subject = new Subject({
               title: subjectTitle,
               description: `Comprehensive ${subjectTitle} learning resources with quizzes and practice tests`,
+              domain: subjectDomain,
               category: subjectCategory,
               level: 'basic',
               isActive: true,
@@ -253,6 +394,7 @@ class ComprehensiveQuizzesSeed {
               quizId: quiz._id,
               setName: `${topicName} Practice Set`,
               order: 1,
+              quizNumber: i + 1,
               isActive: true,
               assignedBy: createdBy
             });
@@ -268,8 +410,8 @@ class ComprehensiveQuizzesSeed {
             throw new Error(`Failed to create QuizSet linking quiz "${quizTitle}" to topic "${fullTopicName}"`);
           }
 
-          // Sub-topics: for PROGRAMMING LANGAUGES or DATABASES topics in SUB_TOPICS_MAP, create child topics + quizzes
-          const subTopicNames = isTechnology && (category === 'PROGRAMMING LANGAUGES' || category === 'DATABASES') ? (SUB_TOPICS_MAP[topicName] || null) : null;
+          // Sub-topics: for any Technology topic in SUB_TOPICS_MAP, create child topics + quizzes (categories → subjects → topics → sub-topics)
+          const subTopicNames = isTechnology ? (SUB_TOPICS_MAP[topicName] || null) : null;
           if (subTopicNames && subTopicNames.length > 0) {
             for (let sIdx = 0; sIdx < subTopicNames.length; sIdx++) {
               const subName = subTopicNames[sIdx];
@@ -336,6 +478,7 @@ class ComprehensiveQuizzesSeed {
                   quizId: subQuiz._id,
                   setName: `${subName} Practice Set`,
                   order: sIdx + 1,
+                  quizNumber: sIdx + 1,
                   isActive: true,
                   assignedBy: createdBy
                 });

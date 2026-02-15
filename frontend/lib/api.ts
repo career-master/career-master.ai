@@ -326,8 +326,16 @@ class ApiService {
     });
   }
 
-  async getQuizzes(page = 1, limit = 10): Promise<ApiResponse> {
+  async getQuizzes(
+    page = 1,
+    limit = 10,
+    opts?: { all?: boolean; domain?: string; subjectId?: string; topicId?: string }
+  ): Promise<ApiResponse> {
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (opts?.all) params.set('all', '1');
+    if (opts?.domain) params.set('domain', opts.domain);
+    if (opts?.subjectId) params.set('subjectId', opts.subjectId);
+    if (opts?.topicId) params.set('topicId', opts.topicId);
     return this.request(`/quizzes?${params.toString()}`, {
       method: 'GET',
     });
@@ -796,11 +804,12 @@ class ApiService {
   }
 
   // Subjects (admin + user)
-  async getSubjects(params: { page?: number; limit?: number; isActive?: boolean; level?: 'basic' | 'hard' } = {}): Promise<ApiResponse> {
+  async getSubjects(params: { page?: number; limit?: number; isActive?: boolean; domain?: string; level?: 'basic' | 'hard' } = {}): Promise<ApiResponse> {
     const query = new URLSearchParams();
     if (params.page) query.set('page', String(params.page));
     if (params.limit) query.set('limit', String(params.limit));
     if (params.isActive !== undefined) query.set('isActive', String(params.isActive));
+    if (params.domain) query.set('domain', params.domain);
     if (params.level) query.set('level', params.level);
     const queryString = query.toString();
     return this.request(`/subjects${queryString ? `?${queryString}` : ''}`, { method: 'GET' });
@@ -810,6 +819,7 @@ class ApiService {
     title: string;
     description?: string;
     thumbnail?: string;
+    domain?: string;
     category?: string;
     level?: 'basic' | 'hard';
     requiresApproval?: boolean;
@@ -852,6 +862,7 @@ class ApiService {
     title: string;
     description?: string;
     thumbnail?: string;
+    domain?: string;
     category?: string;
     level?: 'basic' | 'hard';
     requiresApproval?: boolean;
@@ -859,6 +870,10 @@ class ApiService {
     isActive?: boolean;
   }>): Promise<ApiResponse> {
     return this.request(`/subjects/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+  }
+
+  async getSubjectById(id: string): Promise<ApiResponse> {
+    return this.request(`/subjects/${id}`, { method: 'GET' });
   }
 
   async deleteSubject(id: string): Promise<ApiResponse> {
@@ -983,6 +998,7 @@ class ApiService {
     quizId: string;
     setName?: string;
     order?: number;
+    quizNumber?: number | null;
     isActive?: boolean;
   }): Promise<ApiResponse> {
     return this.request('/quiz-sets', { method: 'POST', body: JSON.stringify(payload) });
@@ -993,6 +1009,7 @@ class ApiService {
     quizId: string;
     setName?: string;
     order?: number;
+    quizNumber?: number | null;
     isActive?: boolean;
   }>): Promise<ApiResponse> {
     return this.request(`/quiz-sets/${id}`, { method: 'PUT', body: JSON.stringify(payload) });

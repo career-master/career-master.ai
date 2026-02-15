@@ -6,10 +6,19 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import * as XLSX from 'xlsx';
 
+// Top-level domains (match QUIZ TOPICS LIST.xlsx)
+const DOMAINS = [
+  '3 CLASS', '4 CLASS', '5 CLASS', '6 CLASS', '7 CLASS', '8 CLASS', '9 CLASS', '10 CLASS',
+  'INTER (10+2)', 'Technology', 'Olympiad Exams',
+  'National Level (All-India) Government Exams', 'STATE LEVEL GOVT EXAMS', 'STATE LEVEL ENTRANCE EXAMS',
+  'National Level (All-India) Entrance Exams',
+];
+
 type Subject = {
   _id: string;
   title: string;
   description?: string;
+  domain?: string;
   category?: string;
   level?: 'basic' | 'hard';
   requiresApproval?: boolean;
@@ -63,14 +72,39 @@ export default function SubjectsBuilderPage() {
   const [topicsWithData, setTopicsWithData] = useState<TopicWithData[]>([]);
   const [quizzes, setQuizzes] = useState<QuizLite[]>([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
+  const [selectedDomain, setSelectedDomain] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
   const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
 
+  // Include subject in domain when domain matches, or when Technology and subject has category 'Technology' (backward compat)
+  const subjectInDomain = (s: Subject, domain: string) =>
+    s.domain === domain || (domain === 'Technology' && s.category === 'Technology');
+
+  // Filter subjects by Domain → Category (Olympiad: domain only, no category filter)
+  const filteredSubjects = useMemo(() => {
+    let list = subjects;
+    if (selectedDomain) {
+      list = list.filter((s) => subjectInDomain(s as Subject, selectedDomain));
+    }
+    if (selectedDomain !== 'Olympiad Exams' && selectedCategory) {
+      list = list.filter((s) => (s as Subject).category === selectedCategory);
+    }
+    return list;
+  }, [subjects, selectedDomain, selectedCategory]);
+
+  const categoriesInDomain = useMemo(() => {
+    const list = selectedDomain ? subjects.filter((s) => subjectInDomain(s as Subject, selectedDomain)) : subjects;
+    const cats = Array.from(new Set(list.map((s) => (s as Subject).category).filter(Boolean))) as string[];
+    return cats.filter((c) => c !== 'Technology' && c !== 'Olympiad Exams').sort();
+  }, [subjects, selectedDomain]);
+
   const [subjectForm, setSubjectForm] = useState({
     title: '',
     description: '',
+    domain: '',
     category: '',
     level: undefined as Subject['level'] | undefined,
     requiresApproval: true,
@@ -101,6 +135,7 @@ export default function SubjectsBuilderPage() {
     quizId: string;
     setName: string;
     order: number;
+    quizNumber: number | '';
     isActive: boolean;
   }>>({});
 
@@ -194,7 +229,7 @@ export default function SubjectsBuilderPage() {
 
           setTopicQuizSetForms((prev) => ({
             ...prev,
-            [topic._id]: { quizId: '', setName: '', order: 0, isActive: true },
+            [topic._id]: { quizId: '', setName: '', order: 0, quizNumber: '', isActive: true },
           }));
 
           // Initialize Excel upload form
@@ -233,18 +268,18 @@ export default function SubjectsBuilderPage() {
       if (subjectForm.description?.trim()) {
         payload.description = subjectForm.description.trim();
       }
+      if (subjectForm.domain?.trim()) {
+        payload.domain = subjectForm.domain.trim();
+      }
       if (subjectForm.category?.trim()) {
         payload.category = subjectForm.category.trim();
       }
       if (subjectForm.level) {
         payload.level = subjectForm.level;
       }
-    if (subjectForm.thumbnail?.trim()) {
-      payload.thumbnail = subjectForm.thumbnail.trim();
-    }
-    if (subjectForm.thumbnail?.trim()) {
-      payload.thumbnail = subjectForm.thumbnail.trim();
-    }
+      if (subjectForm.thumbnail?.trim()) {
+        payload.thumbnail = subjectForm.thumbnail.trim();
+      }
     if (subjectForm.batches && subjectForm.batches.length > 0) {
       payload.batches = subjectForm.batches;
     }
@@ -265,6 +300,7 @@ export default function SubjectsBuilderPage() {
         setSubjectForm({
           title: '',
           description: '',
+          domain: '',
           category: '',
           level: undefined,
           requiresApproval: true,
@@ -287,6 +323,7 @@ export default function SubjectsBuilderPage() {
     setSubjectForm({
       title: subject.title,
       description: subject.description || '',
+      domain: subject.domain || '',
       category: subject.category || '',
       level: subject.level,
       requiresApproval: subject.requiresApproval ?? true,
@@ -308,6 +345,9 @@ export default function SubjectsBuilderPage() {
       if (subjectForm.description?.trim()) {
         payload.description = subjectForm.description.trim();
       }
+      if (subjectForm.domain?.trim()) {
+        payload.domain = subjectForm.domain.trim();
+      }
       if (subjectForm.category?.trim()) {
         payload.category = subjectForm.category.trim();
       }
@@ -327,6 +367,7 @@ export default function SubjectsBuilderPage() {
         setSubjectForm({
           title: '',
           description: '',
+          domain: '',
           category: '',
           level: undefined,
           requiresApproval: true,
@@ -511,13 +552,14 @@ export default function SubjectsBuilderPage() {
         quizId: quizSetForm.quizId,
         setName: quizSetForm.setName || undefined,
         order: quizSetForm.order,
+        quizNumber: quizSetForm.quizNumber !== '' && quizSetForm.quizNumber != null ? Number(quizSetForm.quizNumber) : undefined,
         isActive: quizSetForm.isActive,
       });
       if (res.success) {
         await loadTopicsWithData(selectedSubjectId!);
         setTopicQuizSetForms((prev) => ({
           ...prev,
-          [topicId]: { quizId: '', setName: '', order: 0, isActive: true },
+          [topicId]: { quizId: '', setName: '', order: 0, quizNumber: '', isActive: true },
         }));
       } else {
         alert(res.message || 'Failed to add quiz set');
@@ -962,12 +1004,13 @@ export default function SubjectsBuilderPage() {
         const createdQuizId = res.data._id;
         
         // Automatically create quiz set with the uploaded quiz
-        const quizSetForm = topicQuizSetForms[topicId] || { quizId: '', setName: '', order: 0, isActive: true };
+        const quizSetForm = topicQuizSetForms[topicId] || { quizId: '', setName: '', order: 0, quizNumber: '', isActive: true };
         const quizSetPayload: any = {
           topicId,
           quizId: createdQuizId,
           setName: excelForm.quizName.trim(),
           order: 0,
+          quizNumber: quizSetForm.quizNumber !== '' && quizSetForm.quizNumber != null ? Number(quizSetForm.quizNumber) : undefined,
           isActive: true,
         };
 
@@ -984,7 +1027,7 @@ export default function SubjectsBuilderPage() {
           }));
           setTopicQuizSetForms((prev) => ({
             ...prev,
-            [topicId]: { quizId: '', setName: '', order: 0, isActive: true },
+            [topicId]: { quizId: '', setName: '', order: 0, quizNumber: '', isActive: true },
           }));
           
           // Refresh quizzes list
@@ -1513,10 +1556,23 @@ export default function SubjectsBuilderPage() {
                 )}
               </div>
 
+              <div className="grid grid-cols-1 gap-2 text-sm">
+                <label className="text-xs font-medium text-gray-700">Domain</label>
+                <select
+                  className="border rounded-lg px-3 py-2 text-gray-900 bg-white w-full"
+                  value={subjectForm.domain}
+                  onChange={(e) => setSubjectForm({ ...subjectForm, domain: e.target.value })}
+                >
+                  <option value="">Select domain</option>
+                  {DOMAINS.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <input
                   className="border rounded-lg px-3 py-2 text-gray-900"
-                  placeholder="Category (e.g. Programming, Math)"
+                  placeholder="Category (e.g. ACADEMIC, PROGRAMMING)"
                   value={subjectForm.category}
                   onChange={(e) => setSubjectForm({ ...subjectForm, category: e.target.value })}
                 />
@@ -1613,12 +1669,13 @@ export default function SubjectsBuilderPage() {
                         setSubjectForm({
                           title: '',
                           description: '',
+                          domain: '',
                           category: '',
                           level: undefined,
                           requiresApproval: true,
                           order: 0,
                           thumbnail: '',
-          batches: [],
+                          batches: [],
                         });
                       }}
                       disabled={saving}
@@ -1640,9 +1697,63 @@ export default function SubjectsBuilderPage() {
             </div>
 
             <div className="border-t pt-3">
-              <h3 className="text-sm font-semibold text-gray-800 mb-2">Subject List</h3>
+              <h3 className="text-sm font-semibold text-gray-800 mb-2">Domain → Category → Subject</h3>
+              {selectedDomain && (
+                <p className="text-xs text-gray-600 mb-2">Domain: <strong>{selectedDomain}</strong></p>
+              )}
+              {selectedCategory && (
+                <p className="text-xs text-gray-600 mb-2">Category: <strong>{selectedCategory}</strong></p>
+              )}
+              {selectedSubjectId && filteredSubjects.find((s) => s._id === selectedSubjectId) && (
+                <p className="text-xs text-gray-600 mb-2">Subject: <strong>{filteredSubjects.find((s) => s._id === selectedSubjectId)?.title}</strong></p>
+              )}
+              <div className="flex flex-wrap gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => { setEditingSubjectId(null); setSubjectForm((f) => ({ ...f, domain: selectedDomain || '', category: selectedCategory || '', title: '', description: '' })); }}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+                >
+                  + Add Subject
+                </button>
+                {selectedSubjectId && (
+                  <button
+                    type="button"
+                    onClick={() => { setEditingTopicId(null); setTopicForm((f) => ({ ...f, title: '', description: '' })); }}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  >
+                    + Add Topic
+                  </button>
+                )}
+              </div>
+              <div className="space-y-2 mb-2">
+                <select
+                  className="w-full border rounded-lg px-2 py-1.5 text-sm text-gray-900 bg-white"
+                  value={selectedDomain}
+                  onChange={(e) => {
+                    setSelectedDomain(e.target.value);
+                    setSelectedCategory('');
+                  }}
+                >
+                  <option value="">All domains</option>
+                  {DOMAINS.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+                {selectedDomain !== 'Olympiad Exams' && (
+                  <select
+                    className="w-full border rounded-lg px-2 py-1.5 text-sm text-gray-900 bg-white"
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                  >
+                    <option value="">All categories</option>
+                    {categoriesInDomain.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
               <div className="max-h-64 overflow-y-auto space-y-2">
-                {subjects.map((s) => (
+                {filteredSubjects.map((s) => (
                   <div
                     key={s._id}
                     className={`border rounded-lg px-3 py-2 text-sm ${
@@ -1657,7 +1768,11 @@ export default function SubjectsBuilderPage() {
                       className="w-full text-left"
                     >
                       <div className="font-semibold text-gray-900">{s.title}</div>
-                      <div className="text-xs text-gray-500">Level: {s.level || 'Not set'}</div>
+                      <div className="text-xs text-gray-500">
+                        {(s as Subject).domain && <span>{(s as Subject).domain}</span>}
+                        {(s as Subject).category && <span> → {(s as Subject).category}</span>}
+                        {' · '}Level: {s.level || 'Not set'}
+                      </div>
                     </button>
                     <div className="flex gap-2 mt-2">
                       <button
@@ -1681,22 +1796,22 @@ export default function SubjectsBuilderPage() {
                     </div>
                   </div>
                 ))}
-                {subjects.length === 0 && <p className="text-xs text-gray-500">No subjects yet.</p>}
+                {filteredSubjects.length === 0 && <p className="text-xs text-gray-500">No subjects. Add one above or change Domain/Category filter.</p>}
               </div>
             </div>
           </div>
 
-          {/* Topics Section */}
+          {/* Sub-topics Section (Topic = Sub-topic in Domain → Category → Subject → Sub-topic) */}
           <div className="bg-white rounded-xl shadow p-4 space-y-4 lg:col-span-2">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">Topics</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Sub-topics</h2>
             </div>
 
-            {/* Add/Edit Topic Form (like "Add Section" in quiz) */}
+            {/* Add/Edit Sub-topic Form */}
             {selectedSubjectId && (
               <div className="space-y-3 border border-gray-200 rounded-lg p-4 bg-gray-50">
                 <h3 className="text-sm font-semibold text-gray-800">
-                  {editingTopicId ? 'Edit Topic' : 'Add Topic'}
+                  {editingTopicId ? 'Edit Sub-topic' : 'Add Sub-topic'}
                 </h3>
                 {editingTopicId && (
                   <div className="text-xs text-blue-600 font-medium">
@@ -1706,7 +1821,7 @@ export default function SubjectsBuilderPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <input
                     className="w-full border rounded-lg px-3 py-2 text-sm text-gray-900"
-                    placeholder="Topic title"
+                    placeholder="Sub-topic title"
                     value={topicForm.title}
                     onChange={(e) => setTopicForm({ ...topicForm, title: e.target.value })}
                   />
@@ -1773,7 +1888,7 @@ export default function SubjectsBuilderPage() {
                       disabled={!selectedSubjectId || saving || !topicForm.title.trim()}
                       className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
                     >
-                      + Add Topic
+                      + Add Sub-topic
                     </button>
                   )}
                 </div>
@@ -1783,11 +1898,11 @@ export default function SubjectsBuilderPage() {
             {/* Topics List as Expandable Cards */}
             <div className="space-y-3">
               {topicsWithData.length === 0 && selectedSubjectId && (
-                <p className="text-xs text-gray-500 text-center py-4">No topics yet. Add one above.</p>
+                <p className="text-xs text-gray-500 text-center py-4">No sub-topics yet. Add one above.</p>
               )}
               {topicsWithData.map((topic) => {
                 const cheatForm = topicCheatForms[topic._id] || { content: '', contentType: 'html' as const, estReadMinutes: 5 };
-                const quizSetForm = topicQuizSetForms[topic._id] || { quizId: '', setName: '', order: 0, isActive: true };
+                const quizSetForm = topicQuizSetForms[topic._id] || { quizId: '', setName: '', order: 0, quizNumber: '', isActive: true };
                 const isExpanded = topic.expanded;
 
                 return (
@@ -1818,7 +1933,7 @@ export default function SubjectsBuilderPage() {
                               handleEditTopic(topic);
                             }}
                             className="text-xs bg-blue-500 text-white px-3 py-1.5 rounded hover:bg-blue-600 font-medium"
-                            title="Edit topic"
+                            title="Edit sub-topic"
                           >
                             Edit
                           </button>
@@ -2057,15 +2172,28 @@ export default function SubjectsBuilderPage() {
                                 </option>
                               ))}
                             </select>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 flex-wrap">
                               <input
-                                className="flex-1 border rounded-lg px-3 py-2 text-sm text-gray-900"
+                                className="flex-1 min-w-[120px] border rounded-lg px-3 py-2 text-sm text-gray-900"
                                 placeholder="Set name (optional)"
                                 value={quizSetForm.setName}
                                 onChange={(e) =>
                                   setTopicQuizSetForms((prev) => ({
                                     ...prev,
                                     [topic._id]: { ...quizSetForm, setName: e.target.value },
+                                  }))
+                                }
+                              />
+                              <input
+                                type="number"
+                                min={0}
+                                className="w-24 border rounded-lg px-3 py-2 text-sm text-gray-900"
+                                placeholder="Quiz #"
+                                value={quizSetForm.quizNumber === '' ? '' : quizSetForm.quizNumber}
+                                onChange={(e) =>
+                                  setTopicQuizSetForms((prev) => ({
+                                    ...prev,
+                                    [topic._id]: { ...quizSetForm, quizNumber: e.target.value === '' ? '' : Number(e.target.value) },
                                   }))
                                 }
                               />

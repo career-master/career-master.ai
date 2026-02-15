@@ -28,6 +28,7 @@ type Subject = {
   _id: string;
   title: string;
   description?: string;
+  domain?: string;
   category?: string;
   level?: 'basic' | 'hard';
   requiresApproval?: boolean;
@@ -103,6 +104,11 @@ function SortableSubjectItem({ subject, onDelete }: { subject: Subject; onDelete
                     {subject.category}
                   </span>
                 )}
+                {subject.domain && (
+                  <span className="text-xs px-2 py-1 rounded-md font-medium bg-slate-100 text-slate-700">
+                    {subject.domain}
+                  </span>
+                )}
                 {subject.level && (
                   <span
                     className={`text-xs px-2 py-1 rounded-md font-medium ${
@@ -149,6 +155,7 @@ export default function SubjectsListPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterDomain, setFilterDomain] = useState<string>('');
   const [filterCategory, setFilterCategory] = useState<string>('');
   const [filterLevel, setFilterLevel] = useState<string>('');
 
@@ -255,12 +262,18 @@ export default function SubjectsListPage() {
     const matchesSearch =
       subject.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (subject.description || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDomain = !filterDomain || subject.domain === filterDomain || (filterDomain === 'Technology' && subject.category === 'Technology');
     const matchesCategory = !filterCategory || subject.category === filterCategory;
     const matchesLevel = !filterLevel || subject.level === filterLevel;
-    return matchesSearch && matchesCategory && matchesLevel;
+    return matchesSearch && matchesDomain && matchesCategory && matchesLevel;
   });
 
-  // Get unique categories and levels for filters
+  const DOMAINS = [
+    '3 CLASS', '4 CLASS', '5 CLASS', '6 CLASS', '7 CLASS', '8 CLASS', '9 CLASS', '10 CLASS',
+    'INTER (10+2)', 'Technology', 'Olympiad Exams',
+    'National Level (All-India) Government Exams', 'STATE LEVEL GOVT EXAMS', 'STATE LEVEL ENTRANCE EXAMS',
+    'National Level (All-India) Entrance Exams',
+  ];
   const categories = Array.from(new Set(subjects.map((s) => s.category).filter(Boolean)));
   const levels = ['basic', 'hard'];
 
@@ -311,7 +324,7 @@ export default function SubjectsListPage() {
 
           {/* Search and Filters */}
           <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Search */}
               <div className="relative">
                 <input
@@ -330,6 +343,18 @@ export default function SubjectsListPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
+
+              {/* Domain Filter */}
+              <select
+                value={filterDomain}
+                onChange={(e) => setFilterDomain(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white"
+              >
+                <option value="">All Domains</option>
+                {DOMAINS.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
 
               {/* Category Filter */}
               <select

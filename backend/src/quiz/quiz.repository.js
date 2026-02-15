@@ -102,7 +102,7 @@ class QuizRepository {
    * @param {number} options.limit
    * @param {Array<string>} options.excludeQuizIds - Quiz IDs to exclude (e.g., quizzes in quiz sets)
    */
-  static async getQuizzesPaginated({ activeOnly = false, page = 1, limit = 10, excludeQuizIds = [] }) {
+  static async getQuizzesPaginated({ activeOnly = false, page = 1, limit = 10, excludeQuizIds = [], includeQuizIds = null }) {
     try {
       // Check MongoDB connection
       const mongoose = require('mongoose');
@@ -111,10 +111,18 @@ class QuizRepository {
       }
 
       const filter = activeOnly ? { isActive: true } : {};
-      
-      // Exclude quizzes that are in quiz sets (those should only show in subject/topic pages)
-      if (excludeQuizIds && excludeQuizIds.length > 0) {
-        const mongoose = require('mongoose');
+
+      if (includeQuizIds != null) {
+        const includeObjectIds = includeQuizIds.map(id => {
+          try {
+            return mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id;
+          } catch {
+            return id;
+          }
+        });
+        filter._id = { $in: includeObjectIds };
+      } else if (excludeQuizIds && excludeQuizIds.length > 0) {
+        // Exclude quizzes that are in quiz sets (those should only show in subject/topic pages)
         const excludeObjectIds = excludeQuizIds.map(id => {
           try {
             return mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id;

@@ -24,6 +24,12 @@ const createQuizSetSchema = z.object({
       .min(0)
       .default(0)
       .optional(),
+    quizNumber: z
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .nullable(),
     isActive: z
       .boolean()
       .default(true)

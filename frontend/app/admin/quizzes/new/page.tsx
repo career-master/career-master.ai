@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import * as XLSX from 'xlsx';
@@ -42,10 +42,19 @@ export default function AdminCreateQuizPage() {
   const [isActive, setIsActive] = useState(true);
   const [level, setLevel] = useState<'basic' | 'hard' | ''>('');
 
-  // Link to Subject & Topic (optional: where this quiz appears for students)
+  // Link: Domain → Category → Subject → Sub-topic (optional: where this quiz appears for students)
+  const DOMAINS = [
+    '3 CLASS', '4 CLASS', '5 CLASS', '6 CLASS', '7 CLASS', '8 CLASS', '9 CLASS', '10 CLASS',
+    'INTER (10+2)', 'Technology', 'Olympiad Exams',
+    'National Level (All-India) Government Exams', 'STATE LEVEL GOVT EXAMS', 'STATE LEVEL ENTRANCE EXAMS',
+    'National Level (All-India) Entrance Exams',
+  ];
+  const [selectedDomain, setSelectedDomain] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [subjectId, setSubjectId] = useState('');
   const [selectedRootTopicId, setSelectedRootTopicId] = useState('');
   const [selectedSubTopicId, setSelectedSubTopicId] = useState('');
+  const [linkQuizNumber, setLinkQuizNumber] = useState<number | ''>('');
   const [subjects, setSubjects] = useState<any[]>([]);
   const [rootTopics, setRootTopics] = useState<any[]>([]);
   const [subTopics, setSubTopics] = useState<any[]>([]);
@@ -54,6 +63,23 @@ export default function AdminCreateQuizPage() {
   const [showAddSubTopicForm, setShowAddSubTopicForm] = useState(false);
   const [newSubTopicTitle, setNewSubTopicTitle] = useState('');
   const [addingSubTopic, setAddingSubTopic] = useState(false);
+
+  // Include subject in domain when domain matches, or when Technology and subject has category 'Technology' (backward compat)
+  const subjectInDomain = (s: any, domain: string) =>
+    s.domain === domain || (domain === 'Technology' && s.category === 'Technology');
+
+  const categoriesInDomain = useMemo(() => {
+    const list = selectedDomain ? subjects.filter((s: any) => subjectInDomain(s, selectedDomain)) : subjects;
+    const cats = Array.from(new Set(list.map((s: any) => s.category).filter(Boolean))) as string[];
+    return cats.filter((c) => c !== 'Technology' && c !== 'Olympiad Exams');
+  }, [subjects, selectedDomain]);
+
+  const filteredSubjects = useMemo(() => {
+    let list = subjects;
+    if (selectedDomain) list = list.filter((s: any) => subjectInDomain(s, selectedDomain));
+    if (selectedDomain !== 'Olympiad Exams' && selectedCategory) list = list.filter((s: any) => s.category === selectedCategory);
+    return list;
+  }, [subjects, selectedDomain, selectedCategory]);
   const [useSections, setUseSections] = useState(false);
   const [sections, setSections] = useState<any[]>([]);
   const [showQuestionForm, setShowQuestionForm] = useState(false);
@@ -207,7 +233,7 @@ export default function AdminCreateQuizPage() {
           }
         }
 
-        // Load QuizSets for this quiz to pre-fill Subject / Topic / Sub-topic
+        // Load QuizSets for this quiz to pre-fill Domain, Category, Subject, Topic, Sub-topic and Quiz number
         try {
           setTopicLinkLoading(true);
           const qsRes = await apiService.getQuizSetsByQuiz(id);
@@ -216,10 +242,21 @@ export default function AdminCreateQuizPage() {
             const topic: any = qs.topicId;
             if (topic && (topic._id || topic.subjectId)) {
               setExistingQuizSetId(qs._id);
+              if (qs.quizNumber != null && qs.quizNumber !== undefined && qs.quizNumber !== '') setLinkQuizNumber(Number(qs.quizNumber));
               const sid = (typeof topic.subjectId === 'string' ? topic.subjectId : topic.subjectId?.toString?.() || topic.subjectId?._id?.toString?.() || '') || '';
               const topicIdStr = (typeof topic._id === 'string' ? topic._id : topic._id?.toString?.()) || '';
               const parentId = topic.parentTopicId;
               const hasParent = parentId && (typeof parentId === 'string' ? parentId : (parentId?.toString?.() || parentId?._id));
+              if (sid) {
+                try {
+                  const subRes = await apiService.getSubjectById(sid);
+                  if (subRes.success && subRes.data) {
+                    const sub = subRes.data as any;
+                    if (sub.domain) setSelectedDomain(sub.domain);
+                    if (sub.category) setSelectedCategory(sub.category);
+                  }
+                } catch (_) { /* ignore */ }
+              }
               if (hasParent) {
                 const pid = typeof parentId === 'string' ? parentId : (parentId?.toString?.() || parentId?._id?.toString?.() || '');
                 setSubjectId(sid);
@@ -246,18 +283,24 @@ export default function AdminCreateQuizPage() {
             }
           } else {
             setExistingQuizSetId(null);
+            setSelectedDomain('');
+            setSelectedCategory('');
             setSubjectId('');
             setSelectedRootTopicId('');
             setSelectedSubTopicId('');
+            setLinkQuizNumber('');
             setRootTopics([]);
             setSubTopics([]);
           }
         } catch (e) {
           console.error('Failed to load quiz-set link:', e);
           setExistingQuizSetId(null);
+          setSelectedDomain('');
+          setSelectedCategory('');
           setSubjectId('');
           setSelectedRootTopicId('');
           setSelectedSubTopicId('');
+          setLinkQuizNumber('');
           setRootTopics([]);
           setSubTopics([]);
         } finally {
@@ -701,17 +744,18 @@ export default function AdminCreateQuizPage() {
         throw new Error(res.error?.message || res.message || `Failed to ${quizId ? 'update' : 'create'} quiz`);
       }
 
-      // QuizSet: link to Subject / Topic / Sub-topic (where this quiz appears for students)
+      // QuizSet: link to Domain/Category/Subject/Topic (where this quiz appears for students)
       const resolvedTopicId = selectedSubTopicId || selectedRootTopicId || null;
+      const quizNumberPayload = linkQuizNumber !== '' && linkQuizNumber != null ? { quizNumber: Number(linkQuizNumber) } : {};
       if (quizId) {
         if (existingQuizSetId) await apiService.deleteQuizSet(existingQuizSetId);
         if (resolvedTopicId) {
-          const cr = await apiService.createQuizSet({ topicId: resolvedTopicId, quizId, setName: title || 'Quiz Set', order: 1 });
+          const cr = await apiService.createQuizSet({ topicId: resolvedTopicId, quizId, setName: title || 'Quiz Set', order: 1, ...quizNumberPayload });
           if (cr.success && (cr as any).data?._id) setExistingQuizSetId((cr as any).data._id);
         } else setExistingQuizSetId(null);
       } else {
         const createdId = (res.data as any)?._id;
-        if (resolvedTopicId && createdId) await apiService.createQuizSet({ topicId: resolvedTopicId, quizId: createdId, setName: title || 'Quiz Set', order: 1 });
+        if (resolvedTopicId && createdId) await apiService.createQuizSet({ topicId: resolvedTopicId, quizId: createdId, setName: title || 'Quiz Set', order: 1, ...quizNumberPayload });
       }
 
       setSuccess(`Quiz ${quizId ? 'updated' : 'created'} successfully`);
@@ -726,9 +770,12 @@ export default function AdminCreateQuizPage() {
         setAvailableFrom('');
         setAvailableTo('');
         setSelectedBatches([]);
+        setSelectedDomain('');
+        setSelectedCategory('');
         setSubjectId('');
         setSelectedRootTopicId('');
         setSelectedSubTopicId('');
+        setLinkQuizNumber('');
         setRootTopics([]);
         setSubTopics([]);
         setQuestions([
@@ -857,6 +904,7 @@ export default function AdminCreateQuizPage() {
             quizId: (res.data as any)._id,
             setName: title || 'Quiz Set',
             order: 1,
+            ...(linkQuizNumber !== '' && linkQuizNumber != null ? { quizNumber: Number(linkQuizNumber) } : {}),
           });
         } catch (linkErr: any) {
           console.warn('Quiz created but linking to topic failed:', linkErr);
@@ -1013,132 +1061,192 @@ export default function AdminCreateQuizPage() {
               </div>
             </div>
 
-            {/* Link to Subject & Topic — optional, where this quiz appears for students */}
+            {/* Link: Domain → Category → Subject → Sub-topic (optional). Quiz number for display. */}
             <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-              <h3 className="text-sm font-bold text-slate-800 mb-1">Link to Subject & Topic</h3>
+              <h3 className="text-sm font-bold text-slate-800 mb-1">Link to Domain, Category, Subject & Sub-topic</h3>
               <p className="text-xs text-slate-500 mb-3">Choose where this quiz appears for students. Optional.</p>
               {topicLinkLoading ? (
                 <p className="text-sm text-slate-500">Loading link...</p>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Subject</label>
-                    <select
-                      value={subjectId}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setSubjectId(v);
-                        setSelectedRootTopicId('');
-                        setSelectedSubTopicId('');
-                        setRootTopics([]);
-                        setSubTopics([]);
-                        setShowAddSubTopicForm(false);
-                        setNewSubTopicTitle('');
-                        if (v) {
-                          apiService.getTopics(v, true, 'roots').then((r) => {
-                            if (r.success && Array.isArray(r.data)) setRootTopics(r.data);
-                            else setRootTopics([]);
-                          });
-                        }
-                      }}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500"
-                    >
-                      <option value="">— Don&apos;t link to a topic —</option>
-                      {subjects.map((s) => (
-                        <option key={s._id} value={s._id}>{s.title}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Topic</label>
-                    <select
-                      value={selectedRootTopicId}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setSelectedRootTopicId(v);
-                        setSelectedSubTopicId('');
-                        setShowAddSubTopicForm(false);
-                        setNewSubTopicTitle('');
-                        if (v && subjectId) {
-                          apiService.getTopics(subjectId, true, v).then((r) => {
-                            if (r.success && Array.isArray(r.data)) setSubTopics(r.data);
-                            else setSubTopics([]);
-                          });
-                        } else setSubTopics([]);
-                      }}
-                      disabled={!subjectId}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
-                    >
-                      <option value="">Select topic</option>
-                      {rootTopics.map((t) => (
-                        <option key={t._id} value={t._id}>{t.title}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Sub-topic</label>
-                    {showAddSubTopicForm ? (
-                      <div className="space-y-2">
-                        <input
-                          type="text"
-                          value={newSubTopicTitle}
-                          onChange={(e) => setNewSubTopicTitle(e.target.value)}
-                          placeholder="Sub-topic name"
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') { e.preventDefault(); handleAddSubTopic(); }
-                            if (e.key === 'Escape') { setShowAddSubTopicForm(false); setNewSubTopicTitle(''); }
-                          }}
-                          autoFocus
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={handleAddSubTopic}
-                            disabled={addingSubTopic || !newSubTopicTitle.trim()}
-                            className="rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
-                          >
-                            {addingSubTopic ? 'Adding…' : 'Add'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setShowAddSubTopicForm(false); setNewSubTopicTitle(''); }}
-                            disabled={addingSubTopic}
-                            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Domain</label>
+                      <select
+                        value={selectedDomain}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setSelectedDomain(v);
+                          setSelectedCategory('');
+                          setSubjectId('');
+                          setSelectedRootTopicId('');
+                          setSelectedSubTopicId('');
+                          setRootTopics([]);
+                          setSubTopics([]);
+                          setShowAddSubTopicForm(false);
+                        }}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500"
+                      >
+                        <option value="">— Don&apos;t link —</option>
+                        {DOMAINS.map((d) => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {selectedDomain !== 'Olympiad Exams' && (
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Category</label>
                         <select
-                          value={selectedSubTopicId}
-                          onChange={(e) => setSelectedSubTopicId(e.target.value)}
-                          disabled={!selectedRootTopicId || subTopics.length === 0}
+                          value={selectedCategory}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setSelectedCategory(v);
+                            setSubjectId('');
+                            setSelectedRootTopicId('');
+                            setSelectedSubTopicId('');
+                            setRootTopics([]);
+                            setSubTopics([]);
+                            setShowAddSubTopicForm(false);
+                          }}
+                          disabled={!selectedDomain}
                           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
                         >
-                          <option value="">— None (use topic) —</option>
-                          {subTopics.map((t) => (
-                            <option key={t._id} value={t._id}>{t.title}</option>
+                          <option value="">Select category</option>
+                          {categoriesInDomain.map((c) => (
+                            <option key={c} value={c}>{c}</option>
                           ))}
                         </select>
-                        {selectedRootTopicId && (
-                          <p className="mt-1.5">
-                            <button
-                              type="button"
-                              onClick={() => { setShowAddSubTopicForm(true); setNewSubTopicTitle(''); }}
-                              className="text-xs font-medium text-slate-600 hover:text-slate-800 underline"
-                            >
-                              {subTopics.length === 0 ? 'Add sub-topic' : '+ Add sub-topic'}
-                            </button>
-                          </p>
-                        )}
-                        {selectedRootTopicId && subTopics.length === 0 && !showAddSubTopicForm && (
-                          <p className="text-xs text-slate-400 mt-0.5">No sub-topics yet</p>
-                        )}
-                      </>
+                        <p className="mt-1.5">
+                          <Link href={`/admin/subjects/new${selectedDomain ? `?domain=${encodeURIComponent(selectedDomain)}` : ''}`} className="text-xs font-medium text-slate-600 hover:text-slate-800 underline">
+                            Add category
+                          </Link>
+                        </p>
+                      </div>
                     )}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Subject</label>
+                      <select
+                        value={subjectId}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setSubjectId(v);
+                          setSelectedRootTopicId('');
+                          setSelectedSubTopicId('');
+                          setRootTopics([]);
+                          setSubTopics([]);
+                          setShowAddSubTopicForm(false);
+                          setNewSubTopicTitle('');
+                          if (v) {
+                            apiService.getTopics(v, true, 'roots').then((r) => {
+                              if (r.success && Array.isArray(r.data)) setRootTopics(r.data);
+                              else setRootTopics([]);
+                            });
+                          }
+                        }}
+                        disabled={!selectedDomain}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                      >
+                        <option value="">Select subject</option>
+                        {filteredSubjects.map((s: any) => (
+                          <option key={s._id} value={s._id}>{s.title}</option>
+                        ))}
+                      </select>
+                      <p className="mt-1.5">
+                        <Link href={`/admin/subjects/new${selectedDomain ? `?domain=${encodeURIComponent(selectedDomain)}` : ''}${selectedCategory ? `&category=${encodeURIComponent(selectedCategory)}` : ''}`} className="text-xs font-medium text-slate-600 hover:text-slate-800 underline">
+                          Add subject
+                        </Link>
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Topic</label>
+                      <select
+                        value={selectedRootTopicId}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setSelectedRootTopicId(v);
+                          setSelectedSubTopicId('');
+                          setShowAddSubTopicForm(false);
+                          setNewSubTopicTitle('');
+                          if (v && subjectId) {
+                            apiService.getTopics(subjectId, true, v).then((r) => {
+                              if (r.success && Array.isArray(r.data)) setSubTopics(r.data);
+                              else setSubTopics([]);
+                            });
+                          } else setSubTopics([]);
+                        }}
+                        disabled={!subjectId}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                      >
+                        <option value="">Select topic</option>
+                        {rootTopics.map((t: any) => (
+                          <option key={t._id} value={t._id}>{t.title}</option>
+                        ))}
+                      </select>
+                      {subjectId && (
+                        <p className="mt-1.5">
+                          <Link href={`/admin/subjects/new?subjectId=${subjectId}`} className="text-xs font-medium text-slate-600 hover:text-slate-800 underline">
+                            Add topic
+                          </Link>
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Sub-topic</label>
+                      {showAddSubTopicForm ? (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={newSubTopicTitle}
+                            onChange={(e) => setNewSubTopicTitle(e.target.value)}
+                            placeholder="Sub-topic name"
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') { e.preventDefault(); handleAddSubTopic(); }
+                              if (e.key === 'Escape') { setShowAddSubTopicForm(false); setNewSubTopicTitle(''); }
+                            }}
+                            autoFocus
+                          />
+                          <div className="flex gap-2">
+                            <button type="button" onClick={handleAddSubTopic} disabled={addingSubTopic || !newSubTopicTitle.trim()} className="rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50">{addingSubTopic ? 'Adding…' : 'Add'}</button>
+                            <button type="button" onClick={() => { setShowAddSubTopicForm(false); setNewSubTopicTitle(''); }} disabled={addingSubTopic} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100">Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <select
+                            value={selectedSubTopicId}
+                            onChange={(e) => setSelectedSubTopicId(e.target.value)}
+                            disabled={!selectedRootTopicId || subTopics.length === 0}
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                          >
+                            <option value="">— None (use topic) —</option>
+                            {subTopics.map((t: any) => (
+                              <option key={t._id} value={t._id}>{t.title}</option>
+                            ))}
+                          </select>
+                          {selectedRootTopicId && (
+                            <p className="mt-1.5">
+                              <button type="button" onClick={() => { setShowAddSubTopicForm(true); setNewSubTopicTitle(''); }} className="text-xs font-medium text-slate-600 hover:text-slate-800 underline">{subTopics.length === 0 ? 'Add sub-topic' : '+ Add sub-topic'}</button>
+                            </p>
+                          )}
+                          {selectedRootTopicId && subTopics.length === 0 && !showAddSubTopicForm && (
+                            <p className="text-xs text-slate-400 mt-0.5">No sub-topics yet</p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <label className="text-xs font-semibold text-slate-600">Quiz number (optional)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      className="w-24 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500"
+                      placeholder="e.g. 1"
+                      value={linkQuizNumber === '' ? '' : linkQuizNumber}
+                      onChange={(e) => setLinkQuizNumber(e.target.value === '' ? '' : Number(e.target.value))}
+                    />
+                    <span className="text-xs text-slate-500">Used when linking this quiz to a topic (display/order).</span>
                   </div>
                 </div>
               )}

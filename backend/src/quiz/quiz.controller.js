@@ -63,8 +63,20 @@ class QuizController {
   static getQuizzes = asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
+    const domain = req.query.domain || undefined;
+    const subjectId = req.query.subjectId || undefined;
+    const topicId = req.query.topicId || undefined;
+    const all = req.query.all === '1' || req.query.all === 'true';
 
-    const result = await QuizService.getQuizzes({ page, limit });
+    const noFilter = !domain && !subjectId && !topicId;
+    const result = await QuizService.getQuizzes({
+      page,
+      limit,
+      domain,
+      subjectId,
+      topicId,
+      excludeQuizSets: noFilter ? !all : true
+    });
     res.status(200).json({
       success: true,
       data: result

@@ -34,7 +34,7 @@ class SubjectController {
   static getSubjects = asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
-    const { isActive, category, level } = req.query;
+    const { isActive, domain, category, level } = req.query;
 
     // Get user batches, roles, and selected courses for filtering
     const User = require('../user/users.model');
@@ -52,13 +52,19 @@ class SubjectController {
       }
     }
 
-    const result = await SubjectService.getSubjectsPaginated({
-      page,
-      limit,
-      isActive,
-      category,
-      level
-    }, userBatches, userRoles, userSelectedCourses);
+    const result = await SubjectService.getSubjectsPaginated(
+      {
+        page,
+        limit,
+        isActive,
+        domain,
+        category,
+        level
+      },
+      userBatches,
+      userRoles,
+      userSelectedCourses
+    );
 
     res.status(200).json({
       success: true,
