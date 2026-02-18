@@ -81,7 +81,7 @@ export default function KidsOlympiadsPage() {
       
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative py-20 overflow-hidden">
+        <section className="relative py-8 overflow-hidden">
           {/* Background decorations */}
           <div className="absolute inset-0 overflow-hidden">
             <div className="absolute -top-40 -right-40 w-80 h-80 bg-amber-400/20 rounded-full blur-3xl"></div>
@@ -140,7 +140,7 @@ export default function KidsOlympiadsPage() {
         </section>
 
         {/* Olympiad Categories Section */}
-        <section className="py-16 px-4 sm:px-6 lg:px-8">
+        <section className="py-8 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-4 text-slate-800 dark:text-white">
               Olympiad Categories
@@ -187,7 +187,7 @@ export default function KidsOlympiadsPage() {
         </section>
 
         {/* Benefits Section */}
-        <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white/50 dark:bg-slate-800/50">
+        <section className="py-8 px-4 sm:px-6 lg:px-8 bg-white/50 dark:bg-slate-800/50">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-4 text-slate-800 dark:text-white">
               Why Participate in Olympiads?
@@ -212,7 +212,7 @@ export default function KidsOlympiadsPage() {
         </section>
 
         {/* CTA Section */}
-        <section className="py-16 px-4 sm:px-6 lg:px-8">
+        <section className="py-8 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
             <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-pink-500 rounded-3xl p-8 md:p-12 text-white shadow-2xl">
               <div className="text-center">
