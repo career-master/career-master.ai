@@ -88,7 +88,7 @@ export default function DegreePage() {
       
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative py-20 overflow-hidden">
+        <section className="relative py-8 overflow-hidden">
           {/* Background decorations */}
           <div className="absolute inset-0 overflow-hidden">
             <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400/20 rounded-full blur-3xl"></div>
@@ -113,8 +113,8 @@ export default function DegreePage() {
               <p className="text-xl md:text-2xl text-slate-600 dark:text-slate-300 max-w-4xl mx-auto mb-8 leading-relaxed">
                 Excel in your <span className="font-semibold text-blue-600 dark:text-blue-400">University Exams</span>, 
                 prepare for <span className="font-semibold text-emerald-600 dark:text-emerald-400">Competitive Exams</span>,
-                <span className="font-semibold text-purple-600 dark:text-purple-400"> PG Entrances</span>, and 
-                <span className="font-semibold text-amber-600 dark:text-amber-400"> Professional Certifications</span>
+                <span className="font-semibold text-purple-600 dark:text-purple-400"> PG Entrances for </span>
+                <span className="font-semibold text-amber-600 dark:text-amber-400">  the following Degree Courses </span>
               </p>
 
               {/* Degree Types */}
@@ -134,7 +134,7 @@ export default function DegreePage() {
         </section>
 
         {/* Exam Categories Section */}
-        <section className="py-16 px-4 sm:px-6 lg:px-8">
+        <section className="py-8 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 text-slate-800 dark:text-white">
               What We Cover
@@ -173,7 +173,7 @@ export default function DegreePage() {
         </section>
 
         {/* Competitive Exams Grid */}
-        <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white/50 dark:bg-slate-800/50">
+        <section className="py-8 px-4 sm:px-6 lg:px-8 bg-white/50 dark:bg-slate-800/50">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-4 text-slate-800 dark:text-white">
               Popular Competitive Exams
@@ -198,7 +198,7 @@ export default function DegreePage() {
         </section>
 
         {/* Subjects Section */}
-        <section className="py-16 px-4 sm:px-6 lg:px-8">
+        <section className="py-8 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-4 text-slate-800 dark:text-white">
               Subjects & Topics
@@ -222,7 +222,7 @@ export default function DegreePage() {
         </section>
 
         {/* CTA Section */}
-        <section className="py-16 px-4 sm:px-6 lg:px-8">
+        <section className="py-8 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
             <div className="bg-gradient-to-r from-blue-600 via-emerald-600 to-purple-600 rounded-3xl p-8 md:p-12 text-white shadow-2xl">
               <div className="text-center">

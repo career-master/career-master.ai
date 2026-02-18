@@ -90,7 +90,7 @@ export default function PhDPage() {
       
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative py-20 overflow-hidden">
+        <section className="relative py-8 overflow-hidden">
           {/* Background decorations */}
           <div className="absolute inset-0 overflow-hidden">
             <div className="absolute -top-40 -right-40 w-80 h-80 bg-rose-400/20 rounded-full blur-3xl"></div>
@@ -136,7 +136,7 @@ export default function PhDPage() {
         </section>
 
         {/* Exam Categories Section */}
-        <section className="py-16 px-4 sm:px-6 lg:px-8">
+        <section className="py-8 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 text-slate-800 dark:text-white">
               What We Cover
@@ -175,7 +175,7 @@ export default function PhDPage() {
         </section>
 
         {/* Fellowships Grid */}
-        <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white/50 dark:bg-slate-800/50">
+        <section className="py-8 px-4 sm:px-6 lg:px-8 bg-white/50 dark:bg-slate-800/50">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-4 text-slate-800 dark:text-white">
               Research Fellowships & JRF
@@ -203,7 +203,7 @@ export default function PhDPage() {
         </section>
 
         {/* Research Skills Section */}
-        <section className="py-16 px-4 sm:px-6 lg:px-8">
+        <section className="py-8 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-4 text-slate-800 dark:text-white">
               Research Skills & Aptitude
@@ -227,7 +227,7 @@ export default function PhDPage() {
         </section>
 
         {/* Why Ph.D Section */}
-        <section className="py-16 px-4 sm:px-6 lg:px-8">
+        <section className="py-8 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
             <div className="bg-gradient-to-r from-rose-600 via-purple-600 to-amber-600 rounded-3xl p-8 md:p-12 text-white shadow-2xl">
               <div className="grid md:grid-cols-2 gap-8 items-center">
@@ -279,7 +279,7 @@ export default function PhDPage() {
         </section>
 
         {/* CTA Section */}
-        <section className="py-16 px-4 sm:px-6 lg:px-8">
+        <section className="py-8 px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold text-slate-800 dark:text-white mb-6">
               Begin Your Research Journey

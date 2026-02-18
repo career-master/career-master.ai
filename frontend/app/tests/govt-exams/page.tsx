@@ -134,7 +134,7 @@ export default function GovtExamsPage() {
         </section>
 
         {/* Exam Categories Section */}
-        <section className="py-16 px-4 sm:px-6 lg:px-8">
+        <section className="py-8 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-4 text-slate-800 dark:text-white">
               Exam Categories
@@ -181,7 +181,7 @@ export default function GovtExamsPage() {
         </section>
 
         {/* Popular Exams Grid */}
-        <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white/50 dark:bg-slate-800/50">
+        <section className="py-8 px-4 sm:px-6 lg:px-8 bg-white/50 dark:bg-slate-800/50">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-4 text-slate-800 dark:text-white">
               Popular Government Exams
@@ -210,7 +210,7 @@ export default function GovtExamsPage() {
         </section>
 
         {/* Subjects Section */}
-        <section className="py-16 px-4 sm:px-6 lg:px-8">
+        <section className="py-8 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-4 text-slate-800 dark:text-white">
               Subjects Covered
@@ -234,7 +234,7 @@ export default function GovtExamsPage() {
         </section>
 
         {/* CTA Section */}
-        <section className="py-16 px-4 sm:px-6 lg:px-8">
+        <section className="py-8 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
             <div className="bg-gradient-to-r from-slate-700 via-blue-600 to-emerald-600 rounded-3xl p-8 md:p-12 text-white shadow-2xl">
               <div className="text-center">

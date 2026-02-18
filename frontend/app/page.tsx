@@ -56,7 +56,7 @@ export default function Home() {
     { 
       src: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=1920&h=600&fit=crop', 
       alt: 'Modern Education',
-      title: 'Earn Recognized Certificates',
+      title: 'Earn Certificates',
       subtitle: 'Showcase your expertise with Silver, Gold & Platinum badges'
     },
   ];
@@ -180,7 +180,7 @@ export default function Home() {
       </section>
 
       {/* 1. About Us Section */}
-      <section id="about" className="py-20 bg-gray-50 dark:bg-gray-800">
+      <section id="about" className="py-8 bg-gray-50 dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4 text-orange-600 dark:text-orange-400">About Us</h2>
@@ -190,7 +190,7 @@ export default function Home() {
           <div className="grid md:grid-cols-3 gap-8">
             {/* Vision */}
             <div id="vision" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg hover:scale-105 transition-transform cursor-pointer">
-              <h3 className="text-2xl font-bold mb-4 text-orange-600 dark:text-orange-400">Vision</h3>
+              <h3 className="text-2xl font-bold mb-4 text-blue-600 dark:text-orange-400">Vision</h3>
               <p className="text-gray-700 dark:text-gray-300">
                 To become a global AI-powered learning ecosystem that empowers learners of all ages to achieve academic excellence, career success, and lifelong growth.
               </p>
@@ -198,7 +198,7 @@ export default function Home() {
 
             {/* Mission */}
             <div id="mission" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg hover:scale-105 transition-transform cursor-pointer">
-              <h3 className="text-2xl font-bold mb-4 text-orange-600 dark:text-orange-400">Mission</h3>
+              <h3 className="text-2xl font-bold mb-4 text-blue-600 dark:text-orange-400">Mission</h3>
               <p className="text-gray-700 dark:text-gray-300">
                 To provide accessible, high-quality educational resources and assessments that help students achieve
                 their academic and career goals.
@@ -207,7 +207,7 @@ export default function Home() {
 
             {/* Why We? */}
             <div id="why-we" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg hover:scale-105 transition-transform cursor-pointer">
-              <h3 className="text-2xl font-bold mb-4 text-orange-600 dark:text-orange-400">Why We?</h3>
+              <h3 className="text-2xl font-bold mb-4 text-blue-600 dark:text-orange-400">Why We?</h3>
               <p className="text-gray-700 dark:text-gray-300">
                 We combine cutting-edge technology with expert-curated content to deliver personalized learning
                 experiences that drive real results.
@@ -300,7 +300,7 @@ export default function Home() {
       </section>
 
       {/* 4. Who Can Use This Portal? */}
-      <section id="who-can-use" className="py-20 bg-gray-50 dark:bg-gray-800">
+      <section id="who-can-use" className="py-8 bg-gray-50 dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4 text-orange-600 dark:text-orange-400">Who Can Use This Portal?</h2>
@@ -328,7 +328,7 @@ export default function Home() {
       </section>
 
       {/* 5. Comprehensive Quiz Topics & Learning Domains */}
-      <section id="quiz-topics" className="py-20 bg-white dark:bg-gray-900">
+      <section id="quiz-topics" className="py-8 bg-white dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4 text-orange-600 dark:text-orange-400">
@@ -340,15 +340,15 @@ export default function Home() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
               'Subject-Based Academics',
-              'Olympiads (SOF, IMO, NSO, Cyber, NTSE)',
-              'Aptitude (Quantitative, Logical, DI)',
-              'Reasoning (Analytical, Verbal & Non-Verbal)',
-              'Soft Skills (Vocabulary, Communication, Grammar)',
-              'Competitive Exams (GATE, CAT, EAMCET, UPSC, SSC, NEET, JEE)',
-              'Computer & Technology',
+              'Olympiads (SOF, IMO, NSO, Cyber, NTSE etc...)',
+              'Aptitude (Quantitative, Logical, DI etc..)',
+              'Reasoning (Analytical)',
+              'Soft Skills (Vocabulary, Communication, Grammar, Verbal & Non-Verbal etc...)',
+              'Competitive Exams (GATE, CAT, EAMCET, UPSC, SSC, NEET, JEE etc...)',
+              'Computer Technology',
+              'State Level Entrance & Job Related Exams',
+              'National Level Entrance & Job Related Exams',
               'General Knowledge & Current Affairs',
-              'Career Skills',
-              'Cultural, Arts, Heritage, Festivals',
               'Interview & Placement Preparation',
             ].map((topic, index) => (
               <div
@@ -363,7 +363,7 @@ export default function Home() {
       </section>
 
       {/* 6. Monthly Top Performers Section */}
-      <section id="top-performers" className="py-20 bg-gray-50 dark:bg-gray-800">
+      <section id="top-performers" className="py-8 bg-gray-50 dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4 text-orange-600 dark:text-orange-400">Monthly Top Performers</h2>
@@ -488,7 +488,7 @@ export default function Home() {
       </section>
 
       {/* 7. Certification Section */}
-      <section id="certification" className="py-20 bg-white dark:bg-gray-900">
+      <section id="certification" className="py-8 bg-white dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4 text-orange-600 dark:text-orange-400">Get Certified</h2>
@@ -520,10 +520,7 @@ export default function Home() {
             {/* Gold Certificate */}
             <div className="relative bg-gradient-to-br from-yellow-100 via-yellow-200 to-amber-300 dark:from-yellow-700 dark:via-yellow-600 dark:to-amber-500 p-8 rounded-xl shadow-xl text-center hover:scale-105 transition-all duration-300 cursor-pointer border-2 border-yellow-500 overflow-hidden group transform md:scale-105 md:z-10">
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-              <div className="absolute -top-2 -right-2 bg-yellow-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg shadow-md">
-                POPULAR
-              </div>
-              <div className="relative">
+                            <div className="relative">
                 <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-yellow-300 to-amber-500 rounded-full flex items-center justify-center shadow-lg ring-4 ring-yellow-400/50">
                   <span className="text-5xl">🥇</span>
                 </div>
@@ -561,7 +558,7 @@ export default function Home() {
       </section>
 
       {/* 8. Pricing Table */}
-      <section id="pricing" className="py-20 bg-gray-50 dark:bg-gray-800">
+      <section id="pricing" className="py-8 bg-gray-50 dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4 text-orange-600 dark:text-orange-400">Pricing Plans</h2>
@@ -859,7 +856,7 @@ export default function Home() {
       </section>
 
       {/* 13. Success Stories */}
-      <section id="success-stories" className="py-20 bg-gray-50 dark:bg-gray-800">
+      <section id="success-stories" className="py-8 bg-gray-50 dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4 text-orange-600 dark:text-orange-400">Success Stories</h2>
