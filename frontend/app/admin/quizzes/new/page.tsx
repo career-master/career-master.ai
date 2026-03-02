@@ -29,6 +29,7 @@ export default function AdminCreateQuizPage() {
 
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState('');
+  const [userEditedTitle, setUserEditedTitle] = useState(false);
   const [description, setDescription] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(30);
   const [availableFrom, setAvailableFrom] = useState('');
@@ -118,6 +119,49 @@ export default function AdminCreateQuizPage() {
   if (!hasTitle) uploadMissing.push('Quiz Title');
   if (!hasDuration) uploadMissing.push('Duration (minutes) ≥ 1');
 
+  // Auto-generate quiz title from Subject, Topic, Sub-topic and Quiz number
+  useEffect(() => {
+    // Do not auto-generate for existing quizzes
+    if (quizId) return;
+    // Do not override if admin manually edited title
+    if (userEditedTitle) return;
+
+    const subject = subjects.find((s: any) => s._id === subjectId);
+    if (!subject) return;
+
+    const subjectTitle: string = subject.title || '';
+    const rootTopic = rootTopics.find((t: any) => t._id === selectedRootTopicId);
+    const subTopic = subTopics.find((t: any) => t._id === selectedSubTopicId);
+    const quizNo = linkQuizNumber === '' || linkQuizNumber == null ? 1 : linkQuizNumber;
+
+    let generatedTitle = '';
+    if (subTopic && rootTopic) {
+      // Subject - Topic - Sub-topic - Quiz N
+      generatedTitle = `${subjectTitle} - ${rootTopic.title} - ${subTopic.title} - Quiz ${quizNo}`;
+    } else if (rootTopic) {
+      // Subject - Topic - Quiz N
+      generatedTitle = `${subjectTitle} - ${rootTopic.title} - Quiz ${quizNo}`;
+    } else {
+      // Subject - Quiz N
+      generatedTitle = `${subjectTitle} - Quiz ${quizNo}`;
+    }
+
+    if (generatedTitle && generatedTitle !== title) {
+      setTitle(generatedTitle);
+    }
+  }, [
+    quizId,
+    userEditedTitle,
+    subjects,
+    subjectId,
+    rootTopics,
+    selectedRootTopicId,
+    subTopics,
+    selectedSubTopicId,
+    linkQuizNumber,
+    title
+  ]);
+
   useEffect(() => {
     if (!isAuthenticated) {
       router.push('/admin/login');
@@ -170,6 +214,7 @@ export default function AdminCreateQuizPage() {
       if (res.success && res.data) {
         const quiz = res.data;
         setTitle(quiz.title || '');
+        setUserEditedTitle(true);
         setDescription(quiz.description || '');
         setDurationMinutes(quiz.durationMinutes || 30);
         const hasAvailableFrom = quiz.availableFrom ? true : false;
@@ -763,6 +808,7 @@ export default function AdminCreateQuizPage() {
       if (!quizId) {
         // Reset form only for new quiz
         setTitle('');
+        setUserEditedTitle(false);
         setDescription('');
         setDurationMinutes(30);
         setMarksPerQuestion(1);
@@ -1001,7 +1047,10 @@ export default function AdminCreateQuizPage() {
               <input
                 type="text"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  setUserEditedTitle(true);
+                }}
                 required
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-red-500 focus:ring-2 focus:ring-red-500"
                 placeholder="e.g. Algebra Basics Quiz"

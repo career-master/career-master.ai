@@ -78,6 +78,7 @@ export default function AdminLayout({
     { id: 'institutions', label: 'Institutions', icon: 'university', href: '/admin/institutions' },
     { id: 'subjects', label: 'Subjects & Topics', icon: 'book', href: '/admin/subjects' },
     { id: 'questions', label: 'Questions Bank', icon: 'database', href: '/admin/quizzes' },
+    { id: 'announcements', label: 'Updates & Events', icon: 'clipboard', href: '/admin/announcements' },
     { id: 'tests', label: 'Test Engine', icon: 'file', href: '/admin/tests' },
     { id: 'content', label: 'Content Library', icon: 'book', href: '/admin/content' },
     { id: 'payments', label: 'Payments & Subscription', icon: 'credit-card', href: '/admin/payments' },

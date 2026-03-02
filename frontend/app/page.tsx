@@ -5,6 +5,7 @@ import Menubar from '@/components/Menubar';
 import Footer from '@/components/Footer';
 import ScrollToTop from '@/components/ScrollToTop';
 import { useState, useEffect } from 'react';
+import { apiService } from '@/lib/api';
 
 export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -14,6 +15,9 @@ export default function Home() {
     domains: 0,
     courses: 0,
   });
+  const [quickUpdates, setQuickUpdates] = useState<any[]>([]);
+  const [onlineTrainings, setOnlineTrainings] = useState<any[]>([]);
+  const [latestExamsData, setLatestExamsData] = useState<any[]>([]);
 
   // Slider images with background images
   const sliderImages = [
@@ -88,6 +92,34 @@ export default function Home() {
       });
       if (step >= steps) clearInterval(timer);
     }, increment);
+  }, []);
+
+  // Load announcements for Updates, Events & Exams section
+  useEffect(() => {
+    const loadAnnouncements = async () => {
+      try {
+        const [updatesRes, trainingsRes, examsRes] = await Promise.all([
+          apiService.getAnnouncementsPublic({ type: 'update', limit: 20 }),
+          apiService.getAnnouncementsPublic({ type: 'training', limit: 20 }),
+          apiService.getAnnouncementsPublic({ type: 'exam', limit: 20 })
+        ]);
+
+        if (updatesRes.success && Array.isArray(updatesRes.data)) {
+          setQuickUpdates(updatesRes.data);
+        }
+        if (trainingsRes.success && Array.isArray(trainingsRes.data)) {
+          setOnlineTrainings(trainingsRes.data);
+        }
+        if (examsRes.success && Array.isArray(examsRes.data)) {
+          setLatestExamsData(examsRes.data);
+        }
+      } catch (err) {
+        // Silent fail; section will just show default empty content
+        console.error('Failed to load announcements', err);
+      }
+    };
+
+    loadAnnouncements();
   }, []);
 
   // Latest competitive exams (scrolling)
@@ -755,24 +787,55 @@ export default function Home() {
               </div>
               <div className="h-64 overflow-hidden">
                 <div className="animate-scroll-vertical">
-                  {[
-                    { title: 'New Quiz Added', desc: 'Python Advanced Quiz is now live!', date: 'Jan 28, 2026' },
-                    { title: 'Feature Update', desc: 'Dark mode now available', date: 'Jan 25, 2026' },
-                    { title: 'Performance Boost', desc: 'Faster quiz loading times', date: 'Jan 22, 2026' },
-                    { title: 'New Batch Started', desc: 'GATE 2026 batch registrations open', date: 'Jan 20, 2026' },
-                    { title: 'Mobile App', desc: 'Coming soon on Android & iOS', date: 'Jan 18, 2026' },
-                    { title: 'New Quiz Added', desc: 'Python Advanced Quiz is now live!', date: 'Jan 28, 2026' },
-                    { title: 'Feature Update', desc: 'Dark mode now available', date: 'Jan 25, 2026' },
-                    { title: 'Performance Boost', desc: 'Faster quiz loading times', date: 'Jan 22, 2026' },
-                    { title: 'New Batch Started', desc: 'GATE 2026 batch registrations open', date: 'Jan 20, 2026' },
-                    { title: 'Mobile App', desc: 'Coming soon on Android & iOS', date: 'Jan 18, 2026' },
-                  ].map((update, idx) => (
-                    <div key={idx} className="p-4 border-b border-blue-200 dark:border-gray-600 hover:bg-blue-200 dark:hover:bg-gray-600 transition-colors cursor-pointer">
-                      <p className="font-semibold text-gray-900 dark:text-white">{update.title}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-300">{update.desc}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{update.date}</p>
+                  {quickUpdates.length > 0 ? (
+                    quickUpdates.map((update, idx) => (
+                      <div
+                        key={idx}
+                        className="p-4 border-b border-blue-200 dark:border-gray-600 hover:bg-blue-200 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                      >
+                        <p className="font-semibold text-gray-900 dark:text-white">
+                          {update.title}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          {update.description}
+                        </p>
+                        {update.dateText && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {update.dateText}
+                          </p>
+                        )}
+                        {update.linkUrl && update.linkLabel && (
+                          <div className="mt-2">
+                            <a
+                              href={update.linkUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center px-3 py-1 text-xs font-semibold text-white bg-blue-600 rounded-full hover:bg-blue-700"
+                            >
+                              {update.linkLabel}
+                              <svg
+                                className="w-3 h-3 ml-1"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M14 3h7m0 0v7m0-7L10 14"
+                                />
+                              </svg>
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-sm text-gray-600 dark:text-gray-300">
+                      No updates yet. Stay tuned!
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             </div>
@@ -786,24 +849,30 @@ export default function Home() {
               </div>
               <div className="h-52 overflow-hidden">
                 <div className="animate-scroll-vertical-reverse">
-                  {[
-                    { title: 'GATE Prep Session', desc: 'Live session with experts', date: 'Feb 5, 2026 - 10:00 AM' },
-                    { title: 'Career Guidance Webinar', desc: 'Choose your right path', date: 'Feb 8, 2026 - 3:00 PM' },
-                    { title: 'Mock Test Series', desc: 'Full-length practice tests', date: 'Feb 12, 2026 - 9:00 AM' },
-                    { title: 'Interview Skills Workshop', desc: 'Crack your next interview', date: 'Feb 15, 2026 - 2:00 PM' },
-                    { title: 'Coding Bootcamp', desc: '3-day intensive program', date: 'Feb 20-22, 2026' },
-                    { title: 'GATE Prep Session', desc: 'Live session with experts', date: 'Feb 5, 2026 - 10:00 AM' },
-                    { title: 'Career Guidance Webinar', desc: 'Choose your right path', date: 'Feb 8, 2026 - 3:00 PM' },
-                    { title: 'Mock Test Series', desc: 'Full-length practice tests', date: 'Feb 12, 2026 - 9:00 AM' },
-                    { title: 'Interview Skills Workshop', desc: 'Crack your next interview', date: 'Feb 15, 2026 - 2:00 PM' },
-                    { title: 'Coding Bootcamp', desc: '3-day intensive program', date: 'Feb 20-22, 2026' },
-                  ].map((event, idx) => (
-                    <div key={idx} className="p-4 border-b border-purple-200 dark:border-gray-600 hover:bg-purple-200 dark:hover:bg-gray-600 transition-colors cursor-pointer">
-                      <p className="font-semibold text-gray-900 dark:text-white">{event.title}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-300">{event.desc}</p>
-                      <p className="text-xs text-purple-600 dark:text-purple-400 mt-1 font-medium">{event.date}</p>
+                  {onlineTrainings.length > 0 ? (
+                    onlineTrainings.map((event, idx) => (
+                      <div
+                        key={idx}
+                        className="p-4 border-b border-purple-200 dark:border-gray-600 hover:bg-purple-200 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                      >
+                        <p className="font-semibold text-gray-900 dark:text-white">
+                          {event.title}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          {event.description}
+                        </p>
+                        {event.dateText && (
+                          <p className="text-xs text-purple-600 dark:text-purple-400 mt-1 font-medium">
+                            {event.dateText}
+                          </p>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-sm text-gray-600 dark:text-gray-300">
+                      No upcoming trainings. Check back soon.
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
               {/* Registration Form Link */}
@@ -833,24 +902,30 @@ export default function Home() {
               </div>
               <div className="h-64 overflow-hidden">
                 <div className="animate-scroll-vertical">
-                  {[
-                    { title: 'UPSC CSE 2026', desc: 'Prelims: May 25, 2026', status: 'Applications Open' },
-                    { title: 'SSC CGL 2026', desc: 'Tier-1: April 10, 2026', status: 'Notification Out' },
-                    { title: 'GATE 2026', desc: 'Exam: Feb 1-16, 2026', status: 'Admit Card Released' },
-                    { title: 'CAT 2026', desc: 'Exam: Nov 24, 2026', status: 'Coming Soon' },
-                    { title: 'JEE Main 2026', desc: 'Session 1: Jan 2026', status: 'Results Declared' },
-                    { title: 'UPSC CSE 2026', desc: 'Prelims: May 25, 2026', status: 'Applications Open' },
-                    { title: 'SSC CGL 2026', desc: 'Tier-1: April 10, 2026', status: 'Notification Out' },
-                    { title: 'GATE 2026', desc: 'Exam: Feb 1-16, 2026', status: 'Admit Card Released' },
-                    { title: 'CAT 2026', desc: 'Exam: Nov 24, 2026', status: 'Coming Soon' },
-                    { title: 'JEE Main 2026', desc: 'Session 1: Jan 2026', status: 'Results Declared' },
-                  ].map((exam, idx) => (
-                    <div key={idx} className="p-4 border-b border-blue-200 dark:border-gray-600 hover:bg-blue-200 dark:hover:bg-gray-600 transition-colors cursor-pointer">
-                      <p className="font-semibold text-gray-900 dark:text-white">{exam.title}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-300">{exam.desc}</p>
-                      <span className="inline-block text-xs bg-blue-600 text-white px-2 py-1 rounded mt-1">{exam.status}</span>
+                  {latestExamsData.length > 0 ? (
+                    latestExamsData.map((exam, idx) => (
+                      <div
+                        key={idx}
+                        className="p-4 border-b border-blue-200 dark:border-gray-600 hover:bg-blue-200 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                      >
+                        <p className="font-semibold text-gray-900 dark:text-white">
+                          {exam.title}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          {exam.description || exam.dateText}
+                        </p>
+                        {exam.status && (
+                          <span className="inline-block text-xs bg-blue-600 text-white px-2 py-1 rounded mt-1">
+                            {exam.status}
+                          </span>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-sm text-gray-600 dark:text-gray-300">
+                      No exam announcements available right now.
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             </div>
