@@ -279,10 +279,14 @@ const validate = (schema) => {
           });
         }
 
+        // Use the first field error as the main message so clients
+        // see a helpful message like "Description must be at least 3 characters"
+        const primaryMessage = errors[0]?.message || 'Validation failed';
+
         return res.status(400).json({
           success: false,
           error: {
-            message: 'Validation failed',
+            message: primaryMessage,
             details: errors
           }
         });

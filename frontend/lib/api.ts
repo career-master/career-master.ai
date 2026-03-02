@@ -1018,6 +1018,73 @@ class ApiService {
   async deleteQuizSet(id: string): Promise<ApiResponse> {
     return this.request(`/quiz-sets/${id}`, { method: 'DELETE' });
   }
+
+  // Announcements (updates, trainings, exams)
+  async getAnnouncementsPublic(params: { type?: 'update' | 'training' | 'exam'; limit?: number } = {}): Promise<ApiResponse> {
+    const query = new URLSearchParams();
+    if (params.type) query.set('type', params.type);
+    if (params.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return this.request(`/announcements${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  }
+
+  async getAnnouncementsAdmin(params: {
+    type?: 'update' | 'training' | 'exam';
+    isActive?: boolean;
+    page?: number;
+    limit?: number;
+  } = {}): Promise<ApiResponse> {
+    const query = new URLSearchParams();
+    if (params.type) query.set('type', params.type);
+    if (params.isActive !== undefined) query.set('isActive', String(params.isActive));
+    if (params.page) query.set('page', String(params.page));
+    if (params.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return this.request(`/announcements/admin${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  }
+
+  async createAnnouncement(payload: {
+    title: string;
+    description: string;
+    type: 'update' | 'training' | 'exam';
+    dateText?: string;
+    startDate?: string;
+    endDate?: string;
+    status?: string;
+    linkUrl?: string;
+    linkLabel?: string;
+    isActive?: boolean;
+    order?: number;
+  }): Promise<ApiResponse> {
+    return this.request('/announcements', { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  async updateAnnouncement(
+    id: string,
+    payload: Partial<{
+      title: string;
+      description: string;
+      type: 'update' | 'training' | 'exam';
+      dateText?: string;
+      startDate?: string;
+      endDate?: string;
+      status?: string;
+      linkUrl?: string;
+      linkLabel?: string;
+      isActive?: boolean;
+      order?: number;
+    }>
+  ): Promise<ApiResponse> {
+    return this.request(`/announcements/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+  }
+
+  async deleteAnnouncement(id: string): Promise<ApiResponse> {
+    return this.request(`/announcements/${id}`, { method: 'DELETE' });
+  }
+
+  async getAnnouncementById(id: string): Promise<ApiResponse> {
+    return this.request(`/announcements/${id}`, { method: 'GET' });
+  }
 }
 
 export const apiService = new ApiService();

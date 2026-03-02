@@ -17,6 +17,7 @@ const cheatsheetsRoutes = require('./cheatsheets/cheatsheets.routes');
 const quizSetsRoutes = require('./quiz-sets/quiz-sets.routes');
 const topicProgressRoutes = require('./topic-progress/topic-progress.routes');
 const enrollmentsRoutes = require('./enrollments/enrollments.routes');
+const announcementsRoutes = require('./announcements/announcements.routes');
 const env = require('./config/env');
 
 /**
@@ -189,6 +190,7 @@ app.use('/api/cheatsheets', cheatsheetsRoutes);
 app.use('/api/quiz-sets', quizSetsRoutes);
 app.use('/api/topic-progress', topicProgressRoutes);
 app.use('/api/enrollments', enrollmentsRoutes);
+app.use('/api/announcements', announcementsRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -212,6 +214,7 @@ app.get('/', (req, res) => {
       quizSets: '/api/quiz-sets',
       topicProgress: '/api/topic-progress',
       enrollments: '/api/enrollments',
+      announcements: '/api/announcements',
       testEmail: '/api/test-email'
     }
   });
@@ -239,6 +242,7 @@ app.get('/api', (req, res) => {
       quizSets: '/api/quiz-sets',
       topicProgress: '/api/topic-progress',
       enrollments: '/api/enrollments',
+      announcements: '/api/announcements',
       testEmail: '/api/test-email'
     }
   });
