@@ -1,6 +1,7 @@
 const QuizReportRepository = require('./quiz_report.repository');
 const PDFDocument = require('pdfkit');
 const XLSX = require('xlsx');
+const QuizAttempt = require('../quiz/quiz_attempts.model');
 const { ErrorHandler } = require('../middleware/errorHandler');
 
 class QuizReportService {
@@ -16,6 +17,23 @@ class QuizReportService {
       return {
         success: true,
         data: report
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Admin: Get quiz attempt report for any user
+   * @param {string} attemptId
+   * @returns {Promise<Object>}
+   */
+  static async getQuizAttemptReportForAdmin(attemptId) {
+    try {
+      const report = await QuizReportRepository.getQuizAttemptReportForAdmin(attemptId);
+      return {
+        success: true,
+        data: report,
       };
     } catch (error) {
       throw error;
@@ -160,6 +178,27 @@ class QuizReportService {
   }
 
   /**
+   * Admin: generate PDF report for any user's attempt
+   * @param {string} attemptId
+   * @returns {Promise<Buffer>}
+   */
+  static async generatePDFReportForAdmin(attemptId) {
+    try {
+      const attempt = await QuizAttempt.findById(attemptId).select('userId').lean();
+      if (!attempt || !attempt.userId) {
+        throw new ErrorHandler(404, 'Quiz attempt not found');
+      }
+      const ownerId = attempt.userId.toString();
+      return this.generatePDFReport(attemptId, ownerId);
+    } catch (error) {
+      if (error instanceof ErrorHandler) {
+        throw error;
+      }
+      throw new ErrorHandler(500, `Error generating PDF report: ${error.message}`);
+    }
+  }
+
+  /**
    * Generate Excel report
    * @param {string} attemptId
    * @param {string} userId
@@ -230,6 +269,27 @@ class QuizReportService {
   }
 
   /**
+   * Admin: generate Excel report for any user's attempt
+   * @param {string} attemptId
+   * @returns {Promise<Buffer>}
+   */
+  static async generateExcelReportForAdmin(attemptId) {
+    try {
+      const attempt = await QuizAttempt.findById(attemptId).select('userId').lean();
+      if (!attempt || !attempt.userId) {
+        throw new ErrorHandler(404, 'Quiz attempt not found');
+      }
+      const ownerId = attempt.userId.toString();
+      return this.generateExcelReport(attemptId, ownerId);
+    } catch (error) {
+      if (error instanceof ErrorHandler) {
+        throw error;
+      }
+      throw new ErrorHandler(500, `Error generating Excel report: ${error.message}`);
+    }
+  }
+
+  /**
    * Get user's quiz attempts list
    * @param {string} userId
    * @param {Object} filters - Filter object with quizId, subjectId, topicId, etc.
@@ -246,6 +306,35 @@ class QuizReportService {
       return {
         success: true,
         data: attempts
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Admin: Get quiz attempts across users with filters + pagination
+   * @param {Object} filters
+   * @param {{ page: number, limit: number }} pagination
+   * @returns {Promise<Object>}
+   */
+  static async getAdminUserQuizAttempts(filters = {}, pagination = { page: 1, limit: 20 }) {
+    try {
+      const { page = 1, limit = 20 } = pagination || {};
+      const pageNum = Number.isNaN(Number(page)) ? 1 : Number(page);
+      const limitNum = Number.isNaN(Number(limit)) ? 20 : Number(limit);
+
+      const { data, total } = await QuizReportRepository.getAllQuizAttempts(filters, {
+        page: pageNum,
+        limit: limitNum,
+      });
+
+      return {
+        success: true,
+        data,
+        total,
+        page: pageNum,
+        limit: limitNum,
       };
     } catch (error) {
       throw error;

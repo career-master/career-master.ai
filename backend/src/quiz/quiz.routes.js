@@ -41,6 +41,9 @@ router.get('/:id/attempts', userMiddleware, validate(quizIdParamSchema), QuizAtt
 // Public: Get available quizzes for a user (by email)
 router.get('/user/email/:email', validateAttempt(getUserQuizzesSchema), QuizAttemptController.getAvailableQuizzes);
 
+// Admin: bulk delete all quizzes (must be before :id route)
+router.delete('/admin/all', adminMiddleware, QuizController.deleteAllQuizzes);
+
 // Admin: Update quiz
 router.put('/:id', adminMiddleware, validate(updateQuizSchema), QuizController.updateQuiz);
 

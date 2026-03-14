@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import { toast } from 'react-hot-toast';
+import { PROFILE_COMPLETION_ENFORCED, PROFILE_MIN_COMPLETION_PERCENT } from '@/lib/profileConfig';
 import SubjectRequestModal from '@/components/SubjectRequestModal';
 
 type Subject = {
@@ -141,8 +142,10 @@ export default function SubjectsPage() {
     e.preventDefault();
     e.stopPropagation();
     
-    if (profileCompletion < 70) {
-      toast.error(`Profile completion must be at least 70%. Your profile is ${profileCompletion}% complete. Please complete your profile first.`);
+    if (PROFILE_COMPLETION_ENFORCED && profileCompletion < PROFILE_MIN_COMPLETION_PERCENT) {
+      toast.error(
+        `Profile completion must be at least ${PROFILE_MIN_COMPLETION_PERCENT}%. Your profile is ${profileCompletion}% complete. Please complete your profile first.`
+      );
       return;
     }
     
@@ -399,10 +402,10 @@ export default function SubjectsPage() {
                               href={`/dashboard/subjects/${subject._id}`}
                               onClick={(e) => {
                                 // Check profile completion before accessing any subject (including General Knowledge)
-                                if (profileCompletion < 70) {
+                                if (PROFILE_COMPLETION_ENFORCED && profileCompletion < PROFILE_MIN_COMPLETION_PERCENT) {
                                   e.preventDefault();
                                   toast.error(
-                                    `Please complete your profile first. Your profile is ${profileCompletion}% complete. Minimum required: 70%.`,
+                                    `Please complete your profile first. Your profile is ${profileCompletion}% complete. Minimum required: ${PROFILE_MIN_COMPLETION_PERCENT}%.`,
                                     {
                                       duration: 5000,
                                       icon: '⚠️',

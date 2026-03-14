@@ -24,6 +24,7 @@ router.get('/quiz-attempt/:attemptId', ReportsController.getQuizAttemptReport);
 router.get('/quiz-attempt/:attemptId/pdf', ReportsController.downloadPDFReport);
 router.get('/quiz-attempt/:attemptId/excel', ReportsController.downloadExcelReport);
 router.get('/user-quiz-attempts', ReportsController.getUserQuizAttempts);
+router.get('/admin/user-quiz-attempts', ReportsController.getAdminUserQuizAttempts);
 
 module.exports = router;
 

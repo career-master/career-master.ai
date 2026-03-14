@@ -503,6 +503,29 @@ class ApiService {
     });
   }
 
+  // Admin: get quiz attempts across users with filters + pagination
+  async getAdminUserQuizAttempts(filters?: {
+    quizId?: string;
+    subjectId?: string;
+    email?: string;
+    name?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResponse> {
+    const params = new URLSearchParams();
+    if (filters?.quizId) params.append('quizId', filters.quizId);
+    if (filters?.subjectId) params.append('subjectId', filters.subjectId);
+    if (filters?.email) params.append('email', filters.email);
+    if (filters?.name) params.append('name', filters.name);
+    if (filters?.page) params.append('page', String(filters.page));
+    if (filters?.limit) params.append('limit', String(filters.limit));
+
+    const query = params.toString();
+    return this.request(`/reports/admin/user-quiz-attempts${query ? `?${query}` : ''}`, {
+      method: 'GET',
+    });
+  }
+
   async updateQuiz(id: string, payload: {
     title?: string;
     description?: string;

@@ -2,6 +2,9 @@ const QuizRepository = require('./quiz.repository');
 const { ErrorHandler } = require('../middleware/errorHandler');
 const CryptoUtil = require('../utils/crypto');
 const xlsx = require('xlsx');
+const Quiz = require('./quiz.model');
+const QuizAttempt = require('./quiz_attempts.model');
+const QuizSet = require('../quiz-sets/quiz-sets.model');
 
 /**
  * Quiz Service
@@ -255,6 +258,25 @@ class QuizService {
    */
   static async deleteQuiz(quizId) {
     await QuizRepository.deleteQuiz(quizId);
+  }
+
+  /**
+   * Admin: delete all quizzes and related data
+   * - Deletes all quizzes
+   * - Deletes all quiz attempts
+   * - Deletes all quiz sets (links from topics to quizzes)
+   * Subjects and topics are not touched.
+   */
+  static async deleteAllQuizzesAndAttempts() {
+    try {
+      await Promise.all([
+        Quiz.deleteMany({}),
+        QuizAttempt.deleteMany({}),
+        QuizSet.deleteMany({}),
+      ]);
+    } catch (error) {
+      throw new ErrorHandler(500, `Error deleting all quizzes: ${error.message}`);
+    }
   }
 
   /**

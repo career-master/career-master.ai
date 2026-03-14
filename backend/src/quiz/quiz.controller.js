@@ -116,6 +116,18 @@ class QuizController {
     await QuizService.deleteQuiz(req.params.id);
     res.status(204).send();
   });
+
+  /**
+   * DELETE /quizzes/admin/all
+   * Admin: delete all quizzes, attempts, and quiz sets
+   */
+  static deleteAllQuizzes = asyncHandler(async (req, res) => {
+    await QuizService.deleteAllQuizzesAndAttempts();
+    res.status(200).json({
+      success: true,
+      message: 'All quizzes, quiz attempts, and quiz-topic links have been deleted. Subjects and topics are unchanged.',
+    });
+  });
 }
 
 module.exports = QuizController;

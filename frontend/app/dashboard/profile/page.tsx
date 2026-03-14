@@ -495,7 +495,7 @@ export default function DashboardProfilePage() {
             <p className="text-xs text-gray-500 mt-2">
               Complete at least 70% of your profile to attempt quizzes
             </p>
-            )}
+          )}
           </div>
 
         {/* Tabs */}
