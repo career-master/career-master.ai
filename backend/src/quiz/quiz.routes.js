@@ -15,6 +15,9 @@ const adminMiddleware = [authenticate, requireRole(['super_admin', 'content_admi
 // Quiz access routes (listing, taking) are available to any authenticated user
 const userMiddleware = [authenticate];
 
+// Admin: bulk delete all quizzes (must be first so /admin/all is not matched by /:id)
+router.delete('/admin/all', adminMiddleware, QuizController.deleteAllQuizzes);
+
 // Admin: Create quiz with JSON payload
 router.post('/', adminMiddleware, validate(createQuizSchema), QuizController.createQuiz);
 
@@ -40,9 +43,6 @@ router.get('/:id/attempts', userMiddleware, validate(quizIdParamSchema), QuizAtt
 
 // Public: Get available quizzes for a user (by email)
 router.get('/user/email/:email', validateAttempt(getUserQuizzesSchema), QuizAttemptController.getAvailableQuizzes);
-
-// Admin: bulk delete all quizzes (must be before :id route)
-router.delete('/admin/all', adminMiddleware, QuizController.deleteAllQuizzes);
 
 // Admin: Update quiz
 router.put('/:id', adminMiddleware, validate(updateQuizSchema), QuizController.updateQuiz);
