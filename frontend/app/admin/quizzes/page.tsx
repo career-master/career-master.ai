@@ -5,13 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import { toast } from 'react-hot-toast';
-
-const DOMAINS = [
-  '3 CLASS', '4 CLASS', '5 CLASS', '6 CLASS', '7 CLASS', '8 CLASS', '9 CLASS', '10 CLASS',
-  'INTER (10+2)', 'Technology', 'Olympiad Exams',
-  'National Level (All-India) Government Exams', 'STATE LEVEL GOVT EXAMS', 'STATE LEVEL ENTRANCE EXAMS',
-  'National Level (All-India) Entrance Exams',
-];
+import { FALLBACK_DOMAINS } from '@/lib/constants';
 
 type LevelFilter = '' | 'basic' | 'hard';
 
@@ -33,13 +27,27 @@ export default function AdminQuizzesPage() {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [filterTopics, setFilterTopics] = useState<any[]>([]);
   const [updatingLevelId, setUpdatingLevelId] = useState<string | null>(null);
+  const [domainNames, setDomainNames] = useState<string[]>(FALLBACK_DOMAINS);
+  const [categoriesFromApi, setCategoriesFromApi] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!filterDomain) {
+      setCategoriesFromApi([]);
+      return;
+    }
+    apiService.getCategories({ domain: filterDomain }).then((r) => {
+      if (r.success && Array.isArray(r.data)) setCategoriesFromApi((r.data as { name: string }[]).map((c) => c.name));
+      else setCategoriesFromApi([]);
+    });
+  }, [filterDomain]);
 
   const categoriesInDomain = useMemo(() => {
     if (!filterDomain) return [];
     const list = subjects.filter((s: any) => subjectInDomain(s, filterDomain));
-    const cats = Array.from(new Set(list.map((s: any) => s.category).filter(Boolean))) as string[];
-    return cats.filter((c) => c !== 'Technology' && c !== 'Olympiad Exams');
-  }, [subjects, filterDomain]);
+    const fromSubjects = Array.from(new Set(list.map((s: any) => s.category).filter(Boolean))) as string[];
+    const merged = new Set<string>([...categoriesFromApi, ...fromSubjects]);
+    return Array.from(merged).filter((c) => c !== 'Technology' && c !== 'Olympiad Exams').sort();
+  }, [subjects, filterDomain, categoriesFromApi]);
 
   const subjectsForFilter = useMemo(() => {
     let list = subjects.filter((s: any) => filterDomain ? subjectInDomain(s, filterDomain) : true);
@@ -82,6 +90,11 @@ export default function AdminQuizzesPage() {
       const res = await apiService.getSubjects({ limit: 500 });
       if (res.success && res.data?.items) setSubjects(res.data.items);
     })();
+    (async () => {
+      const res = await apiService.getDomains();
+      if (res.success && Array.isArray(res.data)) setDomainNames((res.data as { name: string }[]).map((d) => d.name));
+      else setDomainNames(FALLBACK_DOMAINS);
+    })();
   }, [isAuthenticated, user, router]);
 
   useEffect(() => {
@@ -105,7 +118,10 @@ export default function AdminQuizzesPage() {
   }, [isAuthenticated, user, loadQuizzes]);
 
   const filteredQuizzes = filterLevel
-    ? quizzes.filter((q) => q.level === filterLevel)
+    ? quizzes.filter((q) => {
+        const qLevel = q.level === 'basic' || q.level === 'hard' ? q.level : (q.level == null || q.level === '' ? 'basic' : q.level);
+        return qLevel === filterLevel;
+      })
     : quizzes;
 
   const handleLevelChange = async (quizId: string, value: string) => {
@@ -160,7 +176,7 @@ export default function AdminQuizzesPage() {
                   className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500"
                 >
                   <option value="">All</option>
-                  {DOMAINS.map((d) => (
+                  {domainNames.map((d) => (
                     <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
@@ -302,13 +318,14 @@ export default function AdminQuizzesPage() {
                         <button
                           type="button"
                           onClick={async () => {
+                            if (!confirm('Are you sure you want to delete this quiz? This cannot be undone.')) return;
                             try {
                               const res = await apiService.deleteQuiz(quiz._id);
                               if (res.success) {
-                                toast.success('Quiz deleted');
-                                await loadQuizzes(page);
+                                toast.success('Quiz deleted. Refreshing list.');
+                                await loadQuizzes(1);
                               } else {
-                                toast.error(res.message || 'Failed to delete quiz');
+                                toast.error((res as any).message || 'Failed to delete quiz');
                               }
                             } catch (err: any) {
                               toast.error(err.message || 'Failed to delete quiz');

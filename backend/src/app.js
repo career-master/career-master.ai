@@ -19,6 +19,8 @@ const topicProgressRoutes = require('./topic-progress/topic-progress.routes');
 const enrollmentsRoutes = require('./enrollments/enrollments.routes');
 const announcementsRoutes = require('./announcements/announcements.routes');
 const settingsRoutes = require('./settings/settings.routes');
+const domainsRoutes = require('./domains/domains.routes');
+const categoriesRoutes = require('./categories/categories.routes');
 const env = require('./config/env');
 
 /**
@@ -193,6 +195,8 @@ app.use('/api/topic-progress', topicProgressRoutes);
 app.use('/api/enrollments', enrollmentsRoutes);
 app.use('/api/announcements', announcementsRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/domains', domainsRoutes);
+app.use('/api/categories', categoriesRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

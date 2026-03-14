@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import { toast } from 'react-hot-toast';
+import { FALLBACK_DOMAINS } from '@/lib/constants';
 import { useProfileSettings } from '@/contexts/ProfileSettingsContext';
 import { getProfileCompletion } from '@/lib/profileCompletion';
 import SubjectRequestModal from '@/components/SubjectRequestModal';
@@ -36,6 +37,22 @@ export default function SubjectsPage() {
   const [filterLevel, setFilterLevel] = useState<string>('');
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  const [domainNames, setDomainNames] = useState<string[]>(FALLBACK_DOMAINS);
+  const [categoriesFromApi, setCategoriesFromApi] = useState<string[]>([]);
+
+  const fetchDomainsForUser = useCallback(async () => {
+    try {
+      const res = await apiService.getDomains({ active: true });
+      if (res.success && Array.isArray(res.data)) {
+        const names = (res.data as { name: string }[]).map((d) => d.name);
+        setDomainNames(names.length > 0 ? names : FALLBACK_DOMAINS);
+      } else {
+        setDomainNames(FALLBACK_DOMAINS);
+      }
+    } catch {
+      setDomainNames(FALLBACK_DOMAINS);
+    }
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -44,8 +61,29 @@ export default function SubjectsPage() {
     }
     if (isAuthenticated) {
       loadSubjects();
+      fetchDomainsForUser();
     }
-  }, [isAuthenticated, authLoading, router]);
+  }, [isAuthenticated, authLoading, router, fetchDomainsForUser]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') fetchDomainsForUser();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [isAuthenticated, fetchDomainsForUser]);
+
+  useEffect(() => {
+    if (!filterDomain) {
+      setCategoriesFromApi([]);
+      return;
+    }
+    apiService.getCategories({ domain: filterDomain, active: true }).then((r) => {
+      if (r.success && Array.isArray(r.data)) setCategoriesFromApi((r.data as { name: string }[]).map((c) => c.name));
+      else setCategoriesFromApi([]);
+    });
+  }, [filterDomain]);
 
   const loadSubjects = async () => {
     try {
@@ -98,13 +136,6 @@ export default function SubjectsPage() {
     return matchesSearch && matchesDomain && matchesCategory && matchesLevel;
   });
 
-  const DOMAINS = [
-    '3 CLASS', '4 CLASS', '5 CLASS', '6 CLASS', '7 CLASS', '8 CLASS', '9 CLASS', '10 CLASS',
-    'INTER (10+2)', 'Technology', 'Olympiad Exams',
-    'National Level (All-India) Government Exams', 'STATE LEVEL GOVT EXAMS', 'STATE LEVEL ENTRANCE EXAMS',
-    'National Level (All-India) Entrance Exams',
-  ];
-
   // Check if user has access to a subject
   const hasAccess = (subject: Subject) => {
     // If subject has no batches, it's available to all
@@ -146,7 +177,11 @@ export default function SubjectsPage() {
   }, {} as Record<string, Subject[]>);
 
   // Get unique categories and levels for filters
-  const categories = Array.from(new Set(subjects.map((s) => s.category).filter(Boolean)));
+  const categories = useMemo(() => {
+    const fromSubjects = Array.from(new Set(subjects.map((s) => s.category).filter(Boolean)));
+    const merged = new Set<string>([...categoriesFromApi, ...fromSubjects]);
+    return Array.from(merged).sort();
+  }, [subjects, categoriesFromApi]);
   const levels = ['basic', 'hard'];
 
   if (authLoading || loading) {
@@ -199,7 +234,7 @@ export default function SubjectsPage() {
                 className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white"
               >
                 <option value="">All Domains</option>
-                {DOMAINS.map((d) => (
+                {domainNames.map((d) => (
                   <option key={d} value={d}>{d}</option>
                 ))}
               </select>

@@ -44,7 +44,7 @@ class UsersController {
 
   static deleteUser = asyncHandler(async (req, res) => {
     await UsersService.deleteUser(req.params.id);
-    res.status(204).send();
+    res.status(200).json({ success: true, message: 'User deleted' });
   });
 }
 

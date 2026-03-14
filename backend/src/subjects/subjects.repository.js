@@ -129,6 +129,19 @@ class SubjectRepository {
   }
 
   /**
+   * Bulk delete subjects by IDs
+   * @param {Array<string>} ids
+   * @returns {Promise<{ deletedCount: number }>}
+   */
+  static async bulkDeleteSubjects(ids) {
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return { deletedCount: 0 };
+    }
+    const result = await Subject.deleteMany({ _id: { $in: ids } });
+    return { deletedCount: result.deletedCount || 0 };
+  }
+
+  /**
    * Bulk update subject orders
    * @param {Array<{id: string, order: number}>} orders
    * @returns {Promise<void>}

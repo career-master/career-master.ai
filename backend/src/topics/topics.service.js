@@ -108,6 +108,18 @@ class TopicService {
     }
     await TopicRepository.bulkUpdateOrders(orders);
   }
+
+  /**
+   * Bulk delete topics by IDs
+   * @param {Array<string>} ids
+   * @returns {Promise<{ deletedCount: number }>}
+   */
+  static async bulkDeleteTopics(ids) {
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return { deletedCount: 0 };
+    }
+    return await TopicRepository.bulkDeleteTopics(ids);
+  }
 }
 
 module.exports = TopicService;

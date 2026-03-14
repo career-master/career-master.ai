@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
+import { FALLBACK_DOMAINS } from '@/lib/constants';
 
 type Subject = {
   _id: string;
@@ -76,6 +77,8 @@ export default function DashboardQuizzesPage() {
   const [loadingQuizzes, setLoadingQuizzes] = useState(false);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [domainNames, setDomainNames] = useState<string[]>(FALLBACK_DOMAINS);
+  const [categoriesFromApi, setCategoriesFromApi] = useState<string[]>([]);
   const [expandedRootIds, setExpandedRootIds] = useState<Set<string>>(new Set());
   // Pagination for sub-topics when they exceed the limit (per root)
   const [subTopicPageByRoot, setSubTopicPageByRoot] = useState<Record<string, number>>({});
@@ -130,7 +133,14 @@ export default function DashboardQuizzesPage() {
     } catch {}
   }, [selectedLevels]);
 
-  // Load subjects and standalone (no level filter here; level filters only topic quizzes when a subject is selected)
+  // Level to pass to API: single selection or undefined (show all)
+  const levelForApi = useMemo(() => {
+    if (selectedLevels.size === 0) return undefined;
+    if (selectedLevels.size === 2) return undefined;
+    return selectedLevels.has('basic') ? 'basic' : selectedLevels.has('hard') ? 'hard' : undefined;
+  }, [selectedLevels]);
+
+  // Load subjects (subscribed only - backend filters by user access) and standalone quizzes with level filter
   useEffect(() => {
     if (!isAuthenticated) return;
     const load = async () => {
@@ -139,7 +149,7 @@ export default function DashboardQuizzesPage() {
         setError('');
         const [subjRes, standRes] = await Promise.all([
           apiService.getSubjects({ page: 1, limit: 200, isActive: true }),
-          apiService.getAvailableQuizzesForUser((user as any)?.email || ''),
+          apiService.getAvailableQuizzesForUser((user as any)?.email || '', levelForApi),
         ]);
         if (subjRes.success && subjRes.data?.items) {
           setSubjects(subjRes.data.items);
@@ -156,7 +166,7 @@ export default function DashboardQuizzesPage() {
       }
     };
     load();
-  }, [isAuthenticated, (user as any)?.email]);
+  }, [isAuthenticated, (user as any)?.email, levelForApi]);
 
   // Load topics + quiz sets + progress for selected subject (used on mount and when refetching after quiz)
   const loadTopicsWithProgress = useCallback(async (forceFresh = false) => {
@@ -259,31 +269,64 @@ export default function DashboardQuizzesPage() {
   const hasAccess = (s: Subject) =>
     !s.batches || s.batches.length === 0 || userBatches.some((b: string) => s.batches?.includes(b));
 
-  // Domains from subjects (sorted: classes, INTER, Technology, Olympiad, others)
-  const DOMAIN_ORDER = [
-    '3 CLASS', '4 CLASS', '5 CLASS', '6 CLASS', '7 CLASS', '8 CLASS', '9 CLASS', '10 CLASS',
-    'INTER (10+2)', 'Technology', 'Olympiad Exams',
-    'National Level (All-India) Government Exams', 'STATE LEVEL GOVT EXAMS', 'STATE LEVEL ENTRANCE EXAMS',
-    'National Level (All-India) Entrance Exams',
-  ];
-  const domainsFromSubjects = useMemo(() => {
-    const set = new Set<string>();
-    subjects.forEach((s) => {
-      if (s.domain) set.add(s.domain);
-      if (s.domain === 'Technology' && s.category === 'Technology') set.add('Technology');
-    });
-    return DOMAIN_ORDER.filter((d) => set.has(d));
-  }, [subjects]);
+  const fetchDomainsForUser = useCallback(async () => {
+    try {
+      const res = await apiService.getDomains({ active: true });
+      if (res.success && Array.isArray(res.data)) {
+        const names = (res.data as { name: string }[]).map((d) => d.name);
+        setDomainNames(names.length > 0 ? names : FALLBACK_DOMAINS);
+      } else {
+        setDomainNames(FALLBACK_DOMAINS);
+      }
+    } catch {
+      setDomainNames(FALLBACK_DOMAINS);
+    }
+  }, []);
 
-  // Categories in selected domain (for filter pills; hide for Olympiad)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    fetchDomainsForUser();
+  }, [isAuthenticated, fetchDomainsForUser]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') fetchDomainsForUser();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [isAuthenticated, fetchDomainsForUser]);
+
+  useEffect(() => {
+    if (!filterDomain) {
+      setCategoriesFromApi([]);
+      return;
+    }
+    apiService.getCategories({ domain: filterDomain, active: true }).then((r) => {
+      if (r.success && Array.isArray(r.data)) setCategoriesFromApi((r.data as { name: string }[]).map((c) => c.name));
+      else setCategoriesFromApi([]);
+    });
+  }, [filterDomain]);
+
+  const domainsForFilter = useMemo(() => {
+    const fromSubjects = new Set<string>();
+    subjects.forEach((s) => {
+      if (s.domain) fromSubjects.add(s.domain);
+      if (s.domain === 'Technology' && s.category === 'Technology') fromSubjects.add('Technology');
+    });
+    const merged = new Set<string>([...domainNames, ...fromSubjects]);
+    return Array.from(merged).sort();
+  }, [domainNames, subjects]);
+
   const categoriesInDomain = useMemo(() => {
     if (!filterDomain) return [];
     const list = subjects.filter(
       (s) => s.domain === filterDomain || (filterDomain === 'Technology' && s.category === 'Technology')
     );
-    const cats = Array.from(new Set(list.map((s) => s.category).filter(Boolean))) as string[];
-    return cats.filter((c) => c !== 'Technology' && c !== 'Olympiad Exams');
-  }, [subjects, filterDomain]);
+    const fromSubjects = Array.from(new Set(list.map((s) => s.category).filter(Boolean))) as string[];
+    const merged = new Set<string>([...categoriesFromApi, ...fromSubjects]);
+    return Array.from(merged).filter((c) => c !== 'Technology' && c !== 'Olympiad Exams').sort();
+  }, [subjects, filterDomain, categoriesFromApi]);
 
   // Filter subjects by domain, category, search; then group by category
   const groupedByCategory = useMemo(() => {
@@ -328,8 +371,7 @@ export default function DashboardQuizzesPage() {
   const selectedSubject = subjects.find((s) => s._id === selectedSubjectId);
   const showStandaloneOnly = !selectedSubjectId;
 
-  // When a subject is selected, filter by selected levels. Empty = show all. Otherwise show only quizzes
-  // whose level is in the selection; quizzes with no level are excluded when any level is selected.
+  // When a subject is selected, filter by selected levels. Empty = show all. Basic includes null/undefined level.
   const filteredTopicsWithQuizzes = useMemo(() => {
     if (selectedLevels.size === 0) return topicsWithQuizzes;
     return topicsWithQuizzes.map((tw) => ({
@@ -337,7 +379,9 @@ export default function DashboardQuizzesPage() {
       quizSets: tw.quizSets.filter((qs) => {
         const q = qs.quizId && typeof qs.quizId === 'object' ? (qs.quizId as { level?: string }) : null;
         if (!q) return false;
-        return !!q.level && selectedLevels.has(q.level as 'basic' | 'hard');
+        const lvl = q.level === 'basic' || q.level === 'hard' ? q.level : (q.level == null || q.level === '' ? 'basic' : null);
+        if (!lvl) return false;
+        return selectedLevels.has(lvl as 'basic' | 'hard');
       }),
     }));
   }, [topicsWithQuizzes, selectedLevels]);
@@ -521,57 +565,9 @@ export default function DashboardQuizzesPage() {
         <div className="mb-6 animate-fade-in">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Practice Quizzes</h1>
           <p className="text-lg text-gray-600 mb-2">
-            Pick a subject → see topics → take a quiz. Simple.
+            Pick a subject from your subscribed subjects → see topics → take a quiz.
           </p>
-          <p className="text-sm text-gray-500 mb-4">Filter below, then pick a subject on the left</p>
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-4">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Find a subject or quiz..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 placeholder-gray-400"
-              />
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            {/* Dropdown filters below search */}
-            <div className="flex flex-wrap items-center gap-3 pt-1 border-t border-gray-100">
-              <span className="text-sm font-medium text-gray-600">Filter:</span>
-              <div className="flex flex-wrap items-center gap-2">
-                <label className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">Domain</span>
-                  <select
-                    value={filterDomain}
-                    onChange={(e) => { setFilterDomain(e.target.value); setFilterCategory(''); }}
-                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-w-[140px]"
-                  >
-                    <option value="">All domains</option>
-                    {domainsFromSubjects.map((d) => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
-                </label>
-                {filterDomain && filterDomain !== 'Olympiad Exams' && categoriesInDomain.length > 0 && (
-                  <label className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500">Category</span>
-                    <select
-                      value={filterCategory}
-                      onChange={(e) => setFilterCategory(e.target.value)}
-                      className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-w-[140px]"
-                    >
-                      <option value="">All</option>
-                      {categoriesInDomain.map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-              </div>
-            </div>
-          </div>
+          <p className="text-sm text-gray-500">Quizzes are shown only for subjects you have subscribed to.</p>
         </div>
 
         {error && (
@@ -582,6 +578,54 @@ export default function DashboardQuizzesPage() {
             <span>Something went wrong. Please try again.</span>
           </div>
         )}
+
+        <div className="mb-6 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+          <p className="text-sm font-medium text-gray-700 mb-3">Filter</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex-1 min-w-[200px] relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Find a subject or quiz..."
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600 whitespace-nowrap">Domain</span>
+              <select
+                value={filterDomain}
+                onChange={(e) => { setFilterDomain(e.target.value); setFilterCategory(''); }}
+                className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white min-w-[180px]"
+              >
+                <option value="">All domains</option>
+                {domainsForFilter.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+            {filterDomain && filterDomain !== 'Olympiad Exams' && categoriesInDomain.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 whitespace-nowrap">Category</span>
+                <select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white min-w-[160px]"
+                >
+                  <option value="">All categories</option>
+                  {categoriesInDomain.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Left: Sidebar — subjects or, after click, topics for selected subject */}
@@ -758,7 +802,7 @@ export default function DashboardQuizzesPage() {
                 /* No subject selected: sidebar = subjects only (filters are in dropdowns above) */
                 <div key="subjects-view" className="animate-slide-in-left flex flex-col h-full">
                   <div className="bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-3">
-                    <h2 className="text-lg font-bold text-white">Pick a subject</h2>
+                    <h2 className="text-lg font-bold text-white">Subscribed Subjects</h2>
                     <p className="text-purple-100 text-sm mt-0.5">Use filters above to narrow down</p>
                   </div>
                   <div className="flex-1 overflow-y-auto p-3 max-h-[calc(100vh-320px)]">

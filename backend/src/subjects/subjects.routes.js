@@ -19,6 +19,10 @@ router.post('/', adminMiddleware, validate(createSubjectSchema), SubjectControll
 // User: Get all subjects (with optional filters)
 router.get('/', userMiddleware, SubjectController.getSubjects);
 
+// Admin: Get mapping list (domain, category, subject, sub-topic) - must be before /:id
+router.get('/mapping-list', adminMiddleware, SubjectController.getMappingList);
+router.post('/mapping/bulk-delete', adminMiddleware, SubjectController.bulkDeleteMapping);
+
 // Subject Join Requests
 // User: Create subject join request
 router.post('/requests', userMiddleware, SubjectJoinRequestController.createRequest);

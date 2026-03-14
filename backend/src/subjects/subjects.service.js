@@ -185,6 +185,66 @@ class SubjectService {
     }
     await SubjectRepository.bulkUpdateOrders(orders);
   }
+
+  /**
+   * Bulk delete subjects by IDs
+   * @param {Array<string>} ids
+   * @returns {Promise<{ deletedCount: number }>}
+   */
+  static async bulkDeleteSubjects(ids) {
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return { deletedCount: 0 };
+    }
+    return await SubjectRepository.bulkDeleteSubjects(ids);
+  }
+
+  /**
+   * Get flattened mapping list: domain, category, subject, sub-topic (one row per subject + one per topic)
+   * For admin Manage Mapping page. Each row has type 'subject' | 'topic', id, and display fields.
+   */
+  static async getMappingList() {
+    const Subject = require('./subjects.model');
+    const Topic = require('../topics/topics.model');
+    const subjects = await Subject.find({}).sort({ order: 1, createdAt: -1 }).lean();
+    const subjectIds = subjects.map((s) => s._id);
+    const topics = await Topic.find({ subjectId: { $in: subjectIds } }).sort({ order: 1 }).lean();
+    const rows = [];
+    let sno = 1;
+    for (const subj of subjects) {
+      const subjIdStr = subj._id.toString();
+      const createdBy = subj.createdBy ? subj.createdBy.toString() : '';
+      rows.push({
+        sno: sno++,
+        type: 'subject',
+        id: subjIdStr,
+        subjectId: subjIdStr,
+        domain: subj.domain || '',
+        category: subj.category || '',
+        subject: subj.title || '',
+        subTopic: null,
+        level: subj.level || 'basic',
+        createdBy,
+        isActive: subj.isActive !== false
+      });
+      const subjectTopics = topics.filter((t) => t.subjectId && t.subjectId.toString() === subjIdStr);
+      for (const t of subjectTopics) {
+        rows.push({
+          sno: sno++,
+          type: 'topic',
+          id: t._id.toString(),
+          subjectId: subjIdStr,
+          domain: subj.domain || '',
+          category: subj.category || '',
+          subject: subj.title || '',
+          subTopic: t.title || '',
+          level: subj.level || 'basic',
+          createdBy: t.createdBy ? t.createdBy.toString() : '',
+          isActive: t.isActive !== false
+        });
+      }
+    }
+    return rows;
+  }
 }
 
 module.exports = SubjectService;

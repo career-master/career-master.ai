@@ -101,6 +101,19 @@ class TopicRepository {
   }
 
   /**
+   * Bulk delete topics by IDs
+   * @param {Array<string>} ids
+   * @returns {Promise<{ deletedCount: number }>}
+   */
+  static async bulkDeleteTopics(ids) {
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return { deletedCount: 0 };
+    }
+    const result = await Topic.deleteMany({ _id: { $in: ids } });
+    return { deletedCount: result.deletedCount || 0 };
+  }
+
+  /**
    * Bulk update topic orders
    * @param {Array<{id: string, order: number}>} orders
    * @returns {Promise<void>}

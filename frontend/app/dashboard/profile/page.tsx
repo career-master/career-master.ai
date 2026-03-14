@@ -107,7 +107,17 @@ export default function DashboardProfilePage() {
       setForm({
         firstName: profile.firstName || '',
         lastName: profile.lastName || '',
-        dateOfBirth: profile.dateOfBirth ? new Date(profile.dateOfBirth).toISOString().split('T')[0] : '',
+        dateOfBirth: (() => {
+          const d = profile.dateOfBirth;
+          if (!d) return '';
+          try {
+            const date = new Date(d);
+            if (Number.isNaN(date.getTime())) return typeof d === 'string' ? d : '';
+            return date.toISOString().split('T')[0];
+          } catch {
+            return typeof d === 'string' ? d : '';
+          }
+        })(),
         gender: profile.gender || '',
         guardianName: profile.guardianName || '',
         guardianRelation: profile.guardianRelation || '',

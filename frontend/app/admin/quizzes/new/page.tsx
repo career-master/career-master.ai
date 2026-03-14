@@ -7,6 +7,7 @@ import * as XLSX from 'xlsx';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import { toast } from 'react-hot-toast';
+import { FALLBACK_DOMAINS } from '@/lib/constants';
 import QuizSectionEditor from '@/components/QuizSectionEditor';
 import QuestionTypeSelector from '@/components/QuestionTypeSelector';
 import QuestionFormRouter from '@/components/question-forms/QuestionFormRouter';
@@ -45,12 +46,7 @@ export default function AdminCreateQuizPage() {
   const [level, setLevel] = useState<'basic' | 'hard' | ''>('');
 
   // Link: Domain → Category → Subject → Sub-topic (optional: where this quiz appears for students)
-  const DOMAINS = [
-    '3 CLASS', '4 CLASS', '5 CLASS', '6 CLASS', '7 CLASS', '8 CLASS', '9 CLASS', '10 CLASS',
-    'INTER (10+2)', 'Technology', 'Olympiad Exams',
-    'National Level (All-India) Government Exams', 'STATE LEVEL GOVT EXAMS', 'STATE LEVEL ENTRANCE EXAMS',
-    'National Level (All-India) Entrance Exams',
-  ];
+  const [domainNames, setDomainNames] = useState<string[]>(FALLBACK_DOMAINS);
   const [selectedDomain, setSelectedDomain] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [subjectId, setSubjectId] = useState('');
@@ -70,11 +66,24 @@ export default function AdminCreateQuizPage() {
   const subjectInDomain = (s: any, domain: string) =>
     s.domain === domain || (domain === 'Technology' && s.category === 'Technology');
 
+  const [categoriesFromApi, setCategoriesFromApi] = useState<string[]>([]);
+  useEffect(() => {
+    if (!selectedDomain) {
+      setCategoriesFromApi([]);
+      return;
+    }
+    apiService.getCategories({ domain: selectedDomain }).then((r) => {
+      if (r.success && Array.isArray(r.data)) setCategoriesFromApi((r.data as { name: string }[]).map((c) => c.name));
+      else setCategoriesFromApi([]);
+    });
+  }, [selectedDomain]);
+
   const categoriesInDomain = useMemo(() => {
     const list = selectedDomain ? subjects.filter((s: any) => subjectInDomain(s, selectedDomain)) : subjects;
-    const cats = Array.from(new Set(list.map((s: any) => s.category).filter(Boolean))) as string[];
-    return cats.filter((c) => c !== 'Technology' && c !== 'Olympiad Exams');
-  }, [subjects, selectedDomain]);
+    const fromSubjects = Array.from(new Set(list.map((s: any) => s.category).filter(Boolean))) as string[];
+    const merged = new Set<string>([...categoriesFromApi, ...fromSubjects]);
+    return Array.from(merged).filter((c) => c !== 'Technology' && c !== 'Olympiad Exams').sort();
+  }, [subjects, selectedDomain, categoriesFromApi]);
 
   const filteredSubjects = useMemo(() => {
     let list = subjects;
@@ -176,9 +185,14 @@ export default function AdminCreateQuizPage() {
       return;
     }
 
-    // Load batches and subjects (for Link to Subject & Topic dropdowns)
+    // Load batches, subjects, and domains (for Link to Subject & Topic dropdowns)
     loadBatches();
     loadSubjects();
+    (async () => {
+      const res = await apiService.getDomains();
+      if (res.success && Array.isArray(res.data)) setDomainNames((res.data as { name: string }[]).map((d) => d.name));
+      else setDomainNames(FALLBACK_DOMAINS);
+    })();
 
     // Load quiz data if editing
     if (quizId) {
@@ -1139,7 +1153,7 @@ export default function AdminCreateQuizPage() {
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500"
                       >
                         <option value="">— Don&apos;t link —</option>
-                        {DOMAINS.map((d) => (
+                        {domainNames.map((d) => (
                           <option key={d} value={d}>{d}</option>
                         ))}
                       </select>

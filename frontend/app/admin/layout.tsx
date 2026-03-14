@@ -189,7 +189,12 @@ export default function AdminLayout({
               <nav className="space-y-1">
                 {navItems.map((item) => {
                   const isActive =
-                    activeMenu === item.id || (item.href && pathname?.startsWith(item.href));
+                    activeMenu === item.id ||
+                    (item.href &&
+                      pathname?.startsWith(item.href) &&
+                      !navItems.some(
+                        (o) => o.href && o.href.length > (item.href?.length ?? 0) && pathname?.startsWith(o.href)
+                      ));
                   return (
                     <button
                       key={item.id}

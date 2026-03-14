@@ -1,4 +1,5 @@
 const SubjectService = require('./subjects.service');
+const TopicService = require('../topics/topics.service');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 /**
@@ -124,6 +125,38 @@ class SubjectController {
     res.status(200).json({
       success: true,
       message: 'Subject orders updated successfully'
+    });
+  });
+
+  /**
+   * GET /subjects/mapping-list
+   * Flattened list for Manage Mapping (domain, category, subject, sub-topic rows)
+   */
+  static getMappingList = asyncHandler(async (req, res) => {
+    const rows = await SubjectService.getMappingList();
+    res.status(200).json({
+      success: true,
+      data: rows
+    });
+  });
+
+  /**
+   * POST /subjects/mapping/bulk-delete
+   * Body: { subjectIds: string[], topicIds: string[] }
+   */
+  static bulkDeleteMapping = asyncHandler(async (req, res) => {
+    const { subjectIds = [], topicIds = [] } = req.body;
+    const subIds = Array.isArray(subjectIds) ? subjectIds.filter(Boolean) : [];
+    const topIds = Array.isArray(topicIds) ? topicIds.filter(Boolean) : [];
+    const [subjectResult, topicResult] = await Promise.all([
+      SubjectService.bulkDeleteSubjects(subIds),
+      TopicService.bulkDeleteTopics(topIds)
+    ]);
+    const total = (subjectResult.deletedCount || 0) + (topicResult.deletedCount || 0);
+    res.status(200).json({
+      success: true,
+      message: `Deleted ${total} item(s)`,
+      data: { subjectsDeleted: subjectResult.deletedCount || 0, topicsDeleted: topicResult.deletedCount || 0 }
     });
   });
 }

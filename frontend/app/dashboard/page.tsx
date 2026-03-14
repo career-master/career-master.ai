@@ -370,11 +370,11 @@ export default function DashboardPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fetch dashboard stats
+  // Fetch dashboard stats (and refetch when user returns to tab so quiz count stays current after admin add/delete)
   useEffect(() => {
-    const loadStats = async () => {
+    const loadStats = async (showLoading = true) => {
       try {
-        setLoading(true);
+        if (showLoading) setLoading(true);
         const res = await apiService.getUserDashboardStats();
         if (res.success && res.data) {
           setStats(res.data as DashboardStats);
@@ -382,13 +382,18 @@ export default function DashboardPage() {
       } catch (error) {
         console.error('Failed to load dashboard stats:', error);
       } finally {
-        setLoading(false);
+        if (showLoading) setLoading(false);
       }
     };
 
     if (user) {
-      loadStats();
+      loadStats(true);
     }
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && user) loadStats(false);
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
   }, [user]);
 
   // Initialize chart with dynamic data

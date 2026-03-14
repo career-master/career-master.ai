@@ -860,12 +860,13 @@ class ApiService {
   }
 
   // Subjects (admin + user)
-  async getSubjects(params: { page?: number; limit?: number; isActive?: boolean; domain?: string; level?: 'basic' | 'hard' } = {}): Promise<ApiResponse> {
+  async getSubjects(params: { page?: number; limit?: number; isActive?: boolean; domain?: string; category?: string; level?: 'basic' | 'hard' } = {}): Promise<ApiResponse> {
     const query = new URLSearchParams();
     if (params.page) query.set('page', String(params.page));
     if (params.limit) query.set('limit', String(params.limit));
     if (params.isActive !== undefined) query.set('isActive', String(params.isActive));
     if (params.domain) query.set('domain', params.domain);
+    if (params.category) query.set('category', params.category);
     if (params.level) query.set('level', params.level);
     const queryString = query.toString();
     return this.request(`/subjects${queryString ? `?${queryString}` : ''}`, { method: 'GET' });
@@ -938,6 +939,61 @@ class ApiService {
 
   async bulkUpdateSubjectOrders(orders: Array<{ id: string; order: number }>): Promise<ApiResponse> {
     return this.request('/subjects/orders', { method: 'PUT', body: JSON.stringify({ orders }) });
+  }
+
+  /** Domains master list (for all Domain dropdowns). Add new domains from Subjects & Topics → Manage Domains. */
+  async getDomains(params?: { active?: boolean }): Promise<ApiResponse> {
+    const q = params?.active !== undefined ? `?active=${params.active}` : '';
+    return this.request(`/domains${q}`, { method: 'GET' });
+  }
+
+  async createDomain(payload: { name: string; order?: number; isActive?: boolean }): Promise<ApiResponse> {
+    return this.request('/domains', { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  async updateDomain(id: string, payload: { name?: string; order?: number; isActive?: boolean }): Promise<ApiResponse> {
+    return this.request(`/domains/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+  }
+
+  async deleteDomain(id: string): Promise<ApiResponse> {
+    return this.request(`/domains/${id}`, { method: 'DELETE' });
+  }
+
+  /** Categories for a domain (for Category dropdowns). Add from Subjects & Topics → Manage Categories. */
+  async getCategories(params?: { domain?: string; active?: boolean }): Promise<ApiResponse> {
+    const q = new URLSearchParams();
+    if (params?.domain) q.set('domain', params.domain);
+    if (params?.active !== undefined) q.set('active', String(params.active));
+    const qs = q.toString();
+    return this.request(`/categories${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  }
+
+  async createCategory(payload: { domain: string; name: string; order?: number; isActive?: boolean }): Promise<ApiResponse> {
+    return this.request('/categories', { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  async updateCategory(id: string, payload: { name?: string; order?: number; isActive?: boolean }): Promise<ApiResponse> {
+    return this.request(`/categories/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+  }
+
+  async deleteCategory(id: string): Promise<ApiResponse> {
+    return this.request(`/categories/${id}`, { method: 'DELETE' });
+  }
+
+  /** Flattened mapping list for Manage Mapping (domain, category, subject, sub-topic rows) */
+  async getMappingList(): Promise<ApiResponse> {
+    return this.request('/subjects/mapping-list', { method: 'GET' });
+  }
+
+  /** Bulk delete mapping rows (subjects and/or topics) */
+  async bulkDeleteMapping(payload: { subjectIds?: string[]; topicIds?: string[] }): Promise<ApiResponse> {
+    return this.request('/subjects/mapping/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify({
+        subjectIds: payload.subjectIds || [],
+        topicIds: payload.topicIds || [],
+      }),
+    });
   }
 
   // Topics
