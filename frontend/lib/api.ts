@@ -12,6 +12,8 @@ export interface ApiResponse<T = any> {
   message?: string;
   data?: T;
   user?: T;
+  /** Total count for paginated responses (e.g. admin user-quiz-attempts) */
+  total?: number;
   error?: {
     message: string;
     details?: Array<{ field: string; message: string }>;
