@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import { useProfileSettings } from '@/contexts/ProfileSettingsContext';
+import { getProfileCompletion } from '@/lib/profileCompletion';
 import SubjectRequestModal from '@/components/SubjectRequestModal';
 
 type Subject = {
@@ -82,28 +83,8 @@ export default function SubjectsPage() {
     }
   };
 
-  // Calculate profile completion
-  const profileCompletion = useMemo(() => {
-    if (!user) return 0;
-    const fields = [
-      user.name,
-      user.phone,
-      (user as any).profile?.currentStatus,
-      (user as any).profile?.college,
-      (user as any).profile?.school,
-      (user as any).profile?.jobTitle,
-      (user as any).profile?.interests?.length > 0,
-      (user as any).profile?.learningGoals,
-      (user as any).profile?.city,
-      (user as any).profile?.country,
-      (user as any).profilePicture
-    ];
-    const filledFields = fields.filter(field => {
-      if (Array.isArray(field)) return field.length > 0;
-      return field && String(field).trim().length > 0;
-    }).length;
-    return Math.round((filledFields / fields.length) * 100);
-  }, [user]);
+  // Calculate profile completion - same formula as profile page (required + optional, 70/30)
+  const profileCompletion = useMemo(() => getProfileCompletion(user ?? undefined), [user]);
 
   // Filter subjects - show all subjects (including those requiring approval)
   const userBatches = (user as any)?.batches || [];

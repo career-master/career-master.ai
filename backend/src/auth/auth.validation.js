@@ -175,7 +175,14 @@ const updateCurrentUserSchema = z.object({
         // Personal Details
         firstName: z.string().max(100).trim().optional(),
         lastName: z.string().max(100).trim().optional(),
-        dateOfBirth: z.date().optional(),
+        dateOfBirth: z
+          .union([z.date(), z.string()])
+          .optional()
+          .transform((val) => {
+            if (val === undefined || val === null || val === '') return undefined;
+            const d = val instanceof Date ? val : new Date(val);
+            return Number.isNaN(d.getTime()) ? undefined : d;
+          }),
         gender: z.enum(['male', 'female', 'other', 'prefer_not_to_say']).optional(),
         guardianName: z.string().max(200).trim().optional(),
         guardianRelation: z.enum(['father', 'mother', 'guardian']).optional(),

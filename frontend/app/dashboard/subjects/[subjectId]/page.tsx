@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import { useProfileSettings } from '@/contexts/ProfileSettingsContext';
+import { getProfileCompletion } from '@/lib/profileCompletion';
 
 type Subject = {
   _id: string;
@@ -41,27 +42,7 @@ export default function SubjectDetailPage() {
   const [requestSent, setRequestSent] = useState(false);
   const [subjectProgress, setSubjectProgress] = useState<any>(null);
 
-  const profileCompletion = useMemo(() => {
-    if (!user) return 0;
-    const fields = [
-      user.name,
-      user.phone,
-      user.profile?.currentStatus,
-      user.profile?.college,
-      user.profile?.school,
-      user.profile?.jobTitle,
-      (user.profile?.interests?.length ?? 0) > 0,
-      user.profile?.learningGoals,
-      user.profile?.city,
-      user.profile?.country,
-      user.profilePicture,
-    ];
-    const filled = fields.filter((field) => {
-      if (Array.isArray(field)) return field.length > 0;
-      return field && String(field).trim().length > 0;
-    }).length;
-    return Math.round((filled / fields.length) * 100);
-  }, [user]);
+  const profileCompletion = useMemo(() => getProfileCompletion(user ?? undefined), [user]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {

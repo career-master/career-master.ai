@@ -378,7 +378,7 @@ export default function DashboardQuizzesPage() {
     const limitKey = `quiz_time_limit_${(user as any).email}_${quizId}`;
     if (duration) try { localStorage.setItem(durKey, String(duration)); } catch {}
     try { localStorage.setItem(limitKey, 'true'); } catch {}
-    router.push(`/dashboard/quizzes/${quizId}/instructions`);
+    router.push(`/dashboard/quizzes/${quizId}`);
   };
 
   const updateUrl = (subject: string | null) => {

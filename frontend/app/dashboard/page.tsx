@@ -10,6 +10,7 @@ import ComparisonView from '@/components/ComparisonView';
 import SubjectRequestModal from '@/components/SubjectRequestModal';
 import { toast } from 'react-hot-toast';
 import { useProfileSettings } from '@/contexts/ProfileSettingsContext';
+import { getProfileCompletion } from '@/lib/profileCompletion';
 
 interface DashboardStats {
   overview: {
@@ -149,28 +150,8 @@ function SubjectSuggestions({ user }: { user: any }) {
 
   const { profileCompletionEnforced: PROFILE_COMPLETION_ENFORCED, profileMinCompletionPercent: PROFILE_MIN_COMPLETION_PERCENT } = useProfileSettings();
 
-  // Calculate profile completion - MUST be before early returns (Rules of Hooks)
-  const profileCompletion = useMemo(() => {
-    if (!user) return 0;
-    const fields = [
-      user.name,
-      user.phone,
-      user.profile?.currentStatus,
-      user.profile?.college,
-      user.profile?.school,
-      user.profile?.jobTitle,
-      user.profile?.interests?.length > 0,
-      user.profile?.learningGoals,
-      user.profile?.city,
-      user.profile?.country,
-      user.profilePicture
-    ];
-    const filledFields = fields.filter(field => {
-      if (Array.isArray(field)) return field.length > 0;
-      return field && String(field).trim().length > 0;
-    }).length;
-    return Math.round((filledFields / fields.length) * 100);
-  }, [user]);
+  // Calculate profile completion - same formula as profile page (required + optional, 70/30)
+  const profileCompletion = useMemo(() => getProfileCompletion(user ?? undefined), [user]);
 
   if (loading) {
     return (

@@ -7,6 +7,7 @@ import { apiService } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { useProfileSettings } from '@/contexts/ProfileSettingsContext';
+import { getProfileCompletion } from '@/lib/profileCompletion';
 
 interface QuizQuestion {
   questionType: string;
@@ -66,28 +67,8 @@ function QuizAttemptContent() {
 
   const { profileCompletionEnforced: PROFILE_COMPLETION_ENFORCED, profileMinCompletionPercent: PROFILE_MIN_COMPLETION_PERCENT } = useProfileSettings();
 
-  // Calculate profile completion - MUST be before any conditional returns
-  const profileCompletion = useMemo(() => {
-    if (!user) return 0;
-    const fields = [
-      user.name,
-      (user as any).phone,
-      (user as any).profile?.currentStatus,
-      (user as any).profile?.college,
-      (user as any).profile?.school,
-      (user as any).profile?.jobTitle,
-      (user as any).profile?.interests?.length > 0,
-      (user as any).profile?.learningGoals,
-      (user as any).profile?.city,
-      (user as any).profile?.country,
-      (user as any).profilePicture,
-    ];
-    const filled = fields.filter((field) => {
-      if (Array.isArray(field)) return field.length > 0;
-      return field && String(field).trim().length > 0;
-    }).length;
-    return Math.round((filled / fields.length) * 100);
-  }, [user]);
+  // Calculate profile completion - same formula as profile page (required + optional, 70/30)
+  const profileCompletion = useMemo(() => getProfileCompletion(user ?? undefined), [user]);
 
   // Calculate progress percentage - MUST be before any conditional returns
   const totalQuestions = allQuestions.length;
