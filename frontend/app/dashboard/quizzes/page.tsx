@@ -71,6 +71,7 @@ export default function DashboardQuizzesPage() {
   const [filterCategory, setFilterCategory] = useState('');
   const [topicsWithQuizzes, setTopicsWithQuizzes] = useState<TopicWithQuizzes[]>([]);
   const [standaloneQuizzes, setStandaloneQuizzes] = useState<StandaloneQuiz[]>([]);
+  const [attemptsByQuizId, setAttemptsByQuizId] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [loadingQuizzes, setLoadingQuizzes] = useState(false);
   const [error, setError] = useState('');
@@ -188,9 +189,31 @@ export default function DashboardQuizzesPage() {
           return { topic, quizSets, progress };
         })
       );
+      const allQuizIds = new Set<string>();
+      withData.forEach(({ quizSets }) => {
+        quizSets.forEach((qs) => {
+          const quiz = typeof qs.quizId === 'object' ? qs.quizId : null;
+          const id = quiz?._id ?? (typeof qs.quizId === 'string' ? qs.quizId : null);
+          if (id) allQuizIds.add(String(id));
+        });
+      });
+      const attemptsMap: Record<string, number> = {};
+      await Promise.all(
+        Array.from(allQuizIds).map(async (id) => {
+          try {
+            const res = await apiService.getUserQuizAttemptsForQuiz(id);
+            const list = (res.success && Array.isArray(res.data)) ? res.data : [];
+            attemptsMap[id] = list.length;
+          } catch {
+            attemptsMap[id] = 0;
+          }
+        })
+      );
+      setAttemptsByQuizId(attemptsMap);
       setTopicsWithQuizzes(withData);
     } catch {
       setTopicsWithQuizzes([]);
+      setAttemptsByQuizId({});
     } finally {
       setLoadingQuizzes(false);
     }
@@ -200,6 +223,7 @@ export default function DashboardQuizzesPage() {
   useEffect(() => {
     if (!isAuthenticated || !selectedSubjectId) {
       setTopicsWithQuizzes([]);
+      setAttemptsByQuizId({});
       return;
     }
     loadTopicsWithProgress(true);
@@ -378,7 +402,7 @@ export default function DashboardQuizzesPage() {
     const limitKey = `quiz_time_limit_${(user as any).email}_${quizId}`;
     if (duration) try { localStorage.setItem(durKey, String(duration)); } catch {}
     try { localStorage.setItem(limitKey, 'true'); } catch {}
-    router.push(`/dashboard/quizzes/${quizId}`);
+    router.push(`/dashboard/quizzes/${quizId}/instructions`);
   };
 
   const updateUrl = (subject: string | null) => {
@@ -440,12 +464,16 @@ export default function DashboardQuizzesPage() {
     );
   };
 
-  // Helper: normalize quiz from QuizSet for list row
+  // Helper: normalize quiz from QuizSet for list row (includes attempt limit check)
   const quizRow = (qs: QuizSet, progress: TopicProgress | null, canAttempt: boolean) => {
     const quiz = typeof qs.quizId === 'object' ? qs.quizId : null;
     const id = quiz?._id || (typeof qs.quizId === 'string' ? qs.quizId : null);
     if (!id) return null;
     const q = quiz as any;
+    const maxAttempts = q?.maxAttempts ?? 999;
+    const attemptsMade = attemptsByQuizId[String(id)] ?? 0;
+    const limitReached = maxAttempts !== 999 && attemptsMade >= maxAttempts;
+    const canAttemptAfterLimit = canAttempt && !limitReached;
     let qCount = 0;
     let marks = 0;
     if (q?.useSections && Array.isArray(q?.sections)) {
@@ -470,7 +498,8 @@ export default function DashboardQuizzesPage() {
       questionCount: qCount,
       totalMarks: marks,
       status,
-      canAttempt,
+      canAttempt: canAttemptAfterLimit,
+      limitReached,
       level: lvl === 'basic' || lvl === 'hard' ? lvl : null,
     };
   };
@@ -638,7 +667,7 @@ export default function DashboardQuizzesPage() {
                                                 style={{ width: `${pct}%` }}
                                               />
                                             </div>
-                                            <p className="text-[10px] text-gray-500 mt-0.5">{attempted}/{total} attempted</p>
+                                            <p className="text-[10px] text-gray-500 mt-0.5">{attempted}/{total} quiz{total !== 1 ? 'zes' : ''} attempted</p>
                                           </div>
                                         ) : null;
                                       })()}
@@ -685,7 +714,7 @@ export default function DashboardQuizzesPage() {
                                                 <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
                                                   <div className="h-full bg-purple-500 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
                                                 </div>
-                                                <span className="text-[10px] text-gray-500">{attempted}/{total} attempted</span>
+                                                <span className="text-[10px] text-gray-500">{attempted}/{total} quiz{total !== 1 ? 'zes' : ''} attempted</span>
                                               </div>
                                             );
                                           })()}
@@ -895,7 +924,7 @@ export default function DashboardQuizzesPage() {
                     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-sm font-semibold text-gray-700">Subject progress</span>
-                        <span className="text-sm font-bold text-gray-900">{subjectAttempted} / {subjectTotal} attempted{subjectPassed !== subjectAttempted ? ` (${subjectPassed} passed)` : ''}</span>
+                        <span className="text-sm font-bold text-gray-900">{subjectAttempted} / {subjectTotal} quiz{subjectTotal !== 1 ? 'zes' : ''} attempted{subjectPassed !== subjectAttempted ? ` (${subjectPassed} passed)` : ''}</span>
                       </div>
                       <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
                         <div
@@ -925,14 +954,7 @@ export default function DashboardQuizzesPage() {
                       <button
                         key={l}
                         type="button"
-                        onClick={() => {
-                          setSelectedLevels((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(l)) next.delete(l);
-                            else next.add(l);
-                            return next;
-                          });
-                        }}
+                        onClick={() => setSelectedLevels(new Set([l]))}
                         className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
                           selectedLevels.has(l)
                             ? 'bg-purple-600 text-white'
@@ -1037,23 +1059,27 @@ export default function DashboardQuizzesPage() {
                                           Done
                                         </span>
                                       )}
-                                      {row.status === 'attempted' && (
+                                      {row.status === 'attempted' && !row.limitReached && (
                                         <span className="ml-2 text-amber-600 font-medium">Attempted</span>
+                                      )}
+                                      {row.limitReached && (
+                                        <span className="ml-2 text-gray-500 font-medium">Limit reached</span>
                                       )}
                                     </p>
                                   </div>
                                   <div className="flex-shrink-0">
                                     <button
                                       type="button"
-                                      onClick={() => handleStartQuiz(row._id, row.durationMinutes, false)}
-                                      disabled={!row.canAttempt}
+                                      onClick={() => !row.limitReached && handleStartQuiz(row._id, row.durationMinutes, false)}
+                                      disabled={!row.canAttempt || row.limitReached}
+                                      title={row.limitReached ? 'You have reached the maximum number of attempts for this quiz' : undefined}
                                       className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-                                        row.canAttempt
+                                        row.canAttempt && !row.limitReached
                                           ? 'bg-purple-600 text-white hover:bg-purple-700'
                                           : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                       }`}
                                     >
-                                      {row.status === 'completed' || row.status === 'attempted' ? 'Retake' : 'Start'}
+                                      {row.limitReached ? 'Limit reached' : row.status === 'completed' || row.status === 'attempted' ? 'Retake' : 'Start'}
                                     </button>
                                   </div>
                                 </div>
@@ -1092,13 +1118,19 @@ export default function DashboardQuizzesPage() {
                                                   <p className="text-sm text-gray-500 mt-1">
                                                     {row.durationMinutes ? `${row.durationMinutes} min` : '—'} · {row.questionCount} questions · {row.totalMarks} pts
                                                     {row.status === 'completed' && <span className="ml-2 inline-flex items-center gap-1 text-green-600 font-medium"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>Done</span>}
-                                                    {row.status === 'attempted' && <span className="ml-2 text-amber-600 font-medium">Attempted</span>}
+                                                    {row.status === 'attempted' && !row.limitReached && <span className="ml-2 text-amber-600 font-medium">Attempted</span>}
+                                                    {row.limitReached && <span className="ml-2 text-gray-500 font-medium">Limit reached</span>}
                                                   </p>
                                                 </div>
                                                 <div className="flex-shrink-0">
-                                                  <button type="button" onClick={() => handleStartQuiz(row._id, row.durationMinutes, false)} disabled={!row.canAttempt}
-                                                    className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors ${row.canAttempt ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
-                                                    {row.status === 'completed' || row.status === 'attempted' ? 'Retake' : 'Start'}
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => !row.limitReached && handleStartQuiz(row._id, row.durationMinutes, false)}
+                                                    disabled={!row.canAttempt || row.limitReached}
+                                                    title={row.limitReached ? 'You have reached the maximum number of attempts for this quiz' : undefined}
+                                                    className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors ${row.canAttempt && !row.limitReached ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                                                  >
+                                                    {row.limitReached ? 'Limit reached' : row.status === 'completed' || row.status === 'attempted' ? 'Retake' : 'Start'}
                                                   </button>
                                                 </div>
                                               </div>

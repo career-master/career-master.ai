@@ -6,6 +6,7 @@ import Link from 'next/link';
 import * as XLSX from 'xlsx';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
+import { toast } from 'react-hot-toast';
 import QuizSectionEditor from '@/components/QuizSectionEditor';
 import QuestionTypeSelector from '@/components/QuestionTypeSelector';
 import QuestionFormRouter from '@/components/question-forms/QuestionFormRouter';
@@ -37,7 +38,7 @@ export default function AdminCreateQuizPage() {
   const [enableAvailableFrom, setEnableAvailableFrom] = useState(false);
   const [enableAvailableTo, setEnableAvailableTo] = useState(false);
   const [availableToEveryone, setAvailableToEveryone] = useState(false);
-  const [maxAttempts, setMaxAttempts] = useState(999);
+  const [maxAttempts, setMaxAttempts] = useState(5);
   const [selectedBatches, setSelectedBatches] = useState<string[]>([]);
   const [batches, setBatches] = useState<any[]>([]);
   const [isActive, setIsActive] = useState(true);
@@ -102,22 +103,25 @@ export default function AdminCreateQuizPage() {
   const [saving, setSaving] = useState(false);
   const [excelUploading, setExcelUploading] = useState(false);
   const [marksPerQuestion, setMarksPerQuestion] = useState(1);
-  const [durationFilledByUser, setDurationFilledByUser] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Upload Excel: enable when user has filled title + duration. Marks come from Excel (optional default below).
+  // Upload Excel: enable only when title, topic, and max attempts are filled. Duration defaults to 30 min.
   const hasTitle = String(title ?? '').trim().length > 0;
+  const hasTopic = String(selectedRootTopicId ?? '').trim().length > 0;
+  const maxAttemptsVal = Number(maxAttempts);
+  const hasMaxAttempts = Number.isFinite(maxAttemptsVal) && maxAttemptsVal >= 1;
   const durationVal = Number(durationMinutes);
-  const hasDuration = durationFilledByUser && Number.isFinite(durationVal) && durationVal >= 1;
-  const canUploadExcel = hasTitle && hasDuration;
+  const effectiveDuration = Number.isFinite(durationVal) && durationVal >= 30 ? durationVal : 30;
+  const canUploadExcel = hasTitle && hasTopic && hasMaxAttempts;
 
   // Show what's missing when Upload is disabled
   const uploadMissing: string[] = [];
   if (!hasTitle) uploadMissing.push('Quiz Title');
-  if (!hasDuration) uploadMissing.push('Duration (minutes) ≥ 1');
+  if (!hasTopic) uploadMissing.push('Topic');
+  if (!hasMaxAttempts) uploadMissing.push('Max Attempts (≥ 1)');
 
   // Auto-generate quiz title from Subject, Topic, Sub-topic and Quiz number
   useEffect(() => {
@@ -224,7 +228,7 @@ export default function AdminCreateQuizPage() {
         setAvailableFrom(hasAvailableFrom ? new Date(quiz.availableFrom).toISOString().split('T')[0] : '');
         setAvailableTo(hasAvailableTo ? new Date(quiz.availableTo).toISOString().split('T')[0] : '');
         setAvailableToEveryone(quiz.availableToEveryone || false);
-        setMaxAttempts(quiz.maxAttempts || 999);
+        setMaxAttempts(quiz.maxAttempts ?? 5);
         setSelectedBatches(Array.isArray(quiz.batches) ? quiz.batches : []);
         setIsActive(quiz.isActive !== undefined ? quiz.isActive : true);
         setLevel(quiz.level === 'basic' || quiz.level === 'hard' ? quiz.level : '');
@@ -434,9 +438,9 @@ export default function AdminCreateQuizPage() {
       const payload: any = {
         title,
         description: description || undefined,
-        durationMinutes,
+        durationMinutes: effectiveDuration,
         availableToEveryone,
-        maxAttempts: maxAttempts || 999,
+        maxAttempts: maxAttempts ?? 5,
         isActive,
       };
       // Always set level explicitly so it is never dropped (basic/hard or null)
@@ -812,7 +816,6 @@ export default function AdminCreateQuizPage() {
         setDescription('');
         setDurationMinutes(30);
         setMarksPerQuestion(1);
-        setDurationFilledByUser(false);
         setAvailableFrom('');
         setAvailableTo('');
         setSelectedBatches([]);
@@ -880,11 +883,8 @@ export default function AdminCreateQuizPage() {
       return;
     }
 
-    if (!durationMinutes || durationMinutes < 1) {
-      setError('Please enter a valid duration (minimum 1 minute) before uploading the Excel file.');
-      if (e.target) e.target.value = '';
-      return;
-    }
+    const dur = Number(durationMinutes);
+    const durationToUse = Number.isFinite(dur) && dur >= 30 ? dur : 30;
 
     // Validate dates only if checkboxes are enabled
     if (enableAvailableFrom && (!availableFrom || !availableFrom.trim())) {
@@ -923,11 +923,11 @@ export default function AdminCreateQuizPage() {
       formData.append('file', file);
       formData.append('title', title);
       if (description) formData.append('description', description);
-      if (durationMinutes) formData.append('durationMinutes', String(durationMinutes));
+      formData.append('durationMinutes', String(durationToUse));
       if (enableAvailableFrom && availableFrom) formData.append('availableFrom', availableFrom);
       if (enableAvailableTo && availableTo) formData.append('availableTo', availableTo);
       formData.append('availableToEveryone', String(availableToEveryone));
-      formData.append('maxAttempts', String(maxAttempts || 999));
+      formData.append('maxAttempts', String(maxAttempts ?? 5));
       formData.append('defaultMarks', String(marksPerQuestion || 1));
       if (level === 'basic' || level === 'hard') {
         formData.append('level', level);
@@ -958,6 +958,8 @@ export default function AdminCreateQuizPage() {
       }
 
       setSuccess('Quiz uploaded successfully from Excel' + (resolvedTopicId ? ' and linked to the selected topic.' : '.'));
+      toast.success('Quiz uploaded successfully. Redirecting to Question Bank...');
+      router.push('/admin/quizzes');
     } catch (err: any) {
       setError(err.message || 'Failed to upload quiz from Excel');
     } finally {
@@ -1308,18 +1310,18 @@ export default function AdminCreateQuizPage() {
                 </label>
                 <input
                   type="number"
-                  min={1}
+                  min={30}
                   max={600}
                   value={durationMinutes}
                   onChange={(e) => {
-                    setDurationFilledByUser(true);
                     const v = e.target.value;
                     if (v === '') setDurationMinutes(30);
-                    else setDurationMinutes(Math.max(1, Math.min(600, Number(v) || 1)));
+                    else setDurationMinutes(Math.max(30, Math.min(600, Number(v) || 30)));
                   }}
                   required
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-red-500 focus:ring-2 focus:ring-red-500"
                 />
+                <p className="text-xs text-gray-500 mt-1">Minimum 30 minutes. Default: 30.</p>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -1332,7 +1334,7 @@ export default function AdminCreateQuizPage() {
                   value={maxAttempts}
                   onChange={(e) => setMaxAttempts(Number(e.target.value))}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-red-500 focus:ring-2 focus:ring-red-500"
-                  placeholder="999"
+                  placeholder="5"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Set to 999 for unlimited attempts, or specify a number to limit attempts
@@ -1343,7 +1345,7 @@ export default function AdminCreateQuizPage() {
             {!quizId && (
             <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-4">
               <h3 className="text-sm font-bold text-gray-900 mb-2">Create via Excel</h3>
-              <p className="text-xs text-gray-600 mb-3">Download template → add questions &amp; options (marks can be in Excel). <strong>Upload is available after you fill Quiz Title and Duration below.</strong></p>
+              <p className="text-xs text-gray-600 mb-3">Download template → add questions &amp; options (marks can be in Excel). <strong>Upload is available after you fill: Quiz Title, Topic, and Max Attempts.</strong> Duration defaults to 30 minutes (min 30).</p>
               <div className="flex flex-wrap items-center gap-3 mb-2">
                 <button type="button" onClick={downloadQuizExcelTemplate} className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-50 transition-colors">Download template</button>
                 <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleUploadExcel} />
@@ -1379,7 +1381,7 @@ export default function AdminCreateQuizPage() {
                 </p>
               )}
               <p className="text-xs text-gray-500">
-                <strong>Required for upload:</strong> Quiz Title, Duration (minutes) ≥ 1. Marks come from your Excel file (or use the default above). If you use &quot;Set Available From&quot; or &quot;Set Available To&quot;, those dates must be set and &quot;Available To&quot; must be after &quot;Available From&quot;. Subject/Topic/Sub-topic are optional.
+                <strong>Required for upload:</strong> Quiz Title, Topic, Max Attempts (≥ 1). Duration defaults to 30 minutes (minimum 30). Marks come from your Excel file (or use the default above). If you use &quot;Set Available From&quot; or &quot;Set Available To&quot;, those dates must be set and &quot;Available To&quot; must be after &quot;Available From&quot;.
               </p>
             </div>
             )}

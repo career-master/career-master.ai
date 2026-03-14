@@ -41,9 +41,10 @@ interface QuizData {
 function QuizAttemptContent() {
   const params = useParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const quizId = params?.id as string;
 
+  const [userRefreshed, setUserRefreshed] = useState(false);
   const [quiz, setQuiz] = useState<QuizData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -64,6 +65,8 @@ function QuizAttemptContent() {
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [completionData, setCompletionData] = useState<any>(null);
   const [topicCompletionStatus, setTopicCompletionStatus] = useState<any>(null);
+  const [attemptLimitReached, setAttemptLimitReached] = useState(false);
+  const [attemptLimitMax, setAttemptLimitMax] = useState(999);
 
   const { profileCompletionEnforced: PROFILE_COMPLETION_ENFORCED, profileMinCompletionPercent: PROFILE_MIN_COMPLETION_PERCENT } = useProfileSettings();
 
@@ -275,9 +278,15 @@ function QuizAttemptContent() {
     }
   };
 
-  // Load quiz details
+  // Refresh user on mount so profile completion uses latest profile (not stale from login)
   useEffect(() => {
-    if (!quizId) return;
+    if (!user?.email || !quizId) return;
+    refreshUser().then(() => setUserRefreshed(true));
+  }, [quizId]); // eslint-disable-line react-hooks/exhaustive-deps -- only when entering quiz
+
+  // Load quiz details (after user refreshed so profile % is correct)
+  useEffect(() => {
+    if (!quizId || !userRefreshed) return;
     
     // Check profile completion before loading quiz (can be turned off via config)
     if (PROFILE_COMPLETION_ENFORCED && profileCompletion < PROFILE_MIN_COMPLETION_PERCENT) {
@@ -302,6 +311,18 @@ function QuizAttemptContent() {
         if (res.success && res.data) {
           const data: any = res.data;
           setQuiz(data);
+
+          const maxAttempts = data.maxAttempts ?? 999;
+          if (maxAttempts !== 999) {
+            const attemptsRes = await apiService.getUserQuizAttemptsForQuiz(quizId);
+            const attempts = (attemptsRes.success && Array.isArray(attemptsRes.data)) ? attemptsRes.data : [];
+            if (attempts.length >= maxAttempts) {
+              setAttemptLimitReached(true);
+              setAttemptLimitMax(maxAttempts);
+              setLoading(false);
+              return;
+            }
+          }
           
           // Flatten questions from sections or use flat questions
           let questions: QuizQuestion[] = [];
@@ -443,7 +464,7 @@ function QuizAttemptContent() {
       }
     };
     loadQuiz();
-  }, [quizId, user?.email, profileCompletion, router]);
+  }, [quizId, user?.email, profileCompletion, router, userRefreshed]);
 
   // Timer effect
   useEffect(() => {
@@ -1149,6 +1170,30 @@ function QuizAttemptContent() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
+
+  if (attemptLimitReached) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="max-w-md w-full bg-white rounded-xl shadow-lg border border-gray-200 p-8 text-center">
+          <div className="mx-auto w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mb-4">
+            <svg className="w-7 h-7 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Attempt limit reached</h2>
+          <p className="text-gray-600 mb-6">
+            You have reached the maximum number of attempts ({attemptLimitMax}) for this quiz. You cannot attempt this quiz again.
+          </p>
+          <button
+            onClick={() => router.push('/dashboard/quizzes')}
+            className="w-full px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors"
+          >
+            Back to Quizzes
+          </button>
+        </div>
       </div>
     );
   }

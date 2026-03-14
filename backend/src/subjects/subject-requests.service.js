@@ -12,27 +12,63 @@ const { getSettings } = require('../settings/settings.service');
  */
 class SubjectJoinRequestService {
   /**
-   * Calculate profile completion percentage
+   * Calculate profile completion percentage.
+   * Must match frontend getProfileCompletion (required + optional, 70/30 weight).
    */
   static calculateProfileCompletion(user) {
-    const fields = [
-      user.name,
+    if (!user) return 0;
+    const profile = user.profile || {};
+    const present = profile.presentAddress || {};
+    const permanent = profile.permanentAddress || {};
+
+    const isFilled = (val) => {
+      if (typeof val === 'boolean') return val;
+      if (Array.isArray(val)) return val.length > 0;
+      return val != null && String(val).trim().length > 0;
+    };
+
+    // Required fields (70% weight) - same as profile form
+    const requiredFields = [
+      profile.firstName,
+      profile.lastName,
+      profile.dateOfBirth,
+      profile.gender,
+      profile.guardianName,
+      profile.guardianRelation,
       user.phone,
-      user.profile?.currentStatus,
-      user.profile?.college,
-      user.profile?.school,
-      user.profile?.jobTitle,
-      user.profile?.interests?.length > 0,
-      user.profile?.learningGoals,
-      user.profile?.city,
-      user.profile?.country,
-      user.profilePicture
+      present.city,
+      present.state,
+      present.pinCode,
+      present.country,
+      profile.currentQualification,
+      profile.institutionName
     ];
-    const filledFields = fields.filter(field => {
-      if (Array.isArray(field)) return field.length > 0;
-      return field && String(field).trim().length > 0;
-    }).length;
-    return Math.round((filledFields / fields.length) * 100);
+
+    // Optional fields (30% weight)
+    const optionalFields = [
+      user.profilePicture,
+      user.email,
+      profile.alternateMobile,
+      profile.whatsappNumber,
+      present.houseNo,
+      present.street,
+      present.area,
+      present.district,
+      permanent.city,
+      permanent.state,
+      permanent.pinCode,
+      profile.university,
+      profile.yearOfStudy,
+      profile.expectedPassingYear,
+      profile.percentage ?? profile.cgpa,
+      (profile.selectedCourses?.length ?? 0) > 0
+    ];
+
+    const filledRequired = requiredFields.filter(isFilled).length;
+    const filledOptional = optionalFields.filter(isFilled).length;
+    const requiredScore = (filledRequired / requiredFields.length) * 70;
+    const optionalScore = (filledOptional / optionalFields.length) * 30;
+    return Math.round(requiredScore + optionalScore);
   }
 
   /**
