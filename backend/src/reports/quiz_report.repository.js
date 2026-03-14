@@ -276,6 +276,38 @@ class QuizReportRepository {
   }
 
   /**
+   * Admin: Get detailed quiz attempt report without enforcing current user ownership
+   * @param {string} attemptId
+   * @returns {Promise<Object>}
+   */
+  static async getQuizAttemptReportForAdmin(attemptId) {
+    try {
+      const attempt = await QuizAttempt.findOne({ _id: attemptId })
+        .populate('quizId')
+        .lean();
+
+      if (!attempt) {
+        throw new ErrorHandler(404, 'Quiz attempt not found');
+      }
+
+      const quiz = attempt.quizId;
+      if (!quiz) {
+        throw new ErrorHandler(404, 'Quiz not found');
+      }
+
+      const user = await User.findById(attempt.userId).select('name email').lean();
+
+      // Reuse existing logic by delegating to getQuizAttemptReport using real owner id
+      return this.getQuizAttemptReport(attemptId, attempt.userId.toString());
+    } catch (error) {
+      if (error instanceof ErrorHandler) {
+        throw error;
+      }
+      throw new ErrorHandler(500, `Error fetching quiz report: ${error.message}`);
+    }
+  }
+
+  /**
    * Get all quiz attempts for a user with basic info
    * @param {string} userId
    * @param {string} quizId - Optional filter by quiz
@@ -382,6 +414,85 @@ class QuizReportRepository {
     } catch (error) {
       console.error('Error in getUserQuizAttempts:', error);
       throw new ErrorHandler(500, `Error fetching user quiz attempts: ${error.message}`);
+    }
+  }
+
+  /**
+   * Admin: Get quiz attempts across users with filters + pagination
+   * @param {Object} filters
+   * @param {{ page: number, limit: number }} pagination
+   * @returns {Promise<{ data: Array, total: number }>}
+   */
+  static async getAllQuizAttempts(filters = {}, pagination = { page: 1, limit: 20 }) {
+    try {
+      const { page = 1, limit = 20 } = pagination || {};
+      const pageNum = Number.isNaN(Number(page)) ? 1 : Number(page);
+      const limitNum = Number.isNaN(Number(limit)) ? 20 : Number(limit);
+
+      const matchCriteria = {};
+
+      if (filters.subjectId && mongoose.Types.ObjectId.isValid(filters.subjectId)) {
+        matchCriteria.subjectId = new mongoose.Types.ObjectId(filters.subjectId);
+      }
+      if (filters.quizId && mongoose.Types.ObjectId.isValid(filters.quizId)) {
+        matchCriteria.quizId = new mongoose.Types.ObjectId(filters.quizId);
+      }
+
+      const skip = (pageNum - 1) * limitNum;
+
+      const [attempts, total] = await Promise.all([
+        QuizAttempt.find(matchCriteria)
+          .populate('quizId', 'title description')
+          .populate('subjectId', 'name title')
+          .populate('topicId', 'title')
+          .populate('userId', 'name email')
+          .sort({ submittedAt: -1, createdAt: -1 })
+          .skip(skip)
+          .limit(limitNum)
+          .lean(),
+        QuizAttempt.countDocuments(matchCriteria),
+      ]);
+
+      const mapped = attempts.map((attempt) => ({
+        attemptId: attempt._id?.toString(),
+        quizId: attempt.quizId?._id?.toString() || attempt.quizId?.toString(),
+        quizTitle: attempt.quizId?.title || 'Unknown Quiz',
+        subjectId: attempt.subjectId?._id?.toString() || attempt.subjectId?.toString() || null,
+        subjectTitle:
+          attempt.subjectId?.title ||
+          attempt.subjectId?.name ||
+          null,
+        topicId: attempt.topicId?._id?.toString() || attempt.topicId?.toString() || null,
+        topicTitle: attempt.topicId?.title || null,
+        submittedAt: attempt.submittedAt || attempt.createdAt,
+        marksObtained: attempt.marksObtained || 0,
+        totalMarks: attempt.totalMarks || 0,
+        percentage: attempt.percentage || 0,
+        result: attempt.result || 'fail',
+        timeSpentInSeconds: attempt.timeSpentInSeconds || 0,
+        difficultyBreakdown: attempt.difficultyBreakdown || null,
+        userName: attempt.userId?.name || null,
+        userEmail: attempt.userId?.email || null,
+      }));
+
+      // Client-side email/name filter (optional, for partial matches)
+      let filtered = mapped;
+      if (filters.email) {
+        const emailLower = String(filters.email).toLowerCase();
+        filtered = filtered.filter((a) => a.userEmail?.toLowerCase().includes(emailLower));
+      }
+      if (filters.name) {
+        const nameLower = String(filters.name).toLowerCase();
+        filtered = filtered.filter((a) => a.userName?.toLowerCase().includes(nameLower));
+      }
+
+      return {
+        data: filtered,
+        total,
+      };
+    } catch (error) {
+      console.error('Error in getAllQuizAttempts:', error);
+      throw new ErrorHandler(500, `Error fetching admin quiz attempts: ${error.message}`);
     }
   }
 

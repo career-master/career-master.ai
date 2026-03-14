@@ -75,14 +75,14 @@ export default function AdminLayout({
     { id: 'dashboard', label: 'Dashboard', icon: 'tachometer', href: '/admin/dashboard' },
     { id: 'users', label: 'User Management', icon: 'users', href: '/admin/users' },
     { id: 'batches', label: 'Batches', icon: 'users', href: '/admin/batches' },
-    { id: 'institutions', label: 'Institutions', icon: 'university', href: '/admin/institutions' },
     { id: 'subjects', label: 'Subjects & Topics', icon: 'book', href: '/admin/subjects' },
+    // Reports item directly under Subjects & Topics
+    { id: 'reports', label: 'Reports & Analytics', icon: 'robot', href: '/admin/reports' },
     { id: 'questions', label: 'Questions Bank', icon: 'database', href: '/admin/quizzes' },
     { id: 'announcements', label: 'Updates & Events', icon: 'clipboard', href: '/admin/announcements' },
     { id: 'tests', label: 'Test Engine', icon: 'file', href: '/admin/tests' },
     { id: 'content', label: 'Content Library', icon: 'book', href: '/admin/content' },
     { id: 'payments', label: 'Payments & Subscription', icon: 'credit-card', href: '/admin/payments' },
-    { id: 'analytics', label: 'AI Analytics', icon: 'robot', href: '/admin/reports' },
     { id: 'settings', label: 'Settings', icon: 'cogs', href: '/admin/settings' },
     { id: 'logs', label: 'Logs', icon: 'clipboard', href: '/admin/logs' },
   ];

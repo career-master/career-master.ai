@@ -2,7 +2,7 @@ const app = require('./src/app');
 const database = require('./src/config/db');
 const env = require('./src/config/env');
 const RolesService = require('./src/roles/roles.service');
-const AdminSeed = require('./src/admin/admin.seed');
+// const AdminSeed = require('./src/admin/admin.seed');
 
 /**
  * Server Entry Point

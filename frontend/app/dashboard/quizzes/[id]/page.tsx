@@ -6,6 +6,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { apiService } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'react-hot-toast';
+import { PROFILE_COMPLETION_ENFORCED, PROFILE_MIN_COMPLETION_PERCENT } from '@/lib/profileConfig';
 
 interface QuizQuestion {
   questionType: string;
@@ -295,10 +296,10 @@ function QuizAttemptContent() {
   useEffect(() => {
     if (!quizId) return;
     
-    // Check profile completion before loading quiz
-    if (profileCompletion < 70) {
+    // Check profile completion before loading quiz (can be turned off via config)
+    if (PROFILE_COMPLETION_ENFORCED && profileCompletion < PROFILE_MIN_COMPLETION_PERCENT) {
       toast.error(
-        `Please complete your profile first. Your profile is ${profileCompletion}% complete. Minimum required: 70%.`,
+        `Please complete your profile first. Your profile is ${profileCompletion}% complete. Minimum required: ${PROFILE_MIN_COMPLETION_PERCENT}%.`,
         {
           duration: 5000,
           icon: '⚠️',

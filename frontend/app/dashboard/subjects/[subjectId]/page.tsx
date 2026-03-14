@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import { toast } from 'react-hot-toast';
+import { PROFILE_COMPLETION_ENFORCED, PROFILE_MIN_COMPLETION_PERCENT } from '@/lib/profileConfig';
 
 type Subject = {
   _id: string;
@@ -110,8 +111,10 @@ export default function SubjectDetailPage() {
 
   const handleRequestAccess = async () => {
     if (!subject) return;
-    if (profileCompletion < 70) {
-      toast.error(`Profile completion must be at least 70%. Your profile is ${profileCompletion}% complete. Please complete your profile first.`);
+    if (PROFILE_COMPLETION_ENFORCED && profileCompletion < PROFILE_MIN_COMPLETION_PERCENT) {
+      toast.error(
+        `Profile completion must be at least ${PROFILE_MIN_COMPLETION_PERCENT}%. Your profile is ${profileCompletion}% complete. Please complete your profile first.`
+      );
       return;
     }
     try {
@@ -236,19 +239,19 @@ export default function SubjectDetailPage() {
               <div className="flex-1">
                 <p className="font-semibold mb-1">Access locked</p>
                 <p className="text-sm text-yellow-800">
-                  You are not assigned to this subject's batches. {profileCompletion < 70 ? 'Complete your profile to request access.' : 'Request access to join the subject.'}
+                  You are not assigned to this subject's batches. {PROFILE_COMPLETION_ENFORCED && profileCompletion < PROFILE_MIN_COMPLETION_PERCENT ? 'Complete your profile to request access.' : 'Request access to join the subject.'}
                 </p>
                 <div className="flex items-center gap-3 mt-3">
                   <button
                     onClick={handleRequestAccess}
-                    disabled={requesting || requestSent || profileCompletion < 70}
+                    disabled={requesting || requestSent || (PROFILE_COMPLETION_ENFORCED && profileCompletion < PROFILE_MIN_COMPLETION_PERCENT)}
                     className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 disabled:opacity-60"
                   >
                     {requestSent ? 'Request Sent' : requesting ? 'Submitting...' : 'Request Access'}
                   </button>
-                  {profileCompletion < 70 && (
+                  {PROFILE_COMPLETION_ENFORCED && profileCompletion < PROFILE_MIN_COMPLETION_PERCENT && (
                     <span className="text-xs text-gray-700">
-                      Profile completion: {profileCompletion}% (needs at least 70%)
+                      Profile completion: {profileCompletion}% (needs at least {PROFILE_MIN_COMPLETION_PERCENT}%)
                     </span>
                   )}
                 </div>

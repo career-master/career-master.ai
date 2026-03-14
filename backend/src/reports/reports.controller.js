@@ -92,16 +92,20 @@ class ReportsController {
   static async getQuizAttemptReport(req, res, next) {
     try {
       const { attemptId } = req.params;
-      const userId = req.user?.userId || req.user?._id;
+      const reqUser = req.user;
 
-      if (!userId) {
+      if (!reqUser) {
         return res.status(401).json({
           success: false,
           message: 'User authentication required'
         });
       }
 
-      const result = await QuizReportService.getQuizAttemptReport(attemptId, userId);
+      const isSuperAdmin = Array.isArray(reqUser.roles) && reqUser.roles.includes('super_admin');
+
+      const result = isSuperAdmin
+        ? await QuizReportService.getQuizAttemptReportForAdmin(attemptId)
+        : await QuizReportService.getQuizAttemptReport(attemptId, reqUser.userId || reqUser._id);
 
       res.status(200).json(result);
     } catch (error) {
@@ -116,14 +120,7 @@ class ReportsController {
   static async downloadPDFReport(req, res, next) {
     try {
       const { attemptId } = req.params;
-      const userId = req.user?.userId || req.user?._id;
-
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message: 'User authentication required'
-        });
-      }
+      const reqUser = req.user;
 
       if (!attemptId) {
         return res.status(400).json({
@@ -132,9 +129,22 @@ class ReportsController {
         });
       }
 
-      console.log(`Downloading PDF report - attemptId: ${attemptId}, userId: ${userId}`);
+      if (!reqUser) {
+        return res.status(401).json({
+          success: false,
+          message: 'User authentication required'
+        });
+      }
 
-      const pdfBuffer = await QuizReportService.generatePDFReport(attemptId, userId);
+      const isSuperAdmin = Array.isArray(reqUser.roles) && reqUser.roles.includes('super_admin');
+
+      console.log(
+        `Downloading PDF report - attemptId: ${attemptId}, userId: ${reqUser.userId}, superAdmin: ${isSuperAdmin}`
+      );
+
+      const pdfBuffer = isSuperAdmin
+        ? await QuizReportService.generatePDFReportForAdmin(attemptId)
+        : await QuizReportService.generatePDFReport(attemptId, reqUser.userId || reqUser._id);
 
       if (!pdfBuffer || pdfBuffer.length === 0) {
         return res.status(500).json({
@@ -160,16 +170,27 @@ class ReportsController {
   static async downloadExcelReport(req, res, next) {
     try {
       const { attemptId } = req.params;
-      const userId = req.user?.userId || req.user?._id;
+      const reqUser = req.user;
 
-      if (!userId) {
+      if (!attemptId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Attempt ID is required'
+        });
+      }
+
+      if (!reqUser) {
         return res.status(401).json({
           success: false,
           message: 'User authentication required'
         });
       }
 
-      const excelBuffer = await QuizReportService.generateExcelReport(attemptId, userId);
+      const isSuperAdmin = Array.isArray(reqUser.roles) && reqUser.roles.includes('super_admin');
+
+      const excelBuffer = isSuperAdmin
+        ? await QuizReportService.generateExcelReportForAdmin(attemptId)
+        : await QuizReportService.generateExcelReport(attemptId, reqUser.userId || reqUser._id);
 
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename="quiz-report-${attemptId}.xlsx"`);
@@ -223,6 +244,49 @@ class ReportsController {
       res.status(200).json(result);
     } catch (error) {
       console.error('Error in getUserQuizAttempts controller:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * Admin: Get quiz attempts across users
+   * GET /api/reports/admin/user-quiz-attempts
+   */
+  static async getAdminUserQuizAttempts(req, res, next) {
+    try {
+      const reqUser = req.user;
+      if (!reqUser || !Array.isArray(reqUser.roles) || !reqUser.roles.includes('super_admin')) {
+        return res.status(403).json({
+          success: false,
+          message: 'Admin access required',
+        });
+      }
+
+      const {
+        subjectId,
+        quizId,
+        email,
+        name,
+        page = 1,
+        limit = 20,
+      } = req.query;
+
+      const filters = {};
+      if (subjectId) filters.subjectId = subjectId;
+      if (quizId) filters.quizId = quizId;
+      if (email) filters.email = email;
+      if (name) filters.name = name;
+
+      const pagination = {
+        page: parseInt(page, 10) || 1,
+        limit: parseInt(limit, 10) || 20,
+      };
+
+      const result = await QuizReportService.getAdminUserQuizAttempts(filters, pagination);
+
+      return res.status(200).json(result);
+    } catch (error) {
+      console.error('Error in getAdminUserQuizAttempts controller:', error);
       next(error);
     }
   }
