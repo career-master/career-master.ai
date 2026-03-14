@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import { toast } from 'react-hot-toast';
-import { PROFILE_COMPLETION_ENFORCED, PROFILE_MIN_COMPLETION_PERCENT } from '@/lib/profileConfig';
+import { useProfileSettings } from '@/contexts/ProfileSettingsContext';
 import SubjectRequestModal from '@/components/SubjectRequestModal';
 
 type Subject = {
@@ -25,6 +25,7 @@ type Subject = {
 export default function SubjectsPage() {
   const { isAuthenticated, user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { profileCompletionEnforced: PROFILE_COMPLETION_ENFORCED, profileMinCompletionPercent: PROFILE_MIN_COMPLETION_PERCENT } = useProfileSettings();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [subjectProgress, setSubjectProgress] = useState<Record<string, { progressPercentage: number; completedTopics: number; totalTopics: number }>>({});

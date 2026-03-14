@@ -18,6 +18,7 @@ const quizSetsRoutes = require('./quiz-sets/quiz-sets.routes');
 const topicProgressRoutes = require('./topic-progress/topic-progress.routes');
 const enrollmentsRoutes = require('./enrollments/enrollments.routes');
 const announcementsRoutes = require('./announcements/announcements.routes');
+const settingsRoutes = require('./settings/settings.routes');
 const env = require('./config/env');
 
 /**
@@ -191,6 +192,7 @@ app.use('/api/quiz-sets', quizSetsRoutes);
 app.use('/api/topic-progress', topicProgressRoutes);
 app.use('/api/enrollments', enrollmentsRoutes);
 app.use('/api/announcements', announcementsRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

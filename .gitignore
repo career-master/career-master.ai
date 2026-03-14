@@ -39,3 +39,12 @@ temp/
 # Ignore the entire lms3-main folder
 lms3-main/
 
+# Dependencies and build (do not commit)
+node_modules/
+.next/
+backend/node_modules/
+frontend/node_modules/
+frontend/.next/
+dist/
+build/
+

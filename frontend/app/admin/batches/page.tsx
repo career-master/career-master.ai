@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
+import { toast } from 'react-hot-toast';
 
 export default function AdminBatchesListPage() {
   const { user, isAuthenticated } = useAuth();
@@ -62,19 +63,16 @@ export default function AdminBatchesListPage() {
   }, [page, search, loadBatches]);
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete batch "${name}"? This action cannot be undone.`)) {
-      return;
-    }
-
     try {
       const res = await apiService.deleteBatch(id);
       if (res.success) {
+        toast.success('Batch deleted');
         await loadBatches(page, search);
       } else {
         throw new Error(res.error?.message || 'Failed to delete batch');
       }
     } catch (err: any) {
-      alert(err.message || 'Failed to delete batch');
+      toast.error(err.message || 'Failed to delete batch');
     }
   };
 

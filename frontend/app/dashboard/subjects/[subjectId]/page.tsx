@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import { toast } from 'react-hot-toast';
-import { PROFILE_COMPLETION_ENFORCED, PROFILE_MIN_COMPLETION_PERCENT } from '@/lib/profileConfig';
+import { useProfileSettings } from '@/contexts/ProfileSettingsContext';
 
 type Subject = {
   _id: string;
@@ -31,6 +31,7 @@ export default function SubjectDetailPage() {
   const router = useRouter();
   const params = useParams();
   const subjectId = params?.subjectId as string;
+  const { profileCompletionEnforced: PROFILE_COMPLETION_ENFORCED, profileMinCompletionPercent: PROFILE_MIN_COMPLETION_PERCENT } = useProfileSettings();
 
   const [subject, setSubject] = useState<Subject | null>(null);
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -392,10 +393,10 @@ export default function SubjectDetailPage() {
                             href={`/dashboard/subjects/${subjectId}/topics/${topic._id}`}
                             onClick={(e) => {
                               // Check profile completion before accessing any topic (including General Knowledge)
-                              if (profileCompletion < 70) {
+                              if (PROFILE_COMPLETION_ENFORCED && profileCompletion < PROFILE_MIN_COMPLETION_PERCENT) {
                                 e.preventDefault();
                                 toast.error(
-                                  `Please complete your profile first. Your profile is ${profileCompletion}% complete. Minimum required: 70%.`,
+                                  `Please complete your profile first. Your profile is ${profileCompletion}% complete. Minimum required: ${PROFILE_MIN_COMPLETION_PERCENT}%.`,
                                   {
                                     duration: 5000,
                                     icon: '⚠️',

@@ -9,7 +9,7 @@ import LeaderboardCard from '@/components/LeaderboardCard';
 import ComparisonView from '@/components/ComparisonView';
 import SubjectRequestModal from '@/components/SubjectRequestModal';
 import { toast } from 'react-hot-toast';
-import { PROFILE_COMPLETION_ENFORCED, PROFILE_MIN_COMPLETION_PERCENT } from '@/lib/profileConfig';
+import { useProfileSettings } from '@/contexts/ProfileSettingsContext';
 
 interface DashboardStats {
   overview: {
@@ -146,6 +146,8 @@ function SubjectSuggestions({ user }: { user: any }) {
       loadSubjects();
     }
   }, [user]);
+
+  const { profileCompletionEnforced: PROFILE_COMPLETION_ENFORCED, profileMinCompletionPercent: PROFILE_MIN_COMPLETION_PERCENT } = useProfileSettings();
 
   // Calculate profile completion - MUST be before early returns (Rules of Hooks)
   const profileCompletion = useMemo(() => {

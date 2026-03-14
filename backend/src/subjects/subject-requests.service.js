@@ -4,6 +4,7 @@ const Subject = require('./subjects.model');
 const { ErrorHandler } = require('../middleware/errorHandler');
 const emailUtil = require('../utils/email');
 const env = require('../config/env');
+const { getSettings } = require('../settings/settings.service');
 
 /**
  * Subject Join Request Service
@@ -44,13 +45,15 @@ class SubjectJoinRequestService {
       throw new ErrorHandler(404, 'User not found');
     }
 
-    // Check profile completion (can be turned off via env flag)
-    if (env.PROFILE_COMPLETION_ENFORCED) {
+    // Check profile completion (toggle via admin settings; fallback to env)
+    const settings = await getSettings();
+    if (settings.profileCompletionEnforced) {
       const profileCompletion = this.calculateProfileCompletion(user);
-      if (profileCompletion < env.PROFILE_MIN_COMPLETION_PERCENT) {
+      const minPercent = settings.profileMinCompletionPercent ?? env.PROFILE_MIN_COMPLETION_PERCENT;
+      if (profileCompletion < minPercent) {
         throw new ErrorHandler(
           400,
-          `Profile completion must be at least ${env.PROFILE_MIN_COMPLETION_PERCENT}%. Your profile is ${profileCompletion}% complete. Please complete your profile first.`
+          `Profile completion must be at least ${minPercent}%. Your profile is ${profileCompletion}% complete. Please complete your profile first.`
         );
       }
     }

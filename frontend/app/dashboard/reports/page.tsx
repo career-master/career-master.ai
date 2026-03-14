@@ -3,6 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { apiService } from '@/lib/api';
+import { toast } from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 // Using inline SVG icons instead of lucide-react
@@ -143,7 +144,7 @@ export default function ReportsPage() {
       document.body.removeChild(a);
     } catch (error) {
       console.error('Failed to download PDF:', error);
-      alert('Failed to download PDF report');
+      toast.error('Failed to download PDF report');
     }
   };
 
@@ -160,7 +161,7 @@ export default function ReportsPage() {
       document.body.removeChild(a);
     } catch (error) {
       console.error('Failed to download Excel:', error);
-      alert('Failed to download Excel report');
+      toast.error('Failed to download Excel report');
     }
   };
 

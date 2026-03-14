@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { apiService } from '@/lib/api';
+import { toast } from 'react-hot-toast';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
 
@@ -113,7 +114,7 @@ export default function QuizReportPage() {
       document.body.removeChild(a);
     } catch (error) {
       console.error('Failed to download Excel:', error);
-      alert('Failed to download Excel report');
+      toast.error('Failed to download Excel report');
     }
   };
 

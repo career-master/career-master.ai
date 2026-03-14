@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
+import { toast } from 'react-hot-toast';
 
 type AnnouncementType = 'update' | 'training' | 'exam' | '';
 
@@ -74,18 +75,16 @@ export default function AdminAnnouncementsPage() {
   }, [filterType, filterStatus, loadAnnouncements]);
 
   const handleDelete = async (id: string, title: string) => {
-    if (!confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) {
-      return;
-    }
     try {
       const res = await apiService.deleteAnnouncement(id);
       if (res.success) {
+        toast.success('Announcement deleted');
         await loadAnnouncements(page);
       } else {
         throw new Error(res.error?.message || 'Failed to delete announcement');
       }
     } catch (err: any) {
-      alert(err.message || 'Failed to delete announcement');
+      toast.error(err.message || 'Failed to delete announcement');
     }
   };
 

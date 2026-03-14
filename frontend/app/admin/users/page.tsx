@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService, User } from '@/lib/api';
+import { toast } from 'react-hot-toast';
+import { getProfileCompletionPercent } from '@/lib/profileConfig';
+import { useProfileSettings } from '@/contexts/ProfileSettingsContext';
 
 export default function AdminUsersListPage() {
   const { user, isAuthenticated } = useAuth();
@@ -16,6 +19,7 @@ export default function AdminUsersListPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
+  const { profileMinCompletionPercent } = useProfileSettings();
 
   const loadUsers = useCallback(async (pageNumber: number, searchTerm: string = '') => {
     try {
@@ -52,19 +56,16 @@ export default function AdminUsersListPage() {
   }, [page, search, loadUsers]);
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete user "${name}"? This action cannot be undone.`)) {
-      return;
-    }
-
     try {
       const res = await apiService.deleteUser(id);
       if (res.success) {
+        toast.success('User deleted');
         await loadUsers(page, search);
       } else {
         throw new Error(res.error?.message || 'Failed to delete user');
       }
     } catch (err: any) {
-      alert(err.message || 'Failed to delete user');
+      toast.error(err.message || 'Failed to delete user');
     }
   };
 
@@ -72,19 +73,16 @@ export default function AdminUsersListPage() {
     const newStatus = currentStatus === 'active' ? 'banned' : 'active';
     const action = newStatus === 'banned' ? 'block' : 'unblock';
 
-    if (!confirm(`Are you sure you want to ${action} this user?`)) {
-      return;
-    }
-
     try {
       const res = await apiService.updateUser(id, { status: newStatus as 'active' | 'banned' });
       if (res.success) {
+        toast.success(`User ${action}ed`);
         await loadUsers(page, search);
       } else {
         throw new Error(res.error?.message || `Failed to ${action} user`);
       }
     } catch (err: any) {
-      alert(err.message || `Failed to ${action} user`);
+      toast.error(err.message || `Failed to ${action} user`);
     }
   };
 
@@ -94,7 +92,9 @@ export default function AdminUsersListPage() {
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-            <p className="text-gray-600 text-sm">View and manage all users</p>
+            <p className="text-gray-600 text-sm">
+              View and manage all users. Profile % is used for quiz access (min {profileMinCompletionPercent}%).
+            </p>
           </div>
           <Link
             href="/admin/users/new"
@@ -139,6 +139,7 @@ export default function AdminUsersListPage() {
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase">Name</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase">Email</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase">Phone</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase">Profile</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase">Roles</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase">Batches</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase">Status</th>
@@ -152,6 +153,24 @@ export default function AdminUsersListPage() {
                         <td className="px-6 py-4 text-sm font-medium text-gray-900">{u.name}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">{u.email}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">{(u as any).phone || '-'}</td>
+                        <td className="px-6 py-4">
+                          {(() => {
+                            const pct = getProfileCompletionPercent(u as any);
+                            const meetsQuiz = pct >= profileMinCompletionPercent;
+                            return (
+                              <div className="flex flex-col gap-0.5">
+                                <span className="text-sm font-medium text-gray-900">{pct}%</span>
+                                <span
+                                  className={`inline-flex w-fit rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                    meetsQuiz ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                                  }`}
+                                >
+                                  {meetsQuiz ? 'Quiz OK' : 'Fill profile'}
+                                </span>
+                              </div>
+                            );
+                          })()}
+                        </td>
                         <td className="px-6 py-4">
                           <div className="flex flex-wrap gap-1">
                             {u.roles?.map((r) => (

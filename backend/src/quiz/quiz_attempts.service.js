@@ -5,6 +5,8 @@ const TopicProgressService = require('../topic-progress/topic-progress.service')
 const QuizSet = require('../quiz-sets/quiz-sets.model');
 const Topic = require('../topics/topics.model');
 const { ErrorHandler } = require('../middleware/errorHandler');
+const { getSettings } = require('../settings/settings.service');
+const SubjectJoinRequestService = require('../subjects/subject-requests.service');
 
 /**
  * Quiz Attempt Service
@@ -22,6 +24,22 @@ class QuizAttemptService {
    */
   static async submitAttempt(quizId, userId, userEmail, answers, timeSpentInSeconds) {
     try {
+      // Profile completion gate (admin toggle: require 70% profile to attempt quiz)
+      const settings = await getSettings();
+      if (settings.profileCompletionEnforced && userId) {
+        const user = await User.findById(userId);
+        if (user) {
+          const profileCompletion = SubjectJoinRequestService.calculateProfileCompletion(user);
+          const minPercent = settings.profileMinCompletionPercent ?? 70;
+          if (profileCompletion < minPercent) {
+            throw new ErrorHandler(
+              400,
+              `Profile completion must be at least ${minPercent}% to attempt quizzes. Your profile is ${profileCompletion}% complete. Please complete your profile first.`
+            );
+          }
+        }
+      }
+
       // Get quiz
       const quiz = await QuizRepository.getQuizById(quizId);
       if (!quiz) {

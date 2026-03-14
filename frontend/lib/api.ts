@@ -199,6 +199,15 @@ class ApiService {
         headers: finalHeaders,
       });
 
+      // Some endpoints (like DELETE /users/:id) return 204 No Content.
+      // Treat any successful 204 as a successful response with no body.
+      if (response.status === 204) {
+        return {
+          success: true,
+          message: 'No content',
+        } as ApiResponse<T>;
+      }
+
       // Try to parse JSON, but handle cases where response is not JSON
       let data: any = null;
       const contentType = response.headers.get('content-type');
@@ -832,6 +841,21 @@ class ApiService {
   async getDashboardStatistics(): Promise<ApiResponse> {
     return this.request('/dashboard/statistics', {
       method: 'GET',
+    });
+  }
+
+  // App settings (GET public; PUT admin)
+  async getSettings(): Promise<ApiResponse<{ profileCompletionEnforced: boolean; profileMinCompletionPercent: number }>> {
+    return this.request('/settings', { method: 'GET' });
+  }
+
+  async updateSettings(payload: {
+    profileCompletionEnforced?: boolean;
+    profileMinCompletionPercent?: number;
+  }): Promise<ApiResponse<{ profileCompletionEnforced: boolean; profileMinCompletionPercent: number }>> {
+    return this.request('/settings', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
     });
   }
 

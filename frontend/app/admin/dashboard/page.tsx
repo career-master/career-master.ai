@@ -18,6 +18,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
+import { toast } from 'react-hot-toast';
 
 ChartJS.register(
   CategoryScale,
@@ -72,12 +73,13 @@ export default function AdminDashboardPage() {
       if (res.success) {
         setShowDeleteConfirm(false);
         await loadDashboardData();
+        toast.success('All quizzes deleted');
       } else {
-        alert(res.message || 'Failed to delete quizzes');
+        toast.error(res.message || 'Failed to delete quizzes');
       }
     } catch (err: any) {
       console.error('Delete all quizzes failed:', err);
-      alert(err?.message || 'Failed to delete quizzes');
+      toast.error(err?.message || 'Failed to delete quizzes');
     } finally {
       setDeletingQuizzes(false);
     }

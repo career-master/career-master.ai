@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import QuestionTypeSelector, { QUESTION_TYPES } from './QuestionTypeSelector';
 import QuestionFormRouter from './question-forms/QuestionFormRouter';
+import { toast } from 'react-hot-toast';
 
 interface Question {
   questionText: string;
@@ -56,10 +57,9 @@ export default function QuizSectionEditor({ sections, onChange }: QuizSectionEdi
   };
 
   const deleteSection = (index: number) => {
-    if (confirm('Are you sure you want to delete this section? All questions in it will be removed.')) {
-      const updated = sections.filter((_, i) => i !== index);
-      onChange(updated);
-    }
+    const updated = sections.filter((_, i) => i !== index);
+    onChange(updated);
+    toast.success('Section deleted');
   };
 
   const addQuestion = (sectionIndex: number, questionType: string) => {
@@ -391,21 +391,21 @@ export default function QuizSectionEditor({ sections, onChange }: QuizSectionEdi
                   if (editingQuestion !== null) {
                     const question = sections[editingQuestion.sectionIndex]?.questions[editingQuestion.questionIndex];
                     if (!question?.questionText?.trim()) {
-                      alert('Please enter a question text');
+                      toast.error('Please enter a question text');
                       return;
                     }
                     // Additional validation based on question type
                     if (question.questionType === 'multiple_choice_single' || question.questionType === 'multiple_choice_multiple') {
                       if (!question.options || question.options.filter((opt: string) => opt.trim()).length < 2) {
-                        alert('Please provide at least 2 options');
+                        toast.error('Please provide at least 2 options');
                         return;
                       }
                       if (question.questionType === 'multiple_choice_single' && question.correctOptionIndex === undefined) {
-                        alert('Please select a correct answer');
+                        toast.error('Please select a correct answer');
                         return;
                       }
                       if (question.questionType === 'multiple_choice_multiple' && (!question.correctOptionIndices || question.correctOptionIndices.length === 0)) {
-                        alert('Please select at least one correct answer');
+                        toast.error('Please select at least one correct answer');
                         return;
                       }
                     }

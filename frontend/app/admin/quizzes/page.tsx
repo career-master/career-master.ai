@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
+import { toast } from 'react-hot-toast';
 
 const DOMAINS = [
   '3 CLASS', '4 CLASS', '5 CLASS', '6 CLASS', '7 CLASS', '8 CLASS', '9 CLASS', '10 CLASS',
@@ -114,7 +115,7 @@ export default function AdminQuizzesPage() {
       await apiService.updateQuiz(quizId, { level });
       await loadQuizzes(page);
     } catch (err: any) {
-      alert(err?.message || 'Failed to update level');
+      toast.error(err?.message || 'Failed to update level');
     } finally {
       setUpdatingLevelId(null);
     }
@@ -301,15 +302,16 @@ export default function AdminQuizzesPage() {
                         <button
                           type="button"
                           onClick={async () => {
-                            if (confirm(`Are you sure you want to delete "${quiz.title}"?`)) {
-                              try {
-                                const res = await apiService.deleteQuiz(quiz._id);
-                                if (res.success) {
-                                  await loadQuizzes(page);
-                                }
-                              } catch (err: any) {
-                                alert(err.message || 'Failed to delete quiz');
+                            try {
+                              const res = await apiService.deleteQuiz(quiz._id);
+                              if (res.success) {
+                                toast.success('Quiz deleted');
+                                await loadQuizzes(page);
+                              } else {
+                                toast.error(res.message || 'Failed to delete quiz');
                               }
+                            } catch (err: any) {
+                              toast.error(err.message || 'Failed to delete quiz');
                             }
                           }}
                           className="text-red-600 hover:text-red-800 text-xs font-medium"

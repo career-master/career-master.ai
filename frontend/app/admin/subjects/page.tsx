@@ -234,13 +234,6 @@ export default function SubjectsListPage() {
   };
 
   const handleDeleteSubject = async (subjectId: string) => {
-    if (
-      !confirm(
-        'Are you sure you want to delete this subject? This will also delete all associated topics, cheatsheets, and quiz sets.'
-      )
-    ) {
-      return;
-    }
     try {
       setDeleting(true);
       const res = await apiService.deleteSubject(subjectId);

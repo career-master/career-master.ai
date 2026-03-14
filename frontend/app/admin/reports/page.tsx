@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiService } from '@/lib/api';
+import { toast } from 'react-hot-toast';
 
 interface AdminQuizAttempt {
   attemptId: string;
@@ -107,7 +108,7 @@ export default function AdminReportsPage() {
       document.body.removeChild(a);
     } catch (error) {
       console.error('Failed to download PDF report', error);
-      alert('Failed to download PDF report');
+      toast.error('Failed to download PDF report');
     }
   };
 
@@ -124,7 +125,7 @@ export default function AdminReportsPage() {
       document.body.removeChild(a);
     } catch (error) {
       console.error('Failed to download Excel report', error);
-      alert('Failed to download Excel report');
+      toast.error('Failed to download Excel report');
     }
   };
 

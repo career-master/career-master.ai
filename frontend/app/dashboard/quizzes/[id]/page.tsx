@@ -6,7 +6,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { apiService } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'react-hot-toast';
-import { PROFILE_COMPLETION_ENFORCED, PROFILE_MIN_COMPLETION_PERCENT } from '@/lib/profileConfig';
+import { useProfileSettings } from '@/contexts/ProfileSettingsContext';
 
 interface QuizQuestion {
   questionType: string;
@@ -63,6 +63,8 @@ function QuizAttemptContent() {
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [completionData, setCompletionData] = useState<any>(null);
   const [topicCompletionStatus, setTopicCompletionStatus] = useState<any>(null);
+
+  const { profileCompletionEnforced: PROFILE_COMPLETION_ENFORCED, profileMinCompletionPercent: PROFILE_MIN_COMPLETION_PERCENT } = useProfileSettings();
 
   // Calculate profile completion - MUST be before any conditional returns
   const profileCompletion = useMemo(() => {

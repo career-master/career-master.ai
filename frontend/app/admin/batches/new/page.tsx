@@ -229,10 +229,6 @@ export default function AdminBatchesNewPage() {
       return;
     }
 
-    if (!confirm('Are you sure you want to remove this student from the batch?')) {
-      return;
-    }
-
     try {
       const res = await apiService.removeStudentsFromBatch(currentBatchCode, [userId]);
       if (res.success) {
