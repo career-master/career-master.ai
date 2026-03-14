@@ -36,6 +36,8 @@ export default function AdminDashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
+  const [deletingQuizzes, setDeletingQuizzes] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -60,6 +62,24 @@ export default function AdminDashboardPage() {
       console.error('Failed to load dashboard data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteAllQuizzes = async () => {
+    try {
+      setDeletingQuizzes(true);
+      const res = await apiService.deleteAllQuizzes();
+      if (res.success) {
+        setShowDeleteConfirm(false);
+        await loadDashboardData();
+      } else {
+        alert(res.message || 'Failed to delete quizzes');
+      }
+    } catch (err: any) {
+      console.error('Delete all quizzes failed:', err);
+      alert(err?.message || 'Failed to delete quizzes');
+    } finally {
+      setDeletingQuizzes(false);
     }
   };
 
@@ -168,6 +188,36 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-4">
+      {/* Confirm delete all quizzes modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => !deletingQuizzes && setShowDeleteConfirm(false)}>
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <h5 className="font-bold text-gray-900 mb-2">Delete all quizzes?</h5>
+            <p className="text-gray-600 text-sm mb-4">
+              This will permanently delete all {overview.totalQuizzes} quizzes and their attempts. Subjects and topics will not be affected.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deletingQuizzes}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAllQuizzes}
+                disabled={deletingQuizzes}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deletingQuizzes ? 'Deleting...' : 'Delete all quizzes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
         <div className="bg-white rounded-xl shadow-lg p-4 border-t-4 border-blue-500 hover:shadow-xl transition-all">
@@ -204,13 +254,22 @@ export default function AdminDashboardPage() {
               </svg>
             </div>
           </div>
-          <div className="mt-2">
+          <div className="mt-2 flex items-center justify-between gap-2">
             <small className="text-green-600 text-xs font-semibold flex items-center gap-1">
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
               </svg>
               {growth.quizzesThisWeek} this week
             </small>
+            {overview.totalQuizzes > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="text-xs text-red-600 hover:text-red-800 font-medium"
+              >
+                Delete all
+              </button>
+            )}
           </div>
         </div>
 

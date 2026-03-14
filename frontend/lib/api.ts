@@ -557,6 +557,13 @@ class ApiService {
     });
   }
 
+  /** Admin: delete all quizzes and attempts (super_admin / content_admin only) */
+  async deleteAllQuizzes(): Promise<ApiResponse> {
+    return this.request('/quizzes/admin/all', {
+      method: 'DELETE',
+    });
+  }
+
   async uploadQuizExcel(formData: FormData): Promise<ApiResponse> {
     const token = this.getToken();
     const url = `${this.baseURL}/quizzes/upload-excel`;
