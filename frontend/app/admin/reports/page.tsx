@@ -34,6 +34,7 @@ export default function AdminReportsPage() {
 
   const [page, setPage] = useState(1);
   const pageSize = 20;
+  const totalPages = Math.ceil(total / pageSize) || 1;
 
   useEffect(() => {
     const loadFilterData = async () => {
