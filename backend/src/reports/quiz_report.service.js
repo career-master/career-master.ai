@@ -340,6 +340,44 @@ class QuizReportService {
       throw error;
     }
   }
+
+  /**
+   * Delete a single quiz attempt for a user
+   * @param {string} userId
+   * @param {string} attemptId
+   */
+  static async deleteUserQuizAttempt(userId, attemptId) {
+    try {
+      const attempt = await QuizAttempt.findById(attemptId).lean();
+      if (!attempt) {
+        throw new ErrorHandler(404, 'Quiz attempt not found');
+      }
+
+      if (attempt.userId.toString() !== userId.toString()) {
+        throw new ErrorHandler(403, 'You are not allowed to delete this attempt');
+      }
+
+      await QuizAttempt.deleteOne({ _id: attemptId });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Admin: Delete any quiz attempt (super_admin only)
+   * @param {string} attemptId
+   */
+  static async deleteAdminQuizAttempt(attemptId) {
+    try {
+      const attempt = await QuizAttempt.findById(attemptId).lean();
+      if (!attempt) {
+        throw new ErrorHandler(404, 'Quiz attempt not found');
+      }
+      await QuizAttempt.deleteOne({ _id: attemptId });
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 module.exports = QuizReportService;

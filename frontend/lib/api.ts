@@ -529,6 +529,12 @@ class ApiService {
     });
   }
 
+  async deleteUserQuizAttempt(attemptId: string): Promise<ApiResponse> {
+    return this.request(`/reports/quiz-attempt/${attemptId}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Admin: get quiz attempts across users with filters + pagination
   async getAdminUserQuizAttempts(filters?: {
     quizId?: string;
@@ -549,6 +555,12 @@ class ApiService {
     const query = params.toString();
     return this.request(`/reports/admin/user-quiz-attempts${query ? `?${query}` : ''}`, {
       method: 'GET',
+    });
+  }
+
+  async deleteAdminQuizAttempt(attemptId: string): Promise<ApiResponse> {
+    return this.request(`/reports/admin/quiz-attempt/${attemptId}`, {
+      method: 'DELETE',
     });
   }
 

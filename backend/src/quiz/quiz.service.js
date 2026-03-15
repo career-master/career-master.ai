@@ -257,7 +257,18 @@ class QuizService {
    * Delete quiz
    */
   static async deleteQuiz(quizId) {
-    await QuizRepository.deleteQuiz(quizId);
+    try {
+      // Delete the quiz itself
+      await QuizRepository.deleteQuiz(quizId);
+
+      // Also delete any quiz attempts and quiz sets linked to this quiz
+      await Promise.all([
+        QuizAttempt.deleteMany({ quizId }),
+        QuizSet.deleteMany({ quizId }),
+      ]);
+    } catch (error) {
+      throw new ErrorHandler(500, `Error deleting quiz and related data: ${error.message}`);
+    }
   }
 
   /**

@@ -80,15 +80,25 @@ export default function AdminLayout({
     { id: 'dashboard', label: 'Dashboard', icon: 'tachometer', href: '/admin/dashboard' },
     { id: 'users', label: 'User Management', icon: 'users', href: '/admin/users' },
     { id: 'batches', label: 'Batches', icon: 'users', href: '/admin/batches' },
-    { id: 'subjects', label: 'Subjects & Topics', icon: 'book', href: '/admin/subjects', children: [
-      { id: 'st-domains', label: 'Domains', href: '/admin/subjects?section=domains' },
-      { id: 'st-categories', label: 'Categories', href: '/admin/subjects?section=categories' },
-      { id: 'st-subjects', label: 'Subjects', href: '/admin/subjects?section=subjects' },
-      { id: 'st-topics', label: 'Topics', href: '/admin/subjects?section=topics' },
-      { id: 'st-subtopics', label: 'Sub-Topics', href: '/admin/subjects?section=subtopics' },
-    ] },
+    { id: 'institutions', label: 'Institutions', icon: 'university', href: '/admin/institutions' },
+    {
+      id: 'subjects',
+      label: 'Subjects & Topics',
+      icon: 'book',
+      href: '/admin/subjects',
+      children: [
+        { id: 'st-domains', label: 'Domains', href: '/admin/subjects?section=domains' },
+        { id: 'st-categories', label: 'Categories', href: '/admin/subjects?section=categories' },
+        { id: 'st-subjects', label: 'Subjects', href: '/admin/subjects?section=subjects' },
+        { id: 'st-topics', label: 'Topics', href: '/admin/subjects?section=topics' },
+        { id: 'st-subtopics', label: 'Sub-Topics', href: '/admin/subjects?section=subtopics' },
+      ],
+    },
     { id: 'reports', label: 'Reports & Analytics', icon: 'robot', href: '/admin/reports' },
     { id: 'questions', label: 'Questions Bank', icon: 'database', href: '/admin/quizzes' },
+    { id: 'leaderboard', label: 'Leaderboard', icon: 'trophy', href: '/admin/leaderboard' },
+    { id: 'insights', label: 'AI insights', icon: 'sparkles', href: '/admin/ai-insights' },
+    { id: 'coupons', label: 'Coupons', icon: 'ticket', href: '/admin/coupons' },
     { id: 'announcements', label: 'Updates & Events', icon: 'clipboard', href: '/admin/announcements' },
     { id: 'tests', label: 'Test Engine', icon: 'file', href: '/admin/tests' },
     { id: 'content', label: 'Content Library', icon: 'book', href: '/admin/content' },
@@ -287,6 +297,27 @@ export default function AdminLayout({
                             <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
                             <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
                           </>
+                        )}
+                        {item.icon === 'trophy' && (
+                          <path
+                            fillRule="evenodd"
+                            d="M7 2a1 1 0 00-1 1v1H4a1 1 0 00-1 1v1a4 4 0 003 3.874V12a3 3 0 01-3 3H3a1 1 0 100 2h14a1 1 0 100-2h-.001A3 3 0 0114 12v-2.126A4.002 4.002 0 0017 6V5a1 1 0 00-1-1h-2V3a1 1 0 00-1-1H7zm7 4a2 2 0 01-1.555 1.946A1 1 0 0012 8v-.382A3.001 3.001 0 0110.528 5H14v1zM6 5h3.472A3.001 3.001 0 019 7.618V8a1 1 0 01-1.445.894A2 2 0 016 6V5z"
+                            clipRule="evenodd"
+                          />
+                        )}
+                        {item.icon === 'sparkles' && (
+                          <path
+                            fillRule="evenodd"
+                            d="M5 2a1 1 0 011 1c0 1.306.835 2.417 2 2.83A3.001 3.001 0 0112 3a1 1 0 112 0 5.002 5.002 0 01-3.528 4.783A3.001 3.001 0 0112 11a1 1 0 11-2 0c0-1.306-.835-2.417-2-2.83A5.002 5.002 0 014 3a1 1 0 011-1zm9 7a1 1 0 01.894.553L16.382 11H18a1 1 0 110 2h-1.618l-1.488 1.447a1 1 0 11-1.414-1.414L13.382 13H12a1 1 0 110-2h1.382l1.098-1.053A1 1 0 0114 9zm-9 3a1 1 0 01.894.553L7.382 14H9a1 1 0 110 2H7.382l-.488.447a1 1 0 11-1.288-1.536L6.118 14H5a1 1 0 110-2h1z"
+                            clipRule="evenodd"
+                          />
+                        )}
+                        {item.icon === 'ticket' && (
+                          <path
+                            fillRule="evenodd"
+                            d="M4 4a2 2 0 00-2 2v2a1 1 0 001 1 1 1 0 010 2 1 1 0 00-1 1v2a2 2 0 002 2h12a2 2 0 002-2v-2a1 1 0 00-1-1 1 1 0 010-2 1 1 0 001-1V6a2 2 0 00-2-2H4zm8 2a1 1 0 112 0v8a1 1 0 11-2 0V6z"
+                            clipRule="evenodd"
+                          />
                         )}
                       </svg>
                       <span className="flex-1">{item.label}</span>

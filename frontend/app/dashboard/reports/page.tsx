@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { apiService } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
@@ -36,6 +36,8 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [topics, setTopics] = useState<any[]>([]);
+  const [deletingAttemptId, setDeletingAttemptId] = useState<string | null>(null);
+  const [attemptToDelete, setAttemptToDelete] = useState<{ id: string; title: string } | null>(null);
   
   // Filters
   const [filters, setFilters] = useState<{
@@ -49,13 +51,37 @@ export default function ReportsPage() {
     difficulty?: 'easy' | 'medium' | 'hard';
   }>({});
   const [showFilters, setShowFilters] = useState(false);
+  const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'score_desc' | 'score_asc'>('date_desc');
   
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const totalPages = Math.ceil(attempts.length / pageSize);
+
+  const sortedAttempts = useMemo(() => {
+    const list = [...attempts];
+    list.sort((a, b) => {
+      if (sortBy === 'score_desc' || sortBy === 'score_asc') {
+        const pa = a.percentage ?? 0;
+        const pb = b.percentage ?? 0;
+        if (pa === pb) {
+          // tie-breaker: newer date first
+          const da = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+          const db = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+          return db - da;
+        }
+        return sortBy === 'score_desc' ? pb - pa : pa - pb;
+      }
+      // date sort
+      const da = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+      const db = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+      return sortBy === 'date_desc' ? db - da : da - db;
+    });
+    return list;
+  }, [attempts, sortBy]);
+
+  const totalPages = Math.ceil(sortedAttempts.length / pageSize);
   const startIdx = (page - 1) * pageSize;
-  const endIdx = Math.min(startIdx + pageSize, attempts.length);
-  const paginatedAttempts = attempts.slice(startIdx, endIdx);
+  const endIdx = Math.min(startIdx + pageSize, sortedAttempts.length);
+  const paginatedAttempts = sortedAttempts.slice(startIdx, endIdx);
 
   // Load subjects and topics for filters
   useEffect(() => {
@@ -124,6 +150,25 @@ export default function ReportsPage() {
     setPage(1); // Reset to first page when filters change
   };
   
+  const handleConfirmDeleteAttempt = async () => {
+    if (!attemptToDelete) return;
+    try {
+      setDeletingAttemptId(attemptToDelete.id);
+      const res = await apiService.deleteUserQuizAttempt(attemptToDelete.id);
+      if (!res.success) {
+        throw new Error(res.error?.message || res.message || 'Failed to delete attempt');
+      }
+      toast.success('Quiz attempt deleted successfully.');
+      setAttempts((prev) => prev.filter((a) => a.attemptId !== attemptToDelete.id));
+      setAttemptToDelete(null);
+    } catch (err: any) {
+      console.error('Failed to delete attempt:', err);
+      toast.error(err.message || 'Failed to delete attempt');
+    } finally {
+      setDeletingAttemptId(null);
+    }
+  };
+  
   const clearFilters = () => {
     setFilters({});
     setPage(1);
@@ -188,7 +233,7 @@ export default function ReportsPage() {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
               Quiz Reports: {attempts.length} {attempts.length === 1 ? 'Attempt' : 'Attempts'}
@@ -197,20 +242,64 @@ export default function ReportsPage() {
               View detailed reports with correct answers for each quiz attempt. Download PDF or Excel reports.
             </p>
           </div>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
-            Filters
-            {hasActiveFilters && (
-              <span className="bg-white text-purple-600 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
-                {Object.keys(filters).length}
-              </span>
-            )}
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">Sort by</span>
+              <div className="inline-flex rounded-full bg-gray-100 p-1">
+                <button
+                  type="button"
+                  onClick={() => { setSortBy('date_desc'); setPage(1); }}
+                  className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                    sortBy === 'date_desc' || sortBy === 'date_asc'
+                      ? 'bg-white text-purple-700 shadow'
+                      : 'text-gray-600'
+                  }`}
+                >
+                  Date
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setSortBy('score_desc'); setPage(1); }}
+                  className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                    sortBy === 'score_desc' || sortBy === 'score_asc'
+                      ? 'bg-white text-purple-700 shadow'
+                      : 'text-gray-600'
+                  }`}
+                >
+                  Score
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSortBy((prev) =>
+                    prev === 'date_desc' ? 'date_asc'
+                    : prev === 'date_asc' ? 'date_desc'
+                    : prev === 'score_desc' ? 'score_asc'
+                    : 'score_desc'
+                  );
+                }}
+                className="inline-flex items-center rounded-full border border-gray-300 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-100"
+                title="Toggle sort direction"
+              >
+                {sortBy.endsWith('desc') ? '↓ New / High first' : '↑ Old / Low first'}
+              </button>
+            </div>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              Filters
+              {hasActiveFilters && (
+                <span className="bg-white text-purple-600 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
+                  {Object.keys(filters).length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Filters Panel */}
@@ -314,7 +403,6 @@ export default function ReportsPage() {
                 >
                   <option value="">All Difficulties</option>
                   <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
                   <option value="hard">Hard</option>
                 </select>
               </div>
@@ -357,7 +445,7 @@ export default function ReportsPage() {
             <>
               {/* Desktop Table */}
               <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-left">
+                <table className="min-w-[1100px] w-full text-left whitespace-nowrap">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50">
                       <th className="py-3 px-4 text-sm font-bold text-gray-900">S.NO</th>
@@ -367,6 +455,7 @@ export default function ReportsPage() {
                       <th className="py-3 px-4 text-sm font-bold text-gray-900">Percentage</th>
                       <th className="py-3 px-4 text-sm font-bold text-gray-900">Difficulty</th>
                       <th className="py-3 px-4 text-sm font-bold text-gray-900">Time Taken</th>
+                      <th className="py-3 px-4 text-sm font-bold text-gray-900">Taken On</th>
                       <th className="py-3 px-4 text-sm font-bold text-gray-900">Result</th>
                       <th className="py-3 px-4 text-sm font-bold text-gray-900">Actions</th>
                     </tr>
@@ -427,8 +516,13 @@ export default function ReportsPage() {
                             <span className="text-gray-400">—</span>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-gray-900">
+                        <td className="py-3 px-4 text-gray-900 whitespace-nowrap">
                           {Math.floor(attempt.timeSpentInSeconds / 60)}m {attempt.timeSpentInSeconds % 60}s
+                        </td>
+                        <td className="py-3 px-4 text-xs text-gray-700 whitespace-nowrap">
+                          {attempt.submittedAt
+                            ? new Date(attempt.submittedAt).toLocaleString()
+                            : '—'}
                         </td>
                         <td className="py-3 px-4">
                           <span className={`px-3 py-1 rounded-md font-bold border-2 text-sm ${
@@ -467,6 +561,15 @@ export default function ReportsPage() {
                             >
                               <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => setAttemptToDelete({ id: attempt.attemptId, title: attempt.quizTitle || 'Unknown Quiz' })}
+                              className="hover:bg-red-100 rounded-full p-2 transition-colors"
+                              title="Delete Attempt"
+                            >
+                              <svg className="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                               </svg>
                             </button>
                           </div>
@@ -535,6 +638,11 @@ export default function ReportsPage() {
                         <div className="font-semibold">
                           {Math.floor(attempt.timeSpentInSeconds / 60)}m {attempt.timeSpentInSeconds % 60}s
                         </div>
+                        <div className="text-gray-500 text-[10px] mt-1">
+                          {attempt.submittedAt
+                            ? new Date(attempt.submittedAt).toLocaleString()
+                            : '—'}
+                        </div>
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -564,6 +672,15 @@ export default function ReportsPage() {
                       >
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => setAttemptToDelete({ id: attempt.attemptId, title: attempt.quizTitle || 'Unknown Quiz' })}
+                        className="px-3 py-2 rounded-md bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                        title="Delete Attempt"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
                     </div>
@@ -599,6 +716,36 @@ export default function ReportsPage() {
           )}
         </div>
       </div>
+      {/* Delete attempt confirmation modal */}
+      {attemptToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Delete quiz attempt?</h2>
+            <p className="text-gray-600 text-sm mb-4">
+              This will permanently delete your attempt for{' '}
+              <span className="font-semibold">{attemptToDelete.title}</span>. This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setAttemptToDelete(null)}
+                disabled={!!deletingAttemptId}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteAttempt}
+                disabled={!!deletingAttemptId}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deletingAttemptId ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

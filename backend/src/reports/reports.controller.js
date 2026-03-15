@@ -290,6 +290,78 @@ class ReportsController {
       next(error);
     }
   }
+
+  /**
+   * Delete a user's own quiz attempt
+   * DELETE /api/reports/quiz-attempt/:attemptId
+   */
+  static async deleteUserQuizAttempt(req, res, next) {
+    try {
+      const reqUser = req.user;
+      const { attemptId } = req.params;
+
+      const userId = reqUser?._id || reqUser?.userId;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'User authentication required',
+        });
+      }
+
+      if (!attemptId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Attempt ID is required',
+        });
+      }
+
+      await QuizReportService.deleteUserQuizAttempt(userId, attemptId);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Quiz attempt deleted successfully',
+      });
+    } catch (error) {
+      console.error('Error in deleteUserQuizAttempt controller:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * Admin: Delete any quiz attempt (super_admin only)
+   * DELETE /api/reports/admin/quiz-attempt/:attemptId
+   */
+  static async deleteAdminQuizAttempt(req, res, next) {
+    try {
+      const reqUser = req.user;
+      const { attemptId } = req.params;
+
+      if (!reqUser || !Array.isArray(reqUser.roles) || !reqUser.roles.includes('super_admin')) {
+        return res.status(403).json({
+          success: false,
+          message: 'Admin access required',
+        });
+      }
+
+      if (!attemptId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Attempt ID is required',
+        });
+      }
+
+      await QuizReportService.deleteAdminQuizAttempt(attemptId);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Quiz attempt deleted successfully',
+      });
+    } catch (error) {
+      console.error('Error in deleteAdminQuizAttempt controller:', error);
+      next(error);
+    }
+  }
 }
 
 module.exports = ReportsController;

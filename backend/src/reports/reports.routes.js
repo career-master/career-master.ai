@@ -24,7 +24,9 @@ router.get('/quiz-attempt/:attemptId', ReportsController.getQuizAttemptReport);
 router.get('/quiz-attempt/:attemptId/pdf', ReportsController.downloadPDFReport);
 router.get('/quiz-attempt/:attemptId/excel', ReportsController.downloadExcelReport);
 router.get('/user-quiz-attempts', ReportsController.getUserQuizAttempts);
+router.delete('/quiz-attempt/:attemptId', ReportsController.deleteUserQuizAttempt);
 router.get('/admin/user-quiz-attempts', ReportsController.getAdminUserQuizAttempts);
+router.delete('/admin/quiz-attempt/:attemptId', ReportsController.deleteAdminQuizAttempt);
 
 module.exports = router;
 

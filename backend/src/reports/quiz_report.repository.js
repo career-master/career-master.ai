@@ -442,7 +442,7 @@ class QuizReportRepository {
 
       const [attempts, total] = await Promise.all([
         QuizAttempt.find(matchCriteria)
-          .populate('quizId', 'title description')
+          .populate('quizId', 'title description level')
           .populate('subjectId', 'name title')
           .populate('topicId', 'title')
           .populate('userId', 'name email')
@@ -457,6 +457,7 @@ class QuizReportRepository {
         attemptId: attempt._id?.toString(),
         quizId: attempt.quizId?._id?.toString() || attempt.quizId?.toString(),
         quizTitle: attempt.quizId?.title || 'Unknown Quiz',
+        level: attempt.quizId?.level || null,
         subjectId: attempt.subjectId?._id?.toString() || attempt.subjectId?.toString() || null,
         subjectTitle:
           attempt.subjectId?.title ||

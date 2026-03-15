@@ -194,7 +194,13 @@ export default function DashboardQuizzesPage() {
             apiService.getQuizSetsByTopic(topic._id, true),
             apiService.getTopicProgress(topic._id, cacheBuster).catch(() => ({ success: false, data: null })),
           ]);
-          const quizSets: QuizSet[] = (qsRes.success && Array.isArray(qsRes.data)) ? qsRes.data : [];
+          const quizSetsRaw: QuizSet[] = (qsRes.success && Array.isArray(qsRes.data)) ? qsRes.data : [];
+          // Filter out quiz sets whose quiz has been deleted (quizId missing)
+          const quizSets: QuizSet[] = quizSetsRaw.filter((qs) => {
+            const quiz = typeof qs.quizId === 'object' ? (qs.quizId as any) : null;
+            const id = quiz?._id ?? (typeof qs.quizId === 'string' ? qs.quizId : null);
+            return !!id;
+          });
           const progress: TopicProgress | null = progRes?.success && progRes?.data ? (progRes.data as TopicProgress) : null;
           return { topic, quizSets, progress };
         })
@@ -481,7 +487,13 @@ export default function DashboardQuizzesPage() {
 
   // Helper: get attempted and passed counts for a topic (for progress bar — bar shows attempted so it updates after retake)
   const getTopicProgressCounts = (quizSets: QuizSet[], progress: TopicProgress | null) => {
-    const total = quizSets.length;
+    // Only count quiz sets that still have a valid quiz linked
+    const validQuizSets = quizSets.filter((qs) => {
+      const quiz = typeof qs.quizId === 'object' ? (qs.quizId as any) : null;
+      const id = quiz?._id ?? (typeof qs.quizId === 'string' ? qs.quizId : null);
+      return !!id;
+    });
+    const total = validQuizSets.length;
     if (!progress?.completedQuizzes?.length || total === 0) return { attempted: 0, passed: 0, total };
     const attemptedIds = new Set(
       progress.completedQuizzes.map((c) => String(typeof c.quizId === 'string' ? c.quizId : (c.quizId as any)?._id))
@@ -493,7 +505,7 @@ export default function DashboardQuizzesPage() {
     );
     let attempted = 0;
     let passed = 0;
-    quizSets.forEach((qs) => {
+    validQuizSets.forEach((qs) => {
       const id = typeof qs.quizId === 'object' ? (qs.quizId as any)?._id : qs.quizId;
       if (!id) return;
       if (attemptedIds.has(String(id))) attempted++;
@@ -513,14 +525,14 @@ export default function DashboardQuizzesPage() {
     return pct >= 60 ? 'completed' : 'attempted';
   };
 
-  // Colored tag for quiz level (Basic=green, Hard=rose)
+  // Colored tag for quiz level (Easy=green, Hard=rose)
   const LevelTag = ({ level }: { level: 'basic' | 'hard' }) => {
     const styles: Record<string, string> = {
       basic: 'bg-emerald-100 text-emerald-800',
       hard: 'bg-rose-100 text-rose-800',
     };
     const labels: Record<string, string> = {
-      basic: 'Basic',
+      basic: 'Easy',
       hard: 'Hard',
     };
     return (
@@ -1073,7 +1085,7 @@ export default function DashboardQuizzesPage() {
                             : 'bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700'
                         }`}
                       >
-                        {l.charAt(0).toUpperCase() + l.slice(1)}
+                        {l === 'basic' ? 'Easy' : 'Hard'}
                       </button>
                     ))}
                   </div>

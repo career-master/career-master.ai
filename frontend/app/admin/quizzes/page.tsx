@@ -30,6 +30,8 @@ export default function AdminQuizzesPage() {
   const [updatingLevelId, setUpdatingLevelId] = useState<string | null>(null);
   const [domainNames, setDomainNames] = useState<string[]>(FALLBACK_DOMAINS);
   const [categoriesFromApi, setCategoriesFromApi] = useState<string[]>([]);
+  const [deleteModalQuiz, setDeleteModalQuiz] = useState<{ id: string; title: string } | null>(null);
+  const [deletingQuizId, setDeletingQuizId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!filterDomain) {
@@ -143,8 +145,60 @@ export default function AdminQuizzesPage() {
     }
   };
 
+  const handleConfirmDeleteQuiz = async () => {
+    if (!deleteModalQuiz) return;
+    setDeletingQuizId(deleteModalQuiz.id);
+    try {
+      const res = await apiService.deleteQuiz(deleteModalQuiz.id);
+      if (res.success) {
+        toast.success('Quiz deleted successfully.');
+        setDeleteModalQuiz(null);
+        setPage(1);
+        await loadQuizzes(1);
+      } else {
+        toast.error((res as any).error?.message || (res as any).message || 'Failed to delete quiz');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to delete quiz');
+    } finally {
+      setDeletingQuizId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
+      {/* Delete quiz confirmation modal */}
+      {deleteModalQuiz && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => !deletingQuizId && setDeleteModalQuiz(null)}
+        >
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <h5 className="font-bold text-gray-900 mb-2">Delete quiz?</h5>
+            <p className="text-gray-600 text-sm mb-4">
+              &quot;{deleteModalQuiz.title}&quot; will be permanently deleted. This cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setDeleteModalQuiz(null)}
+                disabled={!!deletingQuizId}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteQuiz}
+                disabled={!!deletingQuizId}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deletingQuizId ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="container mx-auto px-4">
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -264,7 +318,7 @@ export default function AdminQuizzesPage() {
                   className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500"
                 >
                   <option value="">All</option>
-                  <option value="basic">Basic</option>
+                  <option value="basic">Easy</option>
                   <option value="hard">Hard</option>
                 </select>
               </div>
@@ -275,7 +329,7 @@ export default function AdminQuizzesPage() {
           ) : filteredQuizzes.length === 0 ? (
             <p className="text-sm text-gray-500">
               {filterLevel
-                ? `No quizzes for ${filterLevel === 'basic' ? 'Basic' : 'Hard'}.`
+                ? `No quizzes for ${filterLevel === 'basic' ? 'Easy' : 'Hard'}.`
                 : 'No quizzes created yet.'}
             </p>
           ) : (
@@ -322,7 +376,7 @@ export default function AdminQuizzesPage() {
                             className="rounded border border-gray-300 px-2 py-0.5 text-[11px] text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500 disabled:opacity-60"
                           >
                             <option value="">All</option>
-                            <option value="basic">Basic</option>
+                            <option value="basic">Easy</option>
                             <option value="hard">Hard</option>
                           </select>
                         </div>
@@ -332,34 +386,26 @@ export default function AdminQuizzesPage() {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         <button
                           type="button"
                           onClick={() => router.push(`/admin/quizzes/new?id=${quiz._id}`)}
-                          className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                          title="Edit quiz"
+                          className="p-1.5 rounded-md text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition-colors"
                         >
-                          Edit
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
                         </button>
                         <button
                           type="button"
-                          onClick={async () => {
-                            if (!confirm('Are you sure you want to delete this quiz? This cannot be undone.')) return;
-                            try {
-                              const res = await apiService.deleteQuiz(quiz._id);
-                              if (res.success) {
-                                toast.success('Quiz deleted successfully. Refreshing list.');
-                                setPage(1);
-                                await loadQuizzes(1);
-                              } else {
-                                toast.error((res as any).error?.message || (res as any).message || 'Failed to delete quiz');
-                              }
-                            } catch (err: any) {
-                              toast.error(err.message || 'Failed to delete quiz');
-                            }
-                          }}
-                          className="text-red-600 hover:text-red-800 text-xs font-medium"
+                          onClick={() => setDeleteModalQuiz({ id: quiz._id, title: quiz.title || 'Untitled quiz' })}
+                          title="Delete quiz"
+                          className="p-1.5 rounded-md text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
                         >
-                          Delete
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
                         </button>
                       </div>
                     </div>

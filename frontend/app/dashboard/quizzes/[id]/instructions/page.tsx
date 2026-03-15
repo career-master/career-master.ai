@@ -104,7 +104,7 @@ export default function QuizInstructionsPage() {
           </div>
 
           <div className="p-6 space-y-6">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 text-base">
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Duration</p>
                 <p className="text-lg font-bold text-gray-900">{duration} minutes</p>
@@ -115,18 +115,39 @@ export default function QuizInstructionsPage() {
               </div>
             </div>
 
-            <div>
-              <h2 className="text-sm font-semibold text-gray-700 mb-3">Instructions</h2>
-              <ul className="space-y-2 text-sm text-gray-600 list-disc list-inside">
-                <li>Read each question carefully before answering.</li>
-                <li>You can navigate between questions using the question palette.</li>
-                <li>You can skip questions and come back to them later.</li>
-                <li>Submit the quiz only when you have completed all questions or when time is about to end.</li>
-                <li>Once submitted, you cannot change your answers.</li>
-                {duration > 0 && (
-                  <li>This quiz has a time limit of {duration} minutes.</li>
-                )}
-              </ul>
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-base sm:text-lg font-semibold text-gray-800 mb-3">
+                  General Instructions for Candidates
+                </h2>
+                <ol className="space-y-2 text-sm sm:text-base text-gray-700 list-decimal list-inside leading-relaxed">
+                  <li>Carefully read each question before selecting your answer.</li>
+                  <li>The question palette displayed on the screen allows you to navigate between questions at any time during the examination.</li>
+                  <li>You may attempt the questions in any order within the allotted time.</li>
+                  <li>You may skip a question and return to it later if required.</li>
+                  <li>Ensure that you review your answers before submitting the test.</li>
+                  <li>The test will be automatically submitted once the allotted time expires.</li>
+                  <li>
+                    Once you click the Submit button, your responses will be finalized. You will not be able to modify your answers, and the test window will close automatically.
+                  </li>
+                  <li>Do not refresh, close, or navigate away from the test window during the examination, as it may result in loss of responses.</li>
+                  <li>
+                    The total duration of the examination is {duration || 30} minutes.
+                  </li>
+                  <li>Please maintain academic integrity and avoid any unfair means while attempting the test.</li>
+                </ol>
+              </div>
+
+              <div>
+                <h2 className="text-base sm:text-lg font-semibold text-gray-800 mb-3">
+                  Marking Scheme
+                </h2>
+                <ul className="space-y-2 text-sm sm:text-base text-gray-700 list-disc list-inside leading-relaxed">
+                  <li>Each correct answer will be awarded the marks specified in the question.</li>
+                  <li>Negative marking, if applicable, will be indicated in the question details.</li>
+                  <li>No marks will be awarded for unanswered questions.</li>
+                </ul>
+              </div>
             </div>
 
             <div className="pt-4 flex flex-col sm:flex-row gap-3">

@@ -33,7 +33,7 @@ export default function AdminCreateQuizPage() {
   const [title, setTitle] = useState('');
   const [userEditedTitle, setUserEditedTitle] = useState(false);
   const [description, setDescription] = useState('');
-  const [durationMinutes, setDurationMinutes] = useState(30);
+  const [durationInput, setDurationInput] = useState('30');
   const [availableFrom, setAvailableFrom] = useState('');
   const [availableTo, setAvailableTo] = useState('');
   const [enableAvailableFrom, setEnableAvailableFrom] = useState(false);
@@ -43,7 +43,7 @@ export default function AdminCreateQuizPage() {
   const [selectedBatches, setSelectedBatches] = useState<string[]>([]);
   const [batches, setBatches] = useState<any[]>([]);
   const [isActive, setIsActive] = useState(true);
-  const [level, setLevel] = useState<'basic' | 'hard' | ''>('');
+  const [level, setLevel] = useState<'basic' | 'hard'>('basic');
 
   // Link: Domain → Category → Subject → Sub-topic (optional: where this quiz appears for students)
   const [domainNames, setDomainNames] = useState<string[]>(FALLBACK_DOMAINS);
@@ -126,8 +126,8 @@ export default function AdminCreateQuizPage() {
   const hasTopic = String(selectedRootTopicId ?? '').trim().length > 0;
   const maxAttemptsVal = Number(maxAttempts);
   const hasMaxAttempts = Number.isFinite(maxAttemptsVal) && maxAttemptsVal >= 1;
-  const durationVal = Number(durationMinutes);
-  const effectiveDuration = Number.isFinite(durationVal) && durationVal >= 30 ? durationVal : 30;
+  const durationVal = Number(durationInput);
+  const effectiveDuration = Number.isFinite(durationVal) && durationVal >= 1 && durationVal <= 600 ? durationVal : 30;
   const canUploadExcel = hasTitle && hasTopic && hasMaxAttempts;
 
   // Show what's missing when Upload is disabled
@@ -238,7 +238,7 @@ export default function AdminCreateQuizPage() {
         setTitle(quiz.title || '');
         setUserEditedTitle(true);
         setDescription(quiz.description || '');
-        setDurationMinutes(quiz.durationMinutes || 30);
+        setDurationInput(String(quiz.durationMinutes ?? 30));
         const hasAvailableFrom = quiz.availableFrom ? true : false;
         const hasAvailableTo = quiz.availableTo ? true : false;
         setEnableAvailableFrom(hasAvailableFrom);
@@ -249,7 +249,7 @@ export default function AdminCreateQuizPage() {
         setMaxAttempts(quiz.maxAttempts ?? 5);
         setSelectedBatches(Array.isArray(quiz.batches) ? quiz.batches : []);
         setIsActive(quiz.isActive !== undefined ? quiz.isActive : true);
-        setLevel(quiz.level === 'basic' || quiz.level === 'hard' ? quiz.level : '');
+        setLevel(quiz.level === 'basic' || quiz.level === 'hard' ? quiz.level : 'basic');
         
         // Load sections or questions based on quiz structure
         if (quiz.useSections && Array.isArray(quiz.sections) && quiz.sections.length > 0) {
@@ -462,7 +462,7 @@ export default function AdminCreateQuizPage() {
         isActive,
       };
       // Always set level explicitly so it is never dropped (basic/hard or null)
-      payload.level = (level === 'basic' || level === 'hard') ? level : null;
+      payload.level = level;
 
       // Only include dates if checkboxes are enabled
       if (enableAvailableFrom && availableFrom) {
@@ -832,7 +832,7 @@ export default function AdminCreateQuizPage() {
         setTitle('');
         setUserEditedTitle(false);
         setDescription('');
-        setDurationMinutes(30);
+        setDurationInput('30');
         setMarksPerQuestion(1);
         setAvailableFrom('');
         setAvailableTo('');
@@ -901,8 +901,8 @@ export default function AdminCreateQuizPage() {
       return;
     }
 
-    const dur = Number(durationMinutes);
-    const durationToUse = Number.isFinite(dur) && dur >= 30 ? dur : 30;
+    const dur = Number(durationInput);
+    const durationToUse = Number.isFinite(dur) && dur >= 1 && dur <= 600 ? dur : 30;
 
     // Validate dates only if checkboxes are enabled
     if (enableAvailableFrom && (!availableFrom || !availableFrom.trim())) {
@@ -947,9 +947,7 @@ export default function AdminCreateQuizPage() {
       formData.append('availableToEveryone', String(availableToEveryone));
       formData.append('maxAttempts', String(maxAttempts ?? 5));
       formData.append('defaultMarks', String(marksPerQuestion || 1));
-      if (level === 'basic' || level === 'hard') {
-        formData.append('level', level);
-      }
+      formData.append('level', level);
       if (!availableToEveryone && selectedBatches.length > 0) {
         formData.append('batches', selectedBatches.join(','));
       }
@@ -1095,18 +1093,8 @@ export default function AdminCreateQuizPage() {
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Level (who can see this quiz)
               </label>
-              <p className="text-xs text-gray-500 mb-2">Set whether this quiz is Basic or Hard. Users filter by these on the Practice Quizzes page.</p>
+              <p className="text-xs text-gray-500 mb-2">Set whether this quiz is Easy or Hard. Users filter by these on the Practice Quizzes page.</p>
               <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="quiz-level"
-                    checked={level === ''}
-                    onChange={() => setLevel('')}
-                    className="border-gray-300 text-red-600 focus:ring-red-500"
-                  />
-                  <span className="text-sm text-gray-700">All (show for all levels)</span>
-                </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="radio"
@@ -1115,7 +1103,7 @@ export default function AdminCreateQuizPage() {
                     onChange={() => setLevel('basic')}
                     className="border-gray-300 text-red-600 focus:ring-red-500"
                   />
-                  <span className="text-sm text-gray-700">Basic</span>
+                  <span className="text-sm text-gray-700">Easy</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -1328,18 +1316,23 @@ export default function AdminCreateQuizPage() {
                 </label>
                 <input
                   type="number"
-                  min={30}
+                  min={1}
                   max={600}
-                  value={durationMinutes}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v === '') setDurationMinutes(30);
-                    else setDurationMinutes(Math.max(30, Math.min(600, Number(v) || 30)));
+                  value={durationInput}
+                  onChange={(e) => setDurationInput(e.target.value)}
+                  onBlur={() => {
+                    const n = Number(durationInput);
+                    if (durationInput.trim() === '' || !Number.isFinite(n)) {
+                      setDurationInput('30');
+                    } else if (n < 1) {
+                      setDurationInput('1');
+                    } else if (n > 600) {
+                      setDurationInput('600');
+                    }
                   }}
-                  required
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-red-500 focus:ring-2 focus:ring-red-500"
                 />
-                <p className="text-xs text-gray-500 mt-1">Minimum 30 minutes. Default: 30.</p>
+                <p className="text-xs text-gray-500 mt-1">Default: 30. You can set 1–600 minutes (e.g. type 5 or 15).</p>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -1363,7 +1356,7 @@ export default function AdminCreateQuizPage() {
             {!quizId && (
             <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-4">
               <h3 className="text-sm font-bold text-gray-900 mb-2">Create via Excel</h3>
-              <p className="text-xs text-gray-600 mb-3">Download template → add questions &amp; options (marks can be in Excel). <strong>Upload is available after you fill: Quiz Title, Topic, and Max Attempts.</strong> Duration defaults to 30 minutes (min 30).</p>
+              <p className="text-xs text-gray-600 mb-3">Download template → add questions &amp; options (marks can be in Excel). <strong>Upload is available after you fill: Quiz Title, Topic, and Max Attempts.</strong> Duration defaults to 30 minutes; you can set 1–600 minutes.</p>
               <div className="flex flex-wrap items-center gap-3 mb-2">
                 <button type="button" onClick={downloadQuizExcelTemplate} className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-50 transition-colors">Download template</button>
                 <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleUploadExcel} />
@@ -1399,7 +1392,7 @@ export default function AdminCreateQuizPage() {
                 </p>
               )}
               <p className="text-xs text-gray-500">
-                <strong>Required for upload:</strong> Quiz Title, Topic, Max Attempts (≥ 1). Duration defaults to 30 minutes (minimum 30). Marks come from your Excel file (or use the default above). If you use &quot;Set Available From&quot; or &quot;Set Available To&quot;, those dates must be set and &quot;Available To&quot; must be after &quot;Available From&quot;.
+                <strong>Required for upload:</strong> Quiz Title, Topic, Max Attempts (≥ 1). Duration defaults to 30 minutes; you can set 1–600 minutes. Marks come from your Excel file (or use the default above). If you use &quot;Set Available From&quot; or &quot;Set Available To&quot;, those dates must be set and &quot;Available To&quot; must be after &quot;Available From&quot;.
               </p>
             </div>
             )}

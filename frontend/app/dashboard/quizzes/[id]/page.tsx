@@ -667,6 +667,11 @@ function QuizAttemptContent() {
 
   const handleSubmit = async (auto = false) => {
     if (!quiz || submitted || submitting || submitLock.current) return;
+    // For manual submissions, require all questions to be answered
+    if (!auto && answeredQuestions.size < totalQuestions) {
+      toast.error('Please attempt all questions before submitting the quiz.');
+      return;
+    }
     submitLock.current = true;
     setSubmitting(true);
 
@@ -1462,36 +1467,36 @@ function QuizAttemptContent() {
           </div>
         </div>
 
-        {/* Legend */}
-        <div className="mb-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Legend</h3>
-          <div className="space-y-2 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="inline-block h-4 w-4 rounded bg-green-500"></span>
-              <span className="text-gray-600">Answered</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block h-4 w-4 rounded bg-yellow-500"></span>
-              <span className="text-gray-600">Skipped</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block h-4 w-4 rounded bg-gray-300"></span>
-              <span className="text-gray-600">Unattempted</span>
-            </div>
-          </div>
-        </div>
-
         {/* Submit Button */}
-        <div className="mt-auto pt-4 border-t border-gray-200">
+        <div className="pt-4 border-t border-gray-200">
           <button
             className="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-md transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={() => {
               setShowSubmitConfirmModal(true);
             }}
-            disabled={submitted || submitting}
+            disabled={submitted || submitting || answeredQuestions.size < totalQuestions}
           >
             {submitted ? 'Quiz Submitted' : submitting ? 'Submitting...' : 'Submit Quiz'}
           </button>
+        </div>
+
+        {/* Legend (moved to bottom) */}
+        <div className="mt-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">Legend</h3>
+          <div className="space-y-1.5 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-3.5 w-3.5 rounded bg-green-500"></span>
+              <span className="text-gray-600">Answered</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-3.5 w-3.5 rounded bg-yellow-500"></span>
+              <span className="text-gray-600">Skipped</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-3.5 w-3.5 rounded bg-gray-300"></span>
+              <span className="text-gray-600">Unattempted</span>
+            </div>
+          </div>
         </div>
         </div>
       </div>
