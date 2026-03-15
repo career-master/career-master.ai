@@ -476,7 +476,7 @@ export default function SubjectsAndTopicsPage() {
       toast.error('Enter subject title');
       return;
     }
-    if (!user?.id) {
+    if (!user?._id) {
       toast.error('Not authenticated');
       return;
     }
@@ -518,7 +518,7 @@ export default function SubjectsAndTopicsPage() {
       toast.error('Select a subject');
       return;
     }
-    if (!user?.id) {
+    if (!user?._id) {
       toast.error('Not authenticated');
       return;
     }
