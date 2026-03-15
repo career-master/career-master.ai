@@ -369,7 +369,7 @@ export default function AdminReportsPage() {
             </div>
 
             {total > pageSize && (
-              <div className="mt-4 flex items-center justify-between text-xs text-gray-600">
+              <div className="mt-4 flex items-center justify-between text-xs text-gray-900">
                 <span>
                   Page {page} • Showing {(page - 1) * pageSize + 1}–
                   {Math.min(page * pageSize, total)} of {total}
@@ -378,14 +378,14 @@ export default function AdminReportsPage() {
                   <button
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className="rounded-md border border-gray-300 px-2 py-1 disabled:opacity-50"
+                    className="rounded-md border border-gray-300 px-2 py-1 text-gray-900 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:text-gray-500"
                   >
                     Prev
                   </button>
                   <button
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page * pageSize >= total}
-                    className="rounded-md border border-gray-300 px-2 py-1 disabled:opacity-50"
+                    className="rounded-md border border-gray-300 px-2 py-1 text-gray-900 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:text-gray-500"
                   >
                     Next
                   </button>

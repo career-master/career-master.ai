@@ -102,11 +102,12 @@ export default function AdminUsersListPage() {
     try {
       const res = await apiService.deleteUser(id);
       if (res.success) {
-        toast.success('User deleted');
+        toast.success((res as any).message || 'User deleted successfully');
         setMenuOpenId(null);
-        await loadUsers(page);
+        setPage(1);
+        await loadUsers(1);
       } else {
-        toast.error((res as any).message || 'Failed to delete user');
+        toast.error((res as any).error?.message || (res as any).message || 'Failed to delete user');
       }
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete user');
@@ -484,7 +485,7 @@ export default function AdminUsersListPage() {
 
               {/* Pagination - "Showing 1 - 25 of 188" style */}
               <div className="px-4 py-3 border-t border-gray-200 flex flex-wrap items-center justify-between gap-2">
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-gray-900">
                   Showing {start} - {end} of {total}
                 </span>
                 <div className="flex items-center gap-1">
@@ -492,7 +493,7 @@ export default function AdminUsersListPage() {
                     type="button"
                     disabled={page <= 1}
                     onClick={() => setPage((p) => p - 1)}
-                    className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    className="px-3 py-1 border border-gray-300 rounded text-sm text-gray-900 bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 disabled:text-gray-500"
                   >
                     Prev
                   </button>
@@ -506,7 +507,7 @@ export default function AdminUsersListPage() {
                         className={`px-3 py-1 rounded text-sm ${
                           page === p
                             ? 'bg-blue-600 text-white'
-                            : 'border border-gray-300 hover:bg-gray-50'
+                            : 'border border-gray-300 text-gray-900 bg-white hover:bg-gray-50'
                         }`}
                       >
                         {p}
@@ -515,12 +516,12 @@ export default function AdminUsersListPage() {
                   })}
                   {totalPages > 5 && (
                     <>
-                      <span className="px-1 text-gray-500">…</span>
+                      <span className="px-1 text-gray-900">…</span>
                       <button
                         type="button"
                         onClick={() => setPage(totalPages)}
                         className={`px-3 py-1 rounded text-sm ${
-                          page === totalPages ? 'bg-blue-600 text-white' : 'border border-gray-300 hover:bg-gray-50'
+                          page === totalPages ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-900 bg-white hover:bg-gray-50'
                         }`}
                       >
                         {totalPages}
@@ -531,7 +532,7 @@ export default function AdminUsersListPage() {
                     type="button"
                     disabled={page >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
-                    className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    className="px-3 py-1 border border-gray-300 rounded text-sm text-gray-900 bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 disabled:text-gray-500"
                   >
                     Next
                   </button>

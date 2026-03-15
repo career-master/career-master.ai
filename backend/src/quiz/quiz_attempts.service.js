@@ -371,8 +371,12 @@ class QuizAttemptService {
         // Check if quiz is active
         if (!quiz.isActive) return false;
 
-        // Filter by level: if user chose a level, include only quizzes with that level or no level
-        if (level && quiz.level && quiz.level !== level) return false;
+        // Filter by level: if user chose a level, include only quizzes with that level or no level (case-insensitive)
+        if (level) {
+          const qLevel = quiz.level ? String(quiz.level).toLowerCase() : null;
+          const wantLevel = String(level).toLowerCase();
+          if (qLevel && qLevel !== wantLevel) return false;
+        }
 
         // Check date range
         if (quiz.availableFrom && now < quiz.availableFrom) return false;

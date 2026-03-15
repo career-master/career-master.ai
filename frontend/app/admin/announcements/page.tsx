@@ -231,7 +231,7 @@ export default function AdminAnnouncementsPage() {
 
               {/* Pagination */}
               <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-gray-900">
                   Page {page} of {totalPages}
                 </span>
                 <div className="flex gap-2">
@@ -243,7 +243,7 @@ export default function AdminAnnouncementsPage() {
                       setPage(newPage);
                       loadAnnouncements(newPage);
                     }}
-                    className="rounded-lg border border-gray-300 px-3 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    className="rounded-lg border border-gray-300 px-3 py-1 text-sm text-gray-900 bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 disabled:text-gray-500"
                   >
                     Prev
                   </button>
@@ -255,7 +255,7 @@ export default function AdminAnnouncementsPage() {
                       setPage(newPage);
                       loadAnnouncements(newPage);
                     }}
-                    className="rounded-lg border border-gray-300 px-3 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    className="rounded-lg border border-gray-300 px-3 py-1 text-sm text-gray-900 bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 disabled:text-gray-500"
                   >
                     Next
                   </button>

@@ -1,3 +1,4 @@
+console.log('🔄 Loading backend...');
 const app = require('./src/app');
 const database = require('./src/config/db');
 const env = require('./src/config/env');
@@ -25,6 +26,7 @@ process.on('uncaughtException', (err) => {
  * Start server
  */
 async function startServer() {
+  console.log('🔄 Server starting...');
   try {
     // Connect to MongoDB
     console.log('🔄 Connecting to MongoDB...');

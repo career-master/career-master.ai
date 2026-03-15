@@ -1,0 +1,8 @@
+{
+  "watch": ["server.js", "src"],
+  "ext": "js,json",
+  "ignore": ["node_modules", ".git", "*.md", ".env", ".env.*", "*.swp", "*.swo", ".DS_Store"],
+  "delay": "2500",
+  "verbose": false,
+  "legacyWatch": true
+}

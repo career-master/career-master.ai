@@ -194,10 +194,21 @@ class ApiService {
         : headers;
 
     try {
-      const response = await fetch(url, {
-        ...options,
-        headers: finalHeaders,
-      });
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          ...options,
+          headers: finalHeaders,
+        });
+      } catch (fetchError) {
+        // "Failed to fetch" = network unreachable (backend down, wrong URL, CORS, etc.)
+        if (fetchError instanceof TypeError && fetchError.message === 'Failed to fetch') {
+          throw new Error(
+            `Cannot reach the API at ${API_BASE_URL}. Check that the backend is running and NEXT_PUBLIC_API_URL matches it (e.g. http://localhost:3000/api or http://localhost:4000/api).`
+          );
+        }
+        throw fetchError;
+      }
 
       // Some endpoints (like DELETE /users/:id) return 204 No Content.
       // Treat any successful 204 as a successful response with no body.
@@ -243,7 +254,11 @@ class ApiService {
       }
 
       if (!response.ok) {
-        const errorMessage = data?.error?.message || data?.message || `Request failed with status ${response.status}`;
+        let errorMessage = data?.error?.message || data?.message || `Request failed with status ${response.status}`;
+        // If server returned HTML (e.g. 404 page), avoid throwing the whole document
+        if (typeof errorMessage === 'string' && (errorMessage.trimStart().startsWith('<') || errorMessage.length > 500)) {
+          errorMessage = `Request failed with status ${response.status}. The server may have returned a page instead of JSON — check that NEXT_PUBLIC_API_URL points to your backend (e.g. http://localhost:4000/api), not the Next.js app.`;
+        }
         throw new Error(errorMessage);
       }
 

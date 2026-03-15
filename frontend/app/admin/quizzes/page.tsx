@@ -119,8 +119,8 @@ export default function AdminQuizzesPage() {
 
   const filteredQuizzes = filterLevel
     ? quizzes.filter((q) => {
-        const qLevel = q.level === 'basic' || q.level === 'hard' ? q.level : (q.level == null || q.level === '' ? 'basic' : q.level);
-        return qLevel === filterLevel;
+        const qLevel = (q.level === 'basic' || q.level === 'hard' ? q.level : (q.level == null || q.level === '' ? 'basic' : q.level));
+        return String(qLevel).toLowerCase() === String(filterLevel).toLowerCase();
       })
     : quizzes;
 
@@ -322,10 +322,11 @@ export default function AdminQuizzesPage() {
                             try {
                               const res = await apiService.deleteQuiz(quiz._id);
                               if (res.success) {
-                                toast.success('Quiz deleted. Refreshing list.');
+                                toast.success('Quiz deleted successfully. Refreshing list.');
+                                setPage(1);
                                 await loadQuizzes(1);
                               } else {
-                                toast.error((res as any).message || 'Failed to delete quiz');
+                                toast.error((res as any).error?.message || (res as any).message || 'Failed to delete quiz');
                               }
                             } catch (err: any) {
                               toast.error(err.message || 'Failed to delete quiz');
@@ -340,7 +341,7 @@ export default function AdminQuizzesPage() {
                   </div>
                 ))}
               </div>
-              <div className="flex items-center justify-between text-xs text-gray-600">
+              <div className="flex items-center justify-between text-xs text-gray-900">
                 <span>
                   Page {page} of {totalPages}
                 </span>
@@ -349,7 +350,7 @@ export default function AdminQuizzesPage() {
                     type="button"
                     disabled={page <= 1}
                     onClick={() => loadQuizzes(page - 1)}
-                    className="rounded-lg border border-gray-300 px-2 py-1 disabled:opacity-50"
+                    className="rounded-lg border border-gray-300 px-2 py-1 text-gray-900 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:text-gray-500"
                   >
                     Prev
                   </button>
@@ -357,7 +358,7 @@ export default function AdminQuizzesPage() {
                     type="button"
                     disabled={page >= totalPages}
                     onClick={() => loadQuizzes(page + 1)}
-                    className="rounded-lg border border-gray-300 px-2 py-1 disabled:opacity-50"
+                    className="rounded-lg border border-gray-300 px-2 py-1 text-gray-900 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:text-gray-500"
                   >
                     Next
                   </button>

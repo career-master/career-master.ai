@@ -21,15 +21,18 @@ class Database {
         throw new Error('Invalid MONGODB_URI: Must start with mongodb:// or mongodb+srv://');
       }
 
+      // In development, fail fast (10s) so you don't wait forever; production keeps longer timeouts
+      const isDev = env.NODE_ENV !== 'production';
+      const connectTimeout = isDev ? 10000 : 30000;
+      const serverSelectionTimeout = isDev ? 10000 : 30000;
+
       const options = {
-        maxPoolSize: 10, // Maintain up to 10 socket connections
-        serverSelectionTimeoutMS: 30000, // Increased to 30 seconds for DNS resolution
-        socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
-        connectTimeoutMS: 30000, // Connection timeout increased
+        maxPoolSize: 10,
+        serverSelectionTimeoutMS: serverSelectionTimeout,
+        socketTimeoutMS: 45000,
+        connectTimeoutMS: connectTimeout,
         retryWrites: true,
         retryReads: true,
-        // Remove family: 4 to allow both IPv4 and IPv6
-        // family: 4 // Use IPv4, skip trying IPv6
       };
 
       console.log('🔄 Connecting to MongoDB...');

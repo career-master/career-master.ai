@@ -236,7 +236,11 @@ export default function DashboardProfilePage() {
         profile: {
           firstName: form.firstName.trim() || undefined,
           lastName: form.lastName.trim() || undefined,
-          dateOfBirth: form.dateOfBirth ? new Date(form.dateOfBirth) : undefined,
+          dateOfBirth: (() => {
+            if (!form.dateOfBirth || !form.dateOfBirth.trim()) return undefined;
+            const d = new Date(form.dateOfBirth.trim());
+            return Number.isNaN(d.getTime()) ? undefined : d;
+          })(),
           gender: form.gender || undefined,
           guardianName: form.guardianName.trim() || undefined,
           guardianRelation: form.guardianRelation || undefined,

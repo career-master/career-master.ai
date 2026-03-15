@@ -308,14 +308,18 @@ export default function DashboardQuizzesPage() {
     });
   }, [filterDomain]);
 
+  // Preserve admin-defined order (from API); append any domain from subjects not in API list
   const domainsForFilter = useMemo(() => {
     const fromSubjects = new Set<string>();
     subjects.forEach((s) => {
       if (s.domain) fromSubjects.add(s.domain);
       if (s.domain === 'Technology' && s.category === 'Technology') fromSubjects.add('Technology');
     });
-    const merged = new Set<string>([...domainNames, ...fromSubjects]);
-    return Array.from(merged).sort();
+    const ordered = domainNames.slice();
+    fromSubjects.forEach((d) => {
+      if (!ordered.includes(d)) ordered.push(d);
+    });
+    return ordered;
   }, [domainNames, subjects]);
 
   const categoriesInDomain = useMemo(() => {
