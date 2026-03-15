@@ -78,11 +78,15 @@ export default function AdminCreateQuizPage() {
     });
   }, [selectedDomain]);
 
+  // Preserve admin-defined category order (from API); append any from subjects not in API list
   const categoriesInDomain = useMemo(() => {
+    const ordered = categoriesFromApi.filter((c): c is string => typeof c === 'string').filter((c) => c !== 'Technology' && c !== 'Olympiad Exams');
     const list = selectedDomain ? subjects.filter((s: any) => subjectInDomain(s, selectedDomain)) : subjects;
     const fromSubjects = Array.from(new Set(list.map((s: any) => s.category).filter(Boolean))) as string[];
-    const merged = new Set<string>([...categoriesFromApi.filter((c): c is string => typeof c === 'string'), ...fromSubjects]);
-    return Array.from(merged).filter((c) => c !== 'Technology' && c !== 'Olympiad Exams').sort();
+    fromSubjects.forEach((c) => {
+      if (c !== 'Technology' && c !== 'Olympiad Exams' && !ordered.includes(c)) ordered.push(c);
+    });
+    return ordered;
   }, [subjects, selectedDomain, categoriesFromApi]);
 
   const filteredSubjects = useMemo(() => {

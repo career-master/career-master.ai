@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node node_modules/next/dist/bin/next dev --webpack",
     "prebuild": "node -e \"const fs=require('fs'),path=require('path');const src=path.join(process.cwd(),'node_modules','pdfjs-dist','build','pdf.worker.min.mjs');const dest=path.join(process.cwd(),'public','pdfjs','pdf.worker.min.mjs');if(fs.existsSync(src)){fs.mkdirSync(path.dirname(dest),{recursive:true});fs.copyFileSync(src,dest);console.log('✓ PDF.js worker copied');}\"",
     "build": "next build",
     "start": "next start",

@@ -322,14 +322,18 @@ export default function DashboardQuizzesPage() {
     return ordered;
   }, [domainNames, subjects]);
 
+  // Preserve admin-defined category order (from API); append any from subjects not in API list
   const categoriesInDomain = useMemo(() => {
     if (!filterDomain) return [];
+    const ordered = categoriesFromApi.filter((c): c is string => typeof c === 'string').filter((c) => c !== 'Technology' && c !== 'Olympiad Exams');
     const list = subjects.filter(
       (s) => s.domain === filterDomain || (filterDomain === 'Technology' && s.category === 'Technology')
     );
     const fromSubjects = Array.from(new Set(list.map((s) => s.category).filter(Boolean))) as string[];
-    const merged = new Set<string>([...categoriesFromApi.filter((c): c is string => typeof c === 'string'), ...fromSubjects]);
-    return Array.from(merged).filter((c) => c !== 'Technology' && c !== 'Olympiad Exams').sort();
+    fromSubjects.forEach((c) => {
+      if (c !== 'Technology' && c !== 'Olympiad Exams' && !ordered.includes(c)) ordered.push(c);
+    });
+    return ordered;
   }, [subjects, filterDomain, categoriesFromApi]);
 
   // Filter subjects by domain, category, search; then group by category
@@ -375,6 +379,11 @@ export default function DashboardQuizzesPage() {
   const selectedSubject = subjects.find((s) => s._id === selectedSubjectId);
   const showStandaloneOnly = !selectedSubjectId;
 
+  // Flatten subjects for Subject dropdown (filtered by domain/category)
+  const subjectsForFilterDropdown = useMemo(() => {
+    return Object.values(groupedByCategory).flat();
+  }, [groupedByCategory]);
+
   // When a subject is selected, filter by selected levels. Empty = show all. Basic includes null/undefined level.
   const filteredTopicsWithQuizzes = useMemo(() => {
     if (selectedLevels.size === 0) return topicsWithQuizzes;
@@ -398,6 +407,15 @@ export default function DashboardQuizzesPage() {
       return { ...r, children };
     });
   }, [filteredTopicsWithQuizzes]);
+
+  // Topic options for Topic dropdown when a subject is selected (roots + children)
+  const topicOptionsForDropdown = useMemo(() => {
+    if (!selectedSubjectId) return [];
+    return topicTree.flatMap((r) => [
+      { id: r.topic._id, title: r.topic.title },
+      ...r.children.map((c) => ({ id: c.topic._id, title: c.topic.title })),
+    ]);
+  }, [selectedSubjectId, topicTree]);
 
   // Paginated roots for the right-panel topic list (avoids IIFE in JSX)
   const rootsPagination = useMemo(() => {
@@ -604,7 +622,7 @@ export default function DashboardQuizzesPage() {
               <span className="text-sm text-gray-600 whitespace-nowrap">Domain</span>
               <select
                 value={filterDomain}
-                onChange={(e) => { setFilterDomain(e.target.value); setFilterCategory(''); }}
+                onChange={(e) => { setFilterDomain(e.target.value); setFilterCategory(''); setSelectedSubjectId(null); setSelectedRootId(null); }}
                 className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white min-w-[180px]"
               >
                 <option value="">All domains</option>
@@ -613,18 +631,64 @@ export default function DashboardQuizzesPage() {
                 ))}
               </select>
             </div>
-            {filterDomain && filterDomain !== 'Olympiad Exams' && categoriesInDomain.length > 0 && (
+            {filterDomain && filterDomain !== 'Olympiad Exams' && (
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600 whitespace-nowrap">Category</span>
                 <select
                   value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value)}
+                  onChange={(e) => { setFilterCategory(e.target.value); setSelectedSubjectId(null); setSelectedRootId(null); }}
                   className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white min-w-[160px]"
                 >
                   <option value="">All categories</option>
-                  {categoriesInDomain.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
+                  {categoriesInDomain.length > 0 ? (
+                    categoriesInDomain.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))
+                  ) : (
+                    <option value="" disabled>No categories yet</option>
+                  )}
+                </select>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600 whitespace-nowrap">Subject</span>
+              <select
+                value={selectedSubjectId || ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setSelectedSubjectId(v || null);
+                  setSelectedRootId(null);
+                }}
+                disabled={!filterDomain || (filterDomain !== 'Olympiad Exams' && !filterCategory)}
+                className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white min-w-[180px] disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <option value="">
+                  {!filterDomain ? 'Select domain first' : filterDomain !== 'Olympiad Exams' && !filterCategory ? 'Select category first' : 'All subjects'}
+                </option>
+                {subjectsForFilterDropdown.map((s) => (
+                  <option key={s._id} value={s._id}>{s.title}</option>
+                ))}
+              </select>
+            </div>
+            {selectedSubjectId && filterDomain && (filterDomain === 'Olympiad Exams' || filterCategory) && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 whitespace-nowrap">Topic</span>
+                <select
+                  value={selectedRootId || ''}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setSelectedRootId(v || null);
+                  }}
+                  className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white min-w-[180px]"
+                >
+                  <option value="">All topics</option>
+                  {topicOptionsForDropdown.length > 0 ? (
+                    topicOptionsForDropdown.map((t) => (
+                      <option key={t.id} value={t.id}>{t.title}</option>
+                    ))
+                  ) : (
+                    <option value="" disabled>No topics yet</option>
+                  )}
                 </select>
               </div>
             )}

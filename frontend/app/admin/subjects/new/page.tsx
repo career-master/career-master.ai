@@ -221,14 +221,15 @@ export default function AddEditSubjectPage() {
     });
   }, []);
 
+  // Preserve admin-defined category order (from API); append any from subjects not in API list
   const categoriesInDomain = useMemo(() => {
     if (!domain) return [];
     if (domain === 'Olympiad Exams') return [];
+    const ordered = categoriesFromApi.filter((c): c is string => typeof c === 'string');
     const list = allSubjects.filter((s: any) => s.domain === domain || (domain === 'Technology' && s.category === 'Technology'));
     const fromSubjects = Array.from(new Set(list.map((s: any) => s.category).filter(Boolean))) as string[];
-    const merged = new Set<string>([...categoriesFromApi.filter((c): c is string => typeof c === 'string'), ...fromSubjects]);
-    const arr = Array.from(merged);
-    if (arr.length > 0) return arr.sort();
+    fromSubjects.forEach((c) => { if (!ordered.includes(c)) ordered.push(c); });
+    if (ordered.length > 0) return ordered;
     return ['ACADEMIC', 'PROGRAMMING LANGUAGES', 'FULL STACK', 'Technology'];
   }, [domain, allSubjects, categoriesFromApi]);
 

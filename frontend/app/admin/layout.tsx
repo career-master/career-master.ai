@@ -14,6 +14,11 @@ export default function AdminLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [activeMenu, setActiveMenu] = useState('dashboard');
+  const [subjectsMenuOpen, setSubjectsMenuOpen] = useState(false);
+  const isSubjectsPage = pathname?.startsWith('/admin/subjects');
+  useEffect(() => {
+    if (isSubjectsPage) setSubjectsMenuOpen(true);
+  }, [isSubjectsPage]);
 
   useEffect(() => {
     const isLoginPage = pathname === '/admin/login';
@@ -75,8 +80,13 @@ export default function AdminLayout({
     { id: 'dashboard', label: 'Dashboard', icon: 'tachometer', href: '/admin/dashboard' },
     { id: 'users', label: 'User Management', icon: 'users', href: '/admin/users' },
     { id: 'batches', label: 'Batches', icon: 'users', href: '/admin/batches' },
-    { id: 'subjects', label: 'Subjects & Topics', icon: 'book', href: '/admin/subjects' },
-    // Reports item directly under Subjects & Topics
+    { id: 'subjects', label: 'Subjects & Topics', icon: 'book', href: '/admin/subjects', children: [
+      { id: 'st-domains', label: 'Domains', href: '/admin/subjects?section=domains' },
+      { id: 'st-categories', label: 'Categories', href: '/admin/subjects?section=categories' },
+      { id: 'st-subjects', label: 'Subjects', href: '/admin/subjects?section=subjects' },
+      { id: 'st-topics', label: 'Topics', href: '/admin/subjects?section=topics' },
+      { id: 'st-subtopics', label: 'Sub-Topics', href: '/admin/subjects?section=subtopics' },
+    ] },
     { id: 'reports', label: 'Reports & Analytics', icon: 'robot', href: '/admin/reports' },
     { id: 'questions', label: 'Questions Bank', icon: 'database', href: '/admin/quizzes' },
     { id: 'announcements', label: 'Updates & Events', icon: 'clipboard', href: '/admin/announcements' },
@@ -188,6 +198,7 @@ export default function AdminLayout({
 
               <nav className="space-y-1">
                 {navItems.map((item) => {
+                  const hasChildren = 'children' in item && Array.isArray((item as { children?: { id: string; label: string; href: string }[] }).children);
                   const isActive =
                     activeMenu === item.id ||
                     (item.href &&
@@ -195,22 +206,28 @@ export default function AdminLayout({
                       !navItems.some(
                         (o) => o.href && o.href.length > (item.href?.length ?? 0) && pathname?.startsWith(o.href)
                       ));
+                  const isSubjects = item.id === 'subjects';
+                  const expanded = isSubjects ? subjectsMenuOpen : false;
+                  const children = hasChildren ? (item as { children: { id: string; label: string; href: string }[] }).children : [];
                   return (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        setActiveMenu(item.id);
-                        if (item.href) {
-                          router.push(item.href);
-                        }
-                      }}
-                      className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center gap-3 ${
-                        isActive
-                          ? 'bg-red-50 text-red-600 font-semibold'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <div key={item.id}>
+                      <button
+                        onClick={() => {
+                          setActiveMenu(item.id);
+                          if (isSubjects) {
+                            setSubjectsMenuOpen((v) => !v);
+                            if (item.href) router.push(item.href);
+                          } else if (item.href) {
+                            router.push(item.href);
+                          }
+                        }}
+                        className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center gap-3 ${
+                          isActive
+                            ? 'bg-red-50 text-red-600 font-semibold'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         {item.icon === 'tachometer' && (
                           <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
                         )}
@@ -272,8 +289,28 @@ export default function AdminLayout({
                           </>
                         )}
                       </svg>
-                      {item.label}
+                      <span className="flex-1">{item.label}</span>
+                      {isSubjects && (
+                        <svg className={`w-4 h-4 text-gray-500 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      )}
                     </button>
+                      {isSubjects && expanded && children.length > 0 && (
+                        <div className="pl-4 mt-1 space-y-0.5 border-l-2 border-gray-200 ml-2">
+                          {children.map((child) => (
+                            <Link
+                              key={child.id}
+                              href={child.href}
+                              onClick={() => setActiveMenu(item.id)}
+                              className="block px-3 py-2 rounded-md text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                            >
+                              {child.label}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </nav>

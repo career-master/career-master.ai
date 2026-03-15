@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import { toast } from 'react-hot-toast';
@@ -41,18 +42,23 @@ export default function AdminQuizzesPage() {
     });
   }, [filterDomain]);
 
+  // Preserve admin-defined category order (from API); append any from subjects not in API list
   const categoriesInDomain = useMemo(() => {
     if (!filterDomain) return [];
+    const ordered = categoriesFromApi.filter((c): c is string => typeof c === 'string').filter((c) => c !== 'Technology' && c !== 'Olympiad Exams');
     const list = subjects.filter((s: any) => subjectInDomain(s, filterDomain));
     const fromSubjects = Array.from(new Set(list.map((s: any) => s.category).filter(Boolean))) as string[];
-    const merged = new Set<string>([...categoriesFromApi.filter((c): c is string => typeof c === 'string'), ...fromSubjects]);
-    return Array.from(merged).filter((c) => c !== 'Technology' && c !== 'Olympiad Exams').sort();
+    fromSubjects.forEach((c) => {
+      if (c !== 'Technology' && c !== 'Olympiad Exams' && !ordered.includes(c)) ordered.push(c);
+    });
+    return ordered;
   }, [subjects, filterDomain, categoriesFromApi]);
 
+  // Preserve admin-defined subject order (from API)
   const subjectsForFilter = useMemo(() => {
     let list = subjects.filter((s: any) => filterDomain ? subjectInDomain(s, filterDomain) : true);
     if (filterDomain && filterDomain !== 'Olympiad Exams' && filterCategory) list = list.filter((s: any) => s.category === filterCategory);
-    return list;
+    return list; // subjects from API already sorted by order
   }, [subjects, filterDomain, filterCategory]);
 
   const loadQuizzes = useCallback(async (pageNumber: number) => {
@@ -181,7 +187,7 @@ export default function AdminQuizzesPage() {
                   ))}
                 </select>
               </div>
-              {filterDomain && filterDomain !== 'Olympiad Exams' && categoriesInDomain.length > 0 && (
+              {filterDomain && filterDomain !== 'Olympiad Exams' && (
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm text-gray-600">Category:</span>
                   <select
@@ -191,12 +197,16 @@ export default function AdminQuizzesPage() {
                       setFilterSubjectId('');
                       setFilterTopicId('');
                     }}
-                    className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                    className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500 min-w-[120px]"
                   >
                     <option value="">All</option>
-                    {categoriesInDomain.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
+                    {categoriesInDomain.length > 0 ? (
+                      categoriesInDomain.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))
+                    ) : (
+                      <option value="" disabled>No categories yet</option>
+                    )}
                   </select>
                 </div>
               )}
@@ -208,16 +218,19 @@ export default function AdminQuizzesPage() {
                     setFilterSubjectId(e.target.value);
                     setFilterTopicId('');
                   }}
-                  className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500 min-w-[120px]"
+                  disabled={!filterDomain || (filterDomain !== 'Olympiad Exams' && !filterCategory)}
+                  className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500 min-w-[120px] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <option value="">All</option>
+                  <option value="">
+                    {!filterDomain ? 'Select domain first' : filterDomain !== 'Olympiad Exams' && !filterCategory ? 'Select category first' : 'All'}
+                  </option>
                   {subjectsForFilter.map((s) => (
                     <option key={s._id} value={s._id}>{s.title}</option>
                   ))}
                 </select>
               </div>
-              {filterSubjectId && filterTopics.length > 0 && (
-                <div className="flex items-center gap-1.5">
+              {filterSubjectId && filterDomain && (filterDomain === 'Olympiad Exams' || filterCategory) && (
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-sm text-gray-600">Topic:</span>
                   <select
                     value={filterTopicId}
@@ -225,10 +238,22 @@ export default function AdminQuizzesPage() {
                     className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500 min-w-[120px]"
                   >
                     <option value="">All</option>
-                    {filterTopics.map((t) => (
-                      <option key={t._id} value={t._id}>{t.title}</option>
-                    ))}
+                    {filterTopics.length > 0 ? (
+                      filterTopics.map((t) => (
+                        <option key={t._id} value={t._id}>{t.title}</option>
+                      ))
+                    ) : (
+                      <option value="" disabled>No topics yet</option>
+                    )}
                   </select>
+                  {filterSubjectId && filterTopics.length === 0 && (
+                    <Link
+                      href={`/admin/subjects/new?subjectId=${filterSubjectId}`}
+                      className="text-xs text-red-600 hover:text-red-800 font-medium whitespace-nowrap"
+                    >
+                      + Add topic
+                    </Link>
+                  )}
                 </div>
               )}
               <div className="flex items-center gap-1.5">

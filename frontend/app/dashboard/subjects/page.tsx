@@ -176,14 +176,14 @@ export default function SubjectsPage() {
     return acc;
   }, {} as Record<string, Subject[]>);
 
-  // Get unique categories and levels for filters
+  // Preserve admin-defined category order (from API); append any from subjects not in API list
   const categories = useMemo(() => {
+    const ordered = categoriesFromApi.filter((c): c is string => typeof c === 'string');
     const fromSubjects = Array.from(new Set(subjects.map((s) => s.category).filter(Boolean))) as string[];
-    const merged = new Set<string>([
-      ...categoriesFromApi.filter((c): c is string => typeof c === 'string'),
-      ...fromSubjects,
-    ]);
-    return Array.from(merged).sort();
+    fromSubjects.forEach((c) => {
+      if (!ordered.includes(c)) ordered.push(c);
+    });
+    return ordered;
   }, [subjects, categoriesFromApi]);
   const levels = ['basic', 'hard'];
 
