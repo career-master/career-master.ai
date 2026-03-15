@@ -178,8 +178,11 @@ export default function SubjectsPage() {
 
   // Get unique categories and levels for filters
   const categories = useMemo(() => {
-    const fromSubjects = Array.from(new Set(subjects.map((s) => s.category).filter(Boolean)));
-    const merged = new Set<string>([...categoriesFromApi, ...fromSubjects]);
+    const fromSubjects = Array.from(new Set(subjects.map((s) => s.category).filter(Boolean))) as string[];
+    const merged = new Set<string>([
+      ...categoriesFromApi.filter((c): c is string => typeof c === 'string'),
+      ...fromSubjects,
+    ]);
     return Array.from(merged).sort();
   }, [subjects, categoriesFromApi]);
   const levels = ['basic', 'hard'];

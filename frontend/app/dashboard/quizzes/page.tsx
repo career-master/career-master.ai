@@ -324,7 +324,7 @@ export default function DashboardQuizzesPage() {
       (s) => s.domain === filterDomain || (filterDomain === 'Technology' && s.category === 'Technology')
     );
     const fromSubjects = Array.from(new Set(list.map((s) => s.category).filter(Boolean))) as string[];
-    const merged = new Set<string>([...categoriesFromApi, ...fromSubjects]);
+    const merged = new Set<string>([...categoriesFromApi.filter((c): c is string => typeof c === 'string'), ...fromSubjects]);
     return Array.from(merged).filter((c) => c !== 'Technology' && c !== 'Olympiad Exams').sort();
   }, [subjects, filterDomain, categoriesFromApi]);
 

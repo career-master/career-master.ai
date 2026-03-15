@@ -81,7 +81,7 @@ export default function AdminCreateQuizPage() {
   const categoriesInDomain = useMemo(() => {
     const list = selectedDomain ? subjects.filter((s: any) => subjectInDomain(s, selectedDomain)) : subjects;
     const fromSubjects = Array.from(new Set(list.map((s: any) => s.category).filter(Boolean))) as string[];
-    const merged = new Set<string>([...categoriesFromApi, ...fromSubjects]);
+    const merged = new Set<string>([...categoriesFromApi.filter((c): c is string => typeof c === 'string'), ...fromSubjects]);
     return Array.from(merged).filter((c) => c !== 'Technology' && c !== 'Olympiad Exams').sort();
   }, [subjects, selectedDomain, categoriesFromApi]);
 

@@ -226,7 +226,7 @@ export default function AddEditSubjectPage() {
     if (domain === 'Olympiad Exams') return [];
     const list = allSubjects.filter((s: any) => s.domain === domain || (domain === 'Technology' && s.category === 'Technology'));
     const fromSubjects = Array.from(new Set(list.map((s: any) => s.category).filter(Boolean))) as string[];
-    const merged = new Set<string>([...categoriesFromApi, ...fromSubjects]);
+    const merged = new Set<string>([...categoriesFromApi.filter((c): c is string => typeof c === 'string'), ...fromSubjects]);
     const arr = Array.from(merged);
     if (arr.length > 0) return arr.sort();
     return ['ACADEMIC', 'PROGRAMMING LANGUAGES', 'FULL STACK', 'Technology'];
