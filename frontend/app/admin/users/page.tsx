@@ -347,8 +347,8 @@ export default function AdminUsersListPage() {
                       const status = (u as any).status || 'active';
                       const isActive = status === 'active';
                       return (
-                        <tr key={u._id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3">
+                        <tr key={u._id} className="hover:bg-gray-50 whitespace-nowrap">
+                          <td className="px-4 py-2">
                             <input
                               type="checkbox"
                               checked={selected.has(u._id)}
@@ -356,15 +356,21 @@ export default function AdminUsersListPage() {
                               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-900">{(page - 1) * PAGE_SIZE + index + 1}</td>
-                          <td className="px-4 py-3 text-sm font-medium text-gray-900">{u.name}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{u.email}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{(u as any).phone || '—'}</td>
-                          <td className="px-4 py-3">
-                            <div className="flex flex-col gap-0.5">
+                          <td className="px-4 py-2 text-sm text-gray-900">{(page - 1) * PAGE_SIZE + index + 1}</td>
+                          <td className="px-4 py-2 text-sm font-medium text-gray-900 max-w-[180px] truncate">
+                            {u.name}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-600 max-w-[220px] truncate">
+                            {u.email}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-600 max-w-[140px] truncate">
+                            {(u as any).phone || '—'}
+                          </td>
+                          <td className="px-4 py-2">
+                            <div className="inline-flex items-center gap-2">
                               <span className="text-sm font-medium text-gray-900">{pct}%</span>
                               <span
-                                className={`inline-flex w-fit rounded px-2 py-0.5 text-xs font-semibold ${
+                                className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                                   meetsQuiz ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
                                 }`}
                               >
@@ -372,12 +378,12 @@ export default function AdminUsersListPage() {
                               </span>
                             </div>
                           </td>
-                          <td className="px-4 py-3">
-                            <div className="flex flex-wrap gap-1">
+                          <td className="px-4 py-2">
+                            <div className="flex items-center gap-1 max-w-[180px] overflow-x-auto no-scrollbar">
                               {u.roles?.map((r) => (
                                 <span
                                   key={r}
-                                  className="inline-flex rounded px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800"
+                                  className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800"
                                 >
                                   {r}
                                 </span>
@@ -385,13 +391,13 @@ export default function AdminUsersListPage() {
                               {(!u.roles || u.roles.length === 0) && <span className="text-gray-400">—</span>}
                             </div>
                           </td>
-                          <td className="px-4 py-3">
-                            <div className="flex flex-wrap gap-1">
+                          <td className="px-4 py-2">
+                            <div className="flex items-center gap-1 max-w-[160px] overflow-x-auto no-scrollbar">
                               {Array.isArray((u as any).batches) && (u as any).batches.length > 0 ? (
                                 (u as any).batches.map((b: string) => (
                                   <span
                                     key={b}
-                                    className="inline-flex rounded px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800"
+                                    className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800"
                                   >
                                     {b}
                                   </span>
@@ -401,7 +407,7 @@ export default function AdminUsersListPage() {
                               )}
                             </div>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-2">
                             <span
                               className={`inline-flex items-center gap-1 text-xs font-medium ${
                                 isActive ? 'text-green-700' : 'text-gray-500'
@@ -413,7 +419,7 @@ export default function AdminUsersListPage() {
                               {isActive ? 'Active' : 'Inactive'}
                             </span>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-2">
                             <div className="flex items-center gap-1 relative">
                               <Link
                                 href={`/admin/users/new?id=${u._id}`}

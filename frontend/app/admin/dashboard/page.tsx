@@ -100,6 +100,17 @@ export default function AdminDashboardPage() {
 
   const { overview, growth, charts, recentUsers } = stats;
 
+  // Derived headline metrics
+  const todayNewSignups =
+    charts?.userGrowth && charts.userGrowth.length > 0
+      ? charts.userGrowth[charts.userGrowth.length - 1].count
+      : 0;
+  const todayQuizzesAttempted =
+    charts?.quizGrowth && charts.quizGrowth.length > 0
+      ? charts.quizGrowth[charts.quizGrowth.length - 1].count
+      : 0;
+  const activeSubscriptions = overview.subscriptions ?? overview.activeUsers ?? 0;
+
   // User Growth Chart Data
   const userGrowthData = {
     labels: charts.userGrowth.map((d: any) => {
@@ -222,7 +233,10 @@ export default function AdminDashboardPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-        <div className="bg-white rounded-xl shadow-lg p-4 border-t-4 border-blue-500 hover:shadow-xl transition-all">
+        <div
+          className="bg-white rounded-xl shadow-lg p-4 border-t-4 border-blue-500 hover:shadow-xl transition-all cursor-pointer"
+          onClick={() => router.push('/admin/users')}
+        >
           <div className="flex justify-between items-center mb-2">
             <div className="flex-1">
               <h6 className="text-gray-600 text-xs mb-1 font-semibold uppercase tracking-wide">Total Users</h6>
@@ -244,11 +258,14 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-4 border-t-4 border-green-500 hover:shadow-xl transition-all">
+        <div
+          className="bg-white rounded-xl shadow-lg p-4 border-t-4 border-green-500 hover:shadow-xl transition-all cursor-pointer"
+          onClick={() => router.push('/admin/users')}
+        >
           <div className="flex justify-between items-center mb-2">
             <div className="flex-1">
-              <h6 className="text-gray-600 text-xs mb-1 font-semibold uppercase tracking-wide">Total Quizzes</h6>
-              <h3 className="text-2xl font-bold text-gray-900">{overview.totalQuizzes}</h3>
+              <h6 className="text-gray-600 text-xs mb-1 font-semibold uppercase tracking-wide">Active Students</h6>
+              <h3 className="text-2xl font-bold text-gray-900">{overview.activeUsers}</h3>
             </div>
             <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center">
               <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -261,25 +278,19 @@ export default function AdminDashboardPage() {
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
               </svg>
-              {growth.quizzesThisWeek} this week
+              {growth.usersThisWeek} new this week
             </small>
-            {overview.totalQuizzes > 0 && (
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(true)}
-                className="text-xs text-red-600 hover:text-red-800 font-medium"
-              >
-                Delete all
-              </button>
-            )}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-4 border-t-4 border-cyan-500 hover:shadow-xl transition-all">
+        <div
+          className="bg-white rounded-xl shadow-lg p-4 border-t-4 border-cyan-500 hover:shadow-xl transition-all cursor-pointer"
+          onClick={() => router.push('/admin/institutions')}
+        >
           <div className="flex justify-between items-center mb-2">
             <div className="flex-1">
-              <h6 className="text-gray-600 text-xs mb-1 font-semibold uppercase tracking-wide">Total Batches</h6>
-              <h3 className="text-2xl font-bold text-gray-900">{overview.totalBatches}</h3>
+              <h6 className="text-gray-600 text-xs mb-1 font-semibold uppercase tracking-wide">Institutions</h6>
+              <h3 className="text-2xl font-bold text-gray-900">{overview.institutions ?? 0}</h3>
             </div>
             <div className="w-12 h-12 rounded-full bg-cyan-500 flex items-center justify-center">
               <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -294,11 +305,16 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-4 border-t-4 border-yellow-500 hover:shadow-xl transition-all">
+        <div
+          className="bg-white rounded-xl shadow-lg p-4 border-t-4 border-yellow-500 hover:shadow-xl transition-all cursor-pointer"
+          onClick={() => router.push('/admin/payments')}
+        >
           <div className="flex justify-between items-center mb-2">
             <div className="flex-1">
-              <h6 className="text-gray-600 text-xs mb-1 font-semibold uppercase tracking-wide">Active Users</h6>
-              <h3 className="text-2xl font-bold text-gray-900">{overview.activeUsers}</h3>
+              <h6 className="text-gray-600 text-xs mb-1 font-semibold uppercase tracking-wide">Total Revenue</h6>
+              <h3 className="text-2xl font-bold text-gray-900">
+                ₹{(overview.totalRevenue ?? 0).toLocaleString('en-IN')}
+              </h3>
             </div>
             <div className="w-12 h-12 rounded-full bg-yellow-500 flex items-center justify-center">
               <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -312,6 +328,100 @@ export default function AdminDashboardPage() {
               {((overview.activeUsers / overview.totalUsers) * 100).toFixed(1)}% of total
             </small>
           </div>
+        </div>
+      </div>
+
+      {/* Secondary Summary Cards (New signups, Quizzes attempted, Subscriptions, Recent activity) */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+        {/* New Signups Today */}
+        <div
+          className="bg-white rounded-xl shadow-lg p-4 border-l-4 border-blue-500 flex items-center justify-between cursor-pointer"
+          onClick={() => router.push('/admin/users')}
+        >
+          <div>
+            <h6 className="text-gray-600 text-xs mb-1 font-semibold uppercase tracking-wide">
+              New Signups Today
+            </h6>
+            <h3 className="text-2xl font-bold text-gray-900">{todayNewSignups}</h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Based on user registrations in the last 24 hours
+            </p>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
+            <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M8 9a3 3 0 100-6 3 3 0 000 6z" />
+              <path d="M2 16a6 6 0 1112 0H2z" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Quizzes Attempted Today */}
+        <div
+          className="bg-white rounded-xl shadow-lg p-4 border-l-4 border-purple-500 flex items-center justify-between cursor-pointer"
+          onClick={() => router.push('/admin/quizzes')}
+        >
+          <div>
+            <h6 className="text-gray-600 text-xs mb-1 font-semibold uppercase tracking-wide">
+              Quizzes Attempted Today
+            </h6>
+            <h3 className="text-2xl font-bold text-gray-900">{todayQuizzesAttempted}</h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Number of quizzes created/attempted today
+            </p>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center">
+            <svg className="w-5 h-5 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h5.5a.5.5 0 00.4-.2l4.5-5.5a.5.5 0 00.1-.3V5a2 2 0 00-2-2H4z" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Subscriptions (Active) */}
+        <div
+          className="bg-white rounded-xl shadow-lg p-4 border-l-4 border-orange-500 flex items-center justify-between cursor-pointer"
+          onClick={() => router.push('/admin/payments')}
+        >
+          <div>
+            <h6 className="text-gray-600 text-xs mb-1 font-semibold uppercase tracking-wide">
+              Subscriptions
+            </h6>
+            <h3 className="text-2xl font-bold text-gray-900">{activeSubscriptions}</h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Active student subscriptions on the platform
+            </p>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center">
+            <svg className="w-5 h-5 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M4 4a2 2 0 012-2h8a2 2 0 012 2v3H4V4z" />
+              <path d="M4 9h12v7a2 2 0 01-2 2H6a2 2 0 01-2-2V9z" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Recent Activity (compact) */}
+        <div
+          className="bg-white rounded-xl shadow-lg p-4 border-l-4 border-cyan-500 flex flex-col justify-between cursor-pointer"
+          onClick={() => router.push('/admin/reports')}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <h6 className="text-gray-600 text-xs font-semibold uppercase tracking-wide">
+              Recent Activity
+            </h6>
+            <div className="w-8 h-8 rounded-full bg-cyan-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-cyan-600" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M10 2a8 8 0 100 16 8 8 0 000-16zM9 5a1 1 0 012 0v4h2a1 1 0 110 2h-3a1 1 0 01-1-1V5z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+          </div>
+          <ul className="space-y-1 text-xs text-gray-700">
+            <li>• {growth.usersThisWeek} new users this week</li>
+            <li>• {growth.quizzesThisWeek} new quizzes created</li>
+            <li>• {overview.activeQuizzes} active quizzes live</li>
+          </ul>
         </div>
       </div>
 

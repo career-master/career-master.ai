@@ -84,15 +84,58 @@ export default function AdminCreateQuizPage() {
     });
   }, [selectedDomain]);
 
-  // Preserve admin-defined category order (from API); append any from subjects not in API list
+  // Preserve admin-defined category order (from API); append any from subjects not in API list.
+  // For the Technology domain, enforce a specific visible order in the Category dropdown.
   const categoriesInDomain = useMemo(() => {
-    const ordered = categoriesFromApi.filter((c): c is string => typeof c === 'string').filter((c) => c !== 'Technology' && c !== 'Olympiad Exams');
+    const ordered = categoriesFromApi
+      .filter((c): c is string => typeof c === 'string')
+      .filter((c) => c !== 'Technology' && c !== 'Olympiad Exams');
+
     const list = selectedDomain ? subjects.filter((s: any) => subjectInDomain(s, selectedDomain)) : subjects;
     const fromSubjects = Array.from(new Set(list.map((s: any) => s.category).filter(Boolean))) as string[];
+
     fromSubjects.forEach((c) => {
       if (c !== 'Technology' && c !== 'Olympiad Exams' && !ordered.includes(c)) ordered.push(c);
     });
-    return ordered;
+
+    // Clean up duplicates / unwanted options in all domains.
+    // - Keep only the canonical UPPERCASE "PROGRAMMING LANGUAGES"
+    // - Remove any case-variants of "Programming Languages" except the canonical one
+    // - Remove any "Games"/"GAMES"/case variants
+    const CANONICAL_PROGRAMMING = 'PROGRAMMING LANGUAGES';
+    let result = ordered.filter((c) => {
+      const lower = c.toLowerCase();
+      if (lower === 'games') return false;
+      if (lower === 'programming languages' && c !== CANONICAL_PROGRAMMING) return false;
+      return true;
+    });
+
+    // Ensure canonical PROGRAMMING LANGUAGES, if present, is always first in the dropdown.
+    if (result.includes(CANONICAL_PROGRAMMING)) {
+      result = [CANONICAL_PROGRAMMING, ...result.filter((c) => c !== CANONICAL_PROGRAMMING)];
+    }
+
+    // For Technology domain, enforce the requested fixed order for categories.
+    if (selectedDomain && selectedDomain.toLowerCase() === 'technology') {
+      const TECHNOLOGY_CATEGORY_ORDER = [
+        CANONICAL_PROGRAMMING,
+        'FULL STACK',
+        'DATABASES',
+        'MOBILE DEVELOPMENT',
+        'AI',
+        'TESTING',
+        'CLOUD COMPUTING',
+      ];
+
+      // For Technology, always show these categories in this exact order,
+      // even if some are not yet present in the API data.
+      result = TECHNOLOGY_CATEGORY_ORDER;
+    } else {
+      // Ensure uniqueness for non‑Technology domains as well.
+      result = Array.from(new Set(result));
+    }
+
+    return result;
   }, [subjects, selectedDomain, categoriesFromApi]);
 
   const filteredSubjects = useMemo(() => {

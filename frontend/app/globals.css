@@ -46,6 +46,15 @@ body {
   scrollbar-width: none; /* Firefoxs */ 
 }
 
+/* Horizontal pill rows without visible scrollbars (used in admin user table) */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

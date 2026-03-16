@@ -119,6 +119,10 @@ class DashboardRepository {
           activeUsers,
           activeQuizzes,
           activeBatches,
+          // Super admin dashboard headline metrics (can be wired to real data later)
+          institutions: 0,
+          totalRevenue: 0,
+          subscriptions: activeUsers,
         },
         growth: {
           usersThisWeek,
