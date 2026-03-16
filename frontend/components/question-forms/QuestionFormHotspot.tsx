@@ -674,14 +674,33 @@ export default function QuestionFormHotspot({ question, onChange }: QuestionForm
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Negative Marks
           </label>
-          <input
-            type="number"
-            value={question.negativeMarks || 0}
-            onChange={(e) => onChange({ negativeMarks: parseFloat(e.target.value) || 0 })}
-            min="0"
-            step="0.25"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-          />
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={(question.negativeMarks ?? 0) > 0}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  const next =
+                    (question.negativeMarks ?? 0) > 0 ? question.negativeMarks : 0.25;
+                  onChange({ negativeMarks: next });
+                } else {
+                  onChange({ negativeMarks: 0 });
+                }
+              }}
+              className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+            />
+            <input
+              type="number"
+              value={question.negativeMarks || 0}
+              onChange={(e) =>
+                onChange({ negativeMarks: parseFloat(e.target.value) || 0 })
+              }
+              min="0"
+              step="0.25"
+              disabled={(question.negativeMarks ?? 0) <= 0}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:text-gray-400"
+            />
+          </div>
         </div>
       </div>
     </div>

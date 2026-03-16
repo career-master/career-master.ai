@@ -61,6 +61,12 @@ export default function AdminCreateQuizPage() {
   const [showAddSubTopicForm, setShowAddSubTopicForm] = useState(false);
   const [newSubTopicTitle, setNewSubTopicTitle] = useState('');
   const [addingSubTopic, setAddingSubTopic] = useState(false);
+  const [showAddSubjectForm, setShowAddSubjectForm] = useState(false);
+  const [newSubjectTitle, setNewSubjectTitle] = useState('');
+  const [addingSubjectInline, setAddingSubjectInline] = useState(false);
+  const [showAddRootTopicForm, setShowAddRootTopicForm] = useState(false);
+  const [newRootTopicTitle, setNewRootTopicTitle] = useState('');
+  const [addingRootTopic, setAddingRootTopic] = useState(false);
 
   // Include subject in domain when domain matches, or when Technology and subject has category 'Technology' (backward compat)
   const subjectInDomain = (s: any, domain: string) =>
@@ -226,6 +232,73 @@ export default function AdminCreateQuizPage() {
       }
     } catch (err: any) {
       console.error('Failed to load subjects:', err);
+    }
+  };
+
+  const handleAddSubjectInline = async () => {
+    const title = newSubjectTitle.trim();
+    if (!title) return;
+    if (!selectedDomain) {
+      toast.error('Select a domain before adding a subject.');
+      return;
+    }
+    setAddingSubjectInline(true);
+    try {
+      const res = await apiService.createSubject({
+        title,
+        domain: selectedDomain,
+        category: selectedCategory || undefined,
+        isActive: true,
+      });
+      if (res.success && res.data) {
+        const created: any = res.data;
+        // Refresh subjects list so dropdowns and other pages see it
+        await loadSubjects();
+        setSubjectId(created._id);
+        toast.success('Subject added');
+        setShowAddSubjectForm(false);
+        setNewSubjectTitle('');
+      } else {
+        toast.error((res as any).message || 'Failed to add subject');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to add subject');
+    } finally {
+      setAddingSubjectInline(false);
+    }
+  };
+
+  const handleAddRootTopicInline = async () => {
+    const title = newRootTopicTitle.trim();
+    if (!title) return;
+    if (!subjectId) {
+      toast.error('Select a subject before adding a topic.');
+      return;
+    }
+    setAddingRootTopic(true);
+    try {
+      const res = await apiService.createTopic({
+        subjectId,
+        title,
+        parentTopicId: null,
+        isActive: true,
+      });
+      if (res.success && res.data) {
+        const created: any = res.data;
+        // Reload root topics for this subject
+        const r = await apiService.getTopics(subjectId, true, 'roots');
+        if (r.success && Array.isArray(r.data)) setRootTopics(r.data);
+        setSelectedRootTopicId(created._id);
+        toast.success('Topic added');
+        setShowAddRootTopicForm(false);
+        setNewRootTopicTitle('');
+      } else {
+        toast.error((res as any).message || 'Failed to add topic');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to add topic');
+    } finally {
+      setAddingRootTopic(false);
     }
   };
 
@@ -1173,78 +1246,159 @@ export default function AdminCreateQuizPage() {
                             <option key={c} value={c}>{c}</option>
                           ))}
                         </select>
-                        <p className="mt-1.5">
-                          <Link href={`/admin/subjects/new${selectedDomain ? `?domain=${encodeURIComponent(selectedDomain)}` : ''}`} className="text-xs font-medium text-slate-600 hover:text-slate-800 underline">
-                            Add category
-                          </Link>
-                        </p>
                       </div>
                     )}
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Subject</label>
-                      <select
-                        value={subjectId}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setSubjectId(v);
-                          setSelectedRootTopicId('');
-                          setSelectedSubTopicId('');
-                          setRootTopics([]);
-                          setSubTopics([]);
-                          setShowAddSubTopicForm(false);
-                          setNewSubTopicTitle('');
-                          if (v) {
-                            apiService.getTopics(v, true, 'roots').then((r) => {
-                              if (r.success && Array.isArray(r.data)) setRootTopics(r.data);
-                              else setRootTopics([]);
-                            });
-                          }
-                        }}
-                        disabled={!selectedDomain}
-                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
-                      >
-                        <option value="">Select subject</option>
-                        {filteredSubjects.map((s: any) => (
-                          <option key={s._id} value={s._id}>{s.title}</option>
-                        ))}
-                      </select>
-                      <p className="mt-1.5">
-                        <Link href={`/admin/subjects/new${selectedDomain ? `?domain=${encodeURIComponent(selectedDomain)}` : ''}${selectedCategory ? `&category=${encodeURIComponent(selectedCategory)}` : ''}`} className="text-xs font-medium text-slate-600 hover:text-slate-800 underline">
-                          Add subject
-                        </Link>
-                      </p>
+                      {showAddSubjectForm ? (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={newSubjectTitle}
+                            onChange={(e) => setNewSubjectTitle(e.target.value)}
+                            placeholder="Subject name"
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') { e.preventDefault(); handleAddSubjectInline(); }
+                              if (e.key === 'Escape') { setShowAddSubjectForm(false); setNewSubjectTitle(''); }
+                            }}
+                            autoFocus
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={handleAddSubjectInline}
+                              disabled={addingSubjectInline || !newSubjectTitle.trim() || !selectedDomain}
+                              className="rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                            >
+                              {addingSubjectInline ? 'Adding…' : 'Add'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setShowAddSubjectForm(false); setNewSubjectTitle(''); }}
+                              disabled={addingSubjectInline}
+                              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <select
+                            value={subjectId}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setSubjectId(v);
+                              setSelectedRootTopicId('');
+                              setSelectedSubTopicId('');
+                              setRootTopics([]);
+                              setSubTopics([]);
+                              setShowAddSubTopicForm(false);
+                              setNewSubTopicTitle('');
+                              setShowAddRootTopicForm(false);
+                              setNewRootTopicTitle('');
+                              if (v) {
+                                apiService.getTopics(v, true, 'roots').then((r) => {
+                                  if (r.success && Array.isArray(r.data)) setRootTopics(r.data);
+                                  else setRootTopics([]);
+                                });
+                              }
+                            }}
+                            disabled={!selectedDomain}
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                          >
+                            <option value="">Select subject</option>
+                            {filteredSubjects.map((s: any) => (
+                              <option key={s._id} value={s._id}>{s.title}</option>
+                            ))}
+                          </select>
+                          {selectedDomain && (
+                            <p className="mt-1.5">
+                              <button
+                                type="button"
+                                onClick={() => { setShowAddSubjectForm(true); setNewSubjectTitle(''); }}
+                                className="text-xs font-medium text-slate-600 hover:text-slate-800 underline"
+                              >
+                                {filteredSubjects.length === 0 ? 'Add subject' : '+ Add subject'}
+                              </button>
+                            </p>
+                          )}
+                        </>
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Topic</label>
-                      <select
-                        value={selectedRootTopicId}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setSelectedRootTopicId(v);
-                          setSelectedSubTopicId('');
-                          setShowAddSubTopicForm(false);
-                          setNewSubTopicTitle('');
-                          if (v && subjectId) {
-                            apiService.getTopics(subjectId, true, v).then((r) => {
-                              if (r.success && Array.isArray(r.data)) setSubTopics(r.data);
-                              else setSubTopics([]);
-                            });
-                          } else setSubTopics([]);
-                        }}
-                        disabled={!subjectId}
-                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
-                      >
-                        <option value="">Select topic</option>
-                        {rootTopics.map((t: any) => (
-                          <option key={t._id} value={t._id}>{t.title}</option>
-                        ))}
-                      </select>
-                      {subjectId && (
-                        <p className="mt-1.5">
-                          <Link href={`/admin/subjects/new?subjectId=${subjectId}`} className="text-xs font-medium text-slate-600 hover:text-slate-800 underline">
-                            Add topic
-                          </Link>
-                        </p>
+                      {showAddRootTopicForm ? (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={newRootTopicTitle}
+                            onChange={(e) => setNewRootTopicTitle(e.target.value)}
+                            placeholder="Topic name"
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') { e.preventDefault(); handleAddRootTopicInline(); }
+                              if (e.key === 'Escape') { setShowAddRootTopicForm(false); setNewRootTopicTitle(''); }
+                            }}
+                            autoFocus
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={handleAddRootTopicInline}
+                              disabled={addingRootTopic || !newRootTopicTitle.trim() || !subjectId}
+                              className="rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                            >
+                              {addingRootTopic ? 'Adding…' : 'Add'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setShowAddRootTopicForm(false); setNewRootTopicTitle(''); }}
+                              disabled={addingRootTopic}
+                              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <select
+                            value={selectedRootTopicId}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setSelectedRootTopicId(v);
+                              setSelectedSubTopicId('');
+                              setShowAddSubTopicForm(false);
+                              setNewSubTopicTitle('');
+                              if (v && subjectId) {
+                                apiService.getTopics(subjectId, true, v).then((r) => {
+                                  if (r.success && Array.isArray(r.data)) setSubTopics(r.data);
+                                  else setSubTopics([]);
+                                });
+                              } else setSubTopics([]);
+                            }}
+                            disabled={!subjectId}
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-red-500 focus:ring-2 focus:ring-red-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                          >
+                            <option value="">Select topic</option>
+                            {rootTopics.map((t: any) => (
+                              <option key={t._id} value={t._id}>{t.title}</option>
+                            ))}
+                          </select>
+                          {subjectId && (
+                            <p className="mt-1.5">
+                              <button
+                                type="button"
+                                onClick={() => { setShowAddRootTopicForm(true); setNewRootTopicTitle(''); }}
+                                className="text-xs font-medium text-slate-600 hover:text-slate-800 underline"
+                              >
+                                {rootTopics.length === 0 ? 'Add topic' : '+ Add topic'}
+                              </button>
+                            </p>
+                          )}
+                        </>
                       )}
                     </div>
                     <div>
@@ -1611,6 +1765,7 @@ export default function AdminCreateQuizPage() {
                         <input
                           type="number"
                           min={0}
+                          step={1}
                           value={q.marks}
                           onChange={(e) =>
                             updateQuestion(index, 'marks', Number(e.target.value))
@@ -1622,15 +1777,34 @@ export default function AdminCreateQuizPage() {
                         <label className="block text-xs font-semibold text-gray-700 mb-1">
                           Negative Marks
                         </label>
-                        <input
-                          type="number"
-                          min={0}
-                          value={q.negativeMarks}
-                          onChange={(e) =>
-                            updateQuestion(index, 'negativeMarks', Number(e.target.value))
-                          }
-                          className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-red-500 focus:ring-2 focus:ring-red-500"
-                        />
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={(q.negativeMarks ?? 0) > 0}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                // If enabling for the first time, default to 0.25
+                                const next = (q.negativeMarks ?? 0) > 0 ? q.negativeMarks : 0.25;
+                                updateQuestion(index, 'negativeMarks', next);
+                              } else {
+                                // Disable negative marking
+                                updateQuestion(index, 'negativeMarks', 0);
+                              }
+                            }}
+                            className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                          />
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.25}
+                            value={q.negativeMarks}
+                            disabled={(q.negativeMarks ?? 0) <= 0}
+                            onChange={(e) =>
+                              updateQuestion(index, 'negativeMarks', Number(e.target.value))
+                            }
+                            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-red-500 focus:ring-2 focus:ring-red-500 disabled:bg-gray-100 disabled:text-gray-400"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>

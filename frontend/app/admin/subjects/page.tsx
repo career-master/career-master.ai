@@ -67,14 +67,14 @@ function SortableDomainRow({
       <td className="py-2 pr-2 w-10">
         <span
           className="inline-flex cursor-grab active:cursor-grabbing touch-none p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-          {...attributes}
-          {...listeners}
+              {...attributes}
+              {...listeners}
           title="Drag to reorder"
-        >
+            >
           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
             <path d="M8 6h2v2H8V6zm0 5h2v2H8v-2zm0 5h2v2H8v-2zm5-10h2v2h-2V6zm0 5h2v2h-2v-2zm0 5h2v2h-2v-2z" />
-          </svg>
-        </span>
+              </svg>
+                </span>
       </td>
       <td className="py-2 pr-4">
         {editingDomainId === d._id ? (
@@ -87,7 +87,7 @@ function SortableDomainRow({
             />
             <button type="button" onClick={() => onUpdateDomain(d._id)} className="text-green-600 font-medium">Save</button>
             <button type="button" onClick={() => { setEditingDomainId(null); setEditDomainName(''); }} className="text-gray-600">Cancel</button>
-          </span>
+                  </span>
         ) : (
           <span className="font-medium text-gray-900">{d.name}</span>
         )}
@@ -123,14 +123,14 @@ function SortableDomainRow({
 }
 
 const DRAG_HANDLE = (
-  <span
+                  <span
     className="inline-flex cursor-grab active:cursor-grabbing touch-none p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100"
     title="Drag to reorder"
   >
     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
       <path d="M8 6h2v2H8V6zm0 5h2v2H8v-2zm0 5h2v2H8v-2zm5-10h2v2h-2V6zm0 5h2v2h-2v-2zm0 5h2v2h-2v-2z" />
     </svg>
-  </span>
+                  </span>
 );
 
 function SortableLi({
@@ -544,7 +544,7 @@ export default function SubjectsAndTopicsPage() {
   const [savingDomainOrder, setSavingDomainOrder] = useState(false);
   const handleDomainsDragEnd = useCallback(
     async (event: DragEndEvent) => {
-      const { active, over } = event;
+    const { active, over } = event;
       if (!over || active.id === over.id) return;
       const oldIndex = domainsList.findIndex((d) => d._id === active.id);
       const newIndex = domainsList.findIndex((d) => d._id === over.id);
@@ -1143,8 +1143,8 @@ export default function SubjectsAndTopicsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Subjects & Topics</h1>
           <p className="text-gray-600 text-sm mt-1">
             Manage domain, category, subject and sub-topic in one place. Use filters like Quiz page: Domain → Category → Subject.
-          </p>
-        </div>
+              </p>
+            </div>
 
         {/* Toggle row: same as main sidebar sub-items, no second sidebar */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -1183,12 +1183,12 @@ export default function SubjectsAndTopicsPage() {
           >
             Manage Sub-topics
           </button>
-          <Link
-            href="/admin/subjects/requests"
+              <Link
+                href="/admin/subjects/requests"
             className="px-3 py-2 rounded-lg text-sm font-medium bg-white border border-gray-300 text-blue-600 hover:bg-blue-50"
-          >
-            Subject Requests
-          </Link>
+              >
+                Subject Requests
+              </Link>
         </div>
 
         {manageDomainsOpen && (
@@ -1249,7 +1249,7 @@ export default function SubjectsAndTopicsPage() {
                     </table>
                   </SortableContext>
                 </DndContext>
-              </div>
+          </div>
             )}
           </div>
         )}
@@ -1272,8 +1272,8 @@ export default function SubjectsAndTopicsPage() {
               </select>
               {categoryDomain && (
                 <>
-                  <input
-                    type="text"
+                <input
+                  type="text"
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
                     placeholder="New category name"
@@ -1289,7 +1289,7 @@ export default function SubjectsAndTopicsPage() {
                   </button>
                 </>
               )}
-            </div>
+              </div>
             {categoryDomain && (
               categoriesLoading ? (
                 <p className="text-sm text-gray-500">Loading categories…</p>
@@ -1468,7 +1468,7 @@ export default function SubjectsAndTopicsPage() {
               >
                 <option value="">
                   {!mtDomain ? 'Select domain first' : mtDomain !== 'Olympiad Exams' && !mtCategory ? 'Select category first' : 'All (select a subject)'}
-                </option>
+                  </option>
                 {mtSubjectsForSelect.map((s) => (
                   <option key={s._id} value={s._id}>{s.title} {s.domain ? `(${s.domain})` : ''}</option>
                 ))}
@@ -1579,7 +1579,7 @@ export default function SubjectsAndTopicsPage() {
               >
                 <option value="">
                   {!mstDomain ? 'Select domain first' : mstDomain !== 'Olympiad Exams' && !mstCategory ? 'Select category first' : 'All (select a subject)'}
-                </option>
+                  </option>
                 {mstSubjectsForSelect.map((s) => (
                   <option key={s._id} value={s._id}>{s.title} {s.domain ? `(${s.domain})` : ''}</option>
                 ))}
@@ -1684,7 +1684,7 @@ export default function SubjectsAndTopicsPage() {
                   <option key={d} value={d}>{d}</option>
                 ))}
               </select>
-            </div>
+          </div>
             {filterDomain && filterDomain !== 'Olympiad Exams' && (
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600 whitespace-nowrap">Category:</span>
@@ -1853,15 +1853,15 @@ export default function SubjectsAndTopicsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Link
+              <Link
                             href={row.type === 'subject' ? `/admin/subjects/new?subjectId=${row.id}` : `/admin/subjects/new?subjectId=${row.subjectId}`}
                             className="inline-flex items-center gap-1 px-2 py-1 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded"
-                          >
+              >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
+                </svg>
                             Edit
-                          </Link>
+              </Link>
                           <button type="button" onClick={() => handleDeleteOne(row)} className="inline-flex items-center gap-1 px-2 py-1 text-sm font-medium text-red-600 hover:bg-red-50 rounded" title="Delete">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1891,8 +1891,8 @@ export default function SubjectsAndTopicsPage() {
                   <button type="button" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages} className="px-3 py-1 border border-gray-300 rounded text-sm text-gray-900 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:text-gray-500">
                     Next
                   </button>
-                </div>
-              )}
+              </div>
+        )}
             </div>
           )}
         </div>

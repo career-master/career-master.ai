@@ -60,6 +60,8 @@ function QuizAttemptContent() {
   const [hasShownTimeAlert, setHasShownTimeAlert] = useState(false);
   const submitLock = useRef(false);
   const [allQuestions, setAllQuestions] = useState<QuizQuestion[]>([]);
+  // Maps displayed question index -> original question index from backend
+  const [questionOrder, setQuestionOrder] = useState<number[]>([]);
   const [optionOrders, setOptionOrders] = useState<Record<number, number[]>>({}); // Store shuffled option order for each question
   const [showSubmitConfirmModal, setShowSubmitConfirmModal] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
@@ -359,6 +361,7 @@ function QuizAttemptContent() {
           const userEmail = user?.email;
           const orderKey = userEmail ? getQuestionOrderKey(userEmail, quizId) : null;
           let orderedQuestions = questions;
+          let effectiveOrder: number[] = questions.map((_, idx) => idx);
           let storedOrder: number[] | null = null;
 
           if (isActiveAttempt && orderKey) {
@@ -374,12 +377,14 @@ function QuizAttemptContent() {
 
           if (storedOrder && storedOrder.length === questions.length) {
             orderedQuestions = storedOrder.map((idx) => questions[idx]).filter(Boolean);
+            effectiveOrder = storedOrder.slice();
           } else if (!isActiveAttempt) {
             const newOrder = questions.map((_, idx) => idx).sort(() => Math.random() - 0.5);
             orderedQuestions = newOrder.map((idx) => questions[idx]);
             if (orderKey) {
               localStorage.setItem(orderKey, JSON.stringify(newOrder));
             }
+            effectiveOrder = newOrder;
           }
 
           // Initialize timer based on user preference
@@ -446,6 +451,7 @@ function QuizAttemptContent() {
           });
           
           setOptionOrders(newOptionOrders);
+          setQuestionOrder(effectiveOrder);
           setAnswers(initialAnswers);
           setAnsweredQuestions(initialAnswered);
           setSkippedQuestions(initialSkipped);
@@ -698,7 +704,8 @@ function QuizAttemptContent() {
       }
 
       // Convert answers to the format expected by backend
-      // Map shuffled option indices back to original indices
+      // 1) Map displayed question indices back to original indices (before shuffling)
+      // 2) Map shuffled option indices back to original option indices
       const formattedAnswers: Record<string, any> = {};
       Object.keys(answers).forEach((key) => {
         const qIndex = parseInt(key);
@@ -706,6 +713,10 @@ function QuizAttemptContent() {
         if (answer !== null && answer !== undefined) {
           const question = allQuestions[qIndex];
           const shuffledOrder = optionOrders[qIndex];
+          const originalQuestionIndex =
+            questionOrder && questionOrder.length === allQuestions.length
+              ? questionOrder[qIndex] ?? qIndex
+              : qIndex;
           
           // If options were shuffled, map the answer back to original indices
           if (shuffledOrder && question.options && question.options.length > 0) {
@@ -717,20 +728,20 @@ function QuizAttemptContent() {
                 }
                 return shuffledIdx;
               });
-              formattedAnswers[qIndex.toString()] = mappedAnswer;
+              formattedAnswers[originalQuestionIndex.toString()] = mappedAnswer;
             } else if (typeof answer === 'number') {
               // Single choice: map shuffled index to original index
               if (answer >= 0 && answer < shuffledOrder.length) {
-                formattedAnswers[qIndex.toString()] = shuffledOrder[answer];
+                formattedAnswers[originalQuestionIndex.toString()] = shuffledOrder[answer];
               } else {
-                formattedAnswers[qIndex.toString()] = answer;
+                formattedAnswers[originalQuestionIndex.toString()] = answer;
               }
             } else {
-              formattedAnswers[qIndex.toString()] = answer;
+              formattedAnswers[originalQuestionIndex.toString()] = answer;
             }
           } else {
             // No shuffling, use answer as-is
-            formattedAnswers[qIndex.toString()] = answer;
+            formattedAnswers[originalQuestionIndex.toString()] = answer;
           }
         }
       });

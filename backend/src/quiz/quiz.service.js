@@ -348,7 +348,25 @@ class QuizService {
       // Handle True/False
       if (finalQuestionType === 'true_false') {
         const options = ['True', 'False'];
-        const correctIndex = correctOption.includes('TRUE') || correctOption.includes('T') ? 0 : 1;
+
+        // Support multiple ways of specifying the correct answer in Excel:
+        // - "A" / "B"
+        // - "TRUE" / "FALSE"
+        // - "T" / "F"
+        let correctIndex = 1; // default to "False"
+
+        // If author used option letters A/B
+        if (correctOption === 'A') {
+          correctIndex = 0;
+        } else if (correctOption === 'B') {
+          correctIndex = 1;
+        } else if (correctOption.includes('TRUE') || correctOption === 'T') {
+          // Text-based TRUE
+          correctIndex = 0;
+        } else if (correctOption.includes('FALSE') || correctOption === 'F') {
+          // Text-based FALSE
+          correctIndex = 1;
+        }
         
         questions.push({
           questionType: 'true_false',
