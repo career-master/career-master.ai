@@ -36,6 +36,11 @@ router.post('/requests/:id/approve', adminMiddleware, SubjectJoinRequestControll
 // Admin: Reject subject join request
 router.post('/requests/:id/reject', adminMiddleware, SubjectJoinRequestController.rejectRequest);
 
+// Admin: Bulk update subject orders
+// NOTE: This must be defined before any "/:id" routes,
+// otherwise "/orders" would be captured as an ":id" param.
+router.put('/orders', adminMiddleware, SubjectController.bulkUpdateOrders);
+
 // User: Get subject by ID
 router.get('/:id', userMiddleware, validate(subjectIdParamSchema), SubjectController.getSubjectById);
 
@@ -44,9 +49,6 @@ router.put('/:id', adminMiddleware, validate(updateSubjectSchema), SubjectContro
 
 // Admin: Delete subject
 router.delete('/:id', adminMiddleware, validate(subjectIdParamSchema), SubjectController.deleteSubject);
-
-// Admin: Bulk update subject orders
-router.put('/orders', adminMiddleware, SubjectController.bulkUpdateOrders);
 
 module.exports = router;
 

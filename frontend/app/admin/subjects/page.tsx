@@ -31,6 +31,561 @@ type CategoryRecord = { _id: string; domain: string; name: string; order?: numbe
 const subjectInDomain = (s: { domain?: string; category?: string }, domain: string) =>
   s.domain === domain || (domain === 'Technology' && s.category === 'Technology');
 
+function SortableTopicRow({
+  t,
+  editingTopicId,
+  editTopicTitle,
+  setEditTopicTitle,
+  setEditingTopicId,
+  onUpdateTopic,
+  onDelete,
+  deletingTopicId,
+  disabled,
+}: {
+  t: any;
+  editingTopicId: string | null;
+  editTopicTitle: string;
+  setEditTopicTitle: (v: string) => void;
+  setEditingTopicId: (v: string | null) => void;
+  onUpdateTopic: (id: string) => void;
+  onDelete: (id: string) => void;
+  deletingTopicId: string | null;
+  disabled?: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: t._id,
+    disabled,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={`border-b border-gray-100 ${isDragging ? 'bg-gray-50 opacity-60' : ''}`}
+    >
+      <td className="py-2 pr-2 w-10 align-middle">
+        <button
+          type="button"
+          className="inline-flex cursor-grab active:cursor-grabbing touch-none p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+          title="Drag to reorder"
+          {...attributes}
+          {...listeners}
+        >
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <path d="M8 6h2v2H8V6zm0 5h2v2H8v-2zm0 5h2v2H8v-2zm5-10h2v2h-2V6zm0 5h2v2h-2v-2zm0 5h2v2h-2v-2z" />
+          </svg>
+        </button>
+      </td>
+      <td className="py-2 pr-4 align-middle">
+        {editingTopicId === t._id ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              type="text"
+              value={editTopicTitle}
+              onChange={(e) => setEditTopicTitle(e.target.value)}
+              className="rounded border border-gray-300 px-2 py-1 text-sm w-56 text-gray-900 bg-white"
+            />
+            <button
+              type="button"
+              onClick={() => onUpdateTopic(t._id)}
+              className="text-xs font-medium text-green-600 hover:text-green-700"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingTopicId(null);
+                setEditTopicTitle('');
+              }}
+              className="text-xs text-gray-600 hover:text-gray-800"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <span className="font-medium text-gray-900">{t.title}</span>
+        )}
+      </td>
+      <td className="py-2 pr-4 align-middle">
+        {editingTopicId !== t._id && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingTopicId(t._id);
+                setEditTopicTitle(t.title);
+              }}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full text-blue-600 hover:bg-blue-50"
+              title="Edit topic"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => window.confirm('Delete this topic?') && onDelete(t._id)}
+              disabled={deletingTopicId === t._id}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full text-red-600 hover:bg-red-50 disabled:opacity-50"
+              title="Delete topic"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </button>
+          </div>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+function SortableSubTopicRow({
+  t,
+  parentLabel,
+  editingSubTopicId,
+  editSubTopicTitle,
+  setEditSubTopicTitle,
+  setEditingSubTopicId,
+  onUpdateSubTopic,
+  onDelete,
+  deletingSubTopicId,
+  disabled,
+}: {
+  t: any;
+  parentLabel: string;
+  editingSubTopicId: string | null;
+  editSubTopicTitle: string;
+  setEditSubTopicTitle: (v: string) => void;
+  setEditingSubTopicId: (v: string | null) => void;
+  onUpdateSubTopic: (id: string) => void;
+  onDelete: (id: string) => void;
+  deletingSubTopicId: string | null;
+  disabled?: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: t._id,
+    disabled,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={`border-b border-gray-100 ${isDragging ? 'bg-gray-50 opacity-60' : ''}`}
+    >
+      <td className="py-2 pr-2 w-10 align-middle">
+        <button
+          type="button"
+          className="inline-flex cursor-grab active:cursor-grabbing touch-none p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+          title="Drag to reorder"
+          {...attributes}
+          {...listeners}
+        >
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <path d="M8 6h2v2H8V6zm0 5h2v2H8v-2zm0 5h2v2H8v-2zm5-10h2v2h-2V6zm0 5h2v2h-2v-2zm0 5h2v2h-2v-2z" />
+          </svg>
+        </button>
+      </td>
+      <td className="py-2 pr-4 align-middle">
+        {editingSubTopicId === t._id ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              type="text"
+              value={editSubTopicTitle}
+              onChange={(e) => setEditSubTopicTitle(e.target.value)}
+              className="rounded border border-gray-300 px-2 py-1 text-sm w-56 text-gray-900 bg-white"
+            />
+            <button
+              type="button"
+              onClick={() => onUpdateSubTopic(t._id)}
+              className="text-xs font-medium text-green-600 hover:text-green-700"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingSubTopicId(null);
+                setEditSubTopicTitle('');
+              }}
+              className="text-xs text-gray-600 hover:text-gray-800"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <span className="font-medium text-gray-900">{t.title}</span>
+        )}
+      </td>
+      <td className="py-2 pr-4 align-middle text-xs text-gray-600">
+        under {parentLabel || 'root'}
+      </td>
+      <td className="py-2 pr-4 align-middle">
+        {editingSubTopicId !== t._id && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingSubTopicId(t._id);
+                setEditSubTopicTitle(t.title);
+              }}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full text-blue-600 hover:bg-blue-50"
+              title="Edit sub-topic"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => window.confirm('Delete this sub-topic?') && onDelete(t._id)}
+              disabled={deletingSubTopicId === t._id}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full text-red-600 hover:bg-red-50 disabled:opacity-50"
+              title="Delete sub-topic"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </button>
+          </div>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+function SortableCategoryRow({
+  c,
+  editingCategoryId,
+  editCategoryName,
+  setEditCategoryName,
+  setEditingCategoryId,
+  onUpdateCategory,
+  onDelete,
+  deletingCategoryId,
+  disabled,
+}: {
+  c: CategoryRecord;
+  editingCategoryId: string | null;
+  editCategoryName: string;
+  setEditCategoryName: (v: string) => void;
+  setEditingCategoryId: (v: string | null) => void;
+  onUpdateCategory: (id: string) => void;
+  onDelete: (id: string) => void;
+  deletingCategoryId: string | null;
+  disabled?: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: c._id,
+    disabled,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={`border-b border-gray-100 ${isDragging ? 'bg-gray-50 opacity-60' : ''}`}
+    >
+      <td className="py-2 pr-2 w-10 align-middle">
+        <button
+          type="button"
+          className="inline-flex cursor-grab active:cursor-grabbing touch-none p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+          title="Drag to reorder"
+          {...attributes}
+          {...listeners}
+        >
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <path d="M8 6h2v2H8V6zm0 5h2v2H8v-2zm0 5h2v2H8v-2zm5-10h2v2h-2V6zm0 5h2v2h-2v-2zm0 5h2v2h-2v-2z" />
+          </svg>
+        </button>
+      </td>
+      <td className="py-2 pr-4 align-middle">
+        {editingCategoryId === c._id ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              type="text"
+              value={editCategoryName}
+              onChange={(e) => setEditCategoryName(e.target.value)}
+              className="rounded border border-gray-300 px-2 py-1 text-sm w-56 text-gray-900 bg-white"
+            />
+            <button
+              type="button"
+              onClick={() => onUpdateCategory(c._id)}
+              className="text-xs font-medium text-green-600 hover:text-green-700"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingCategoryId(null);
+                setEditCategoryName('');
+              }}
+              className="text-xs text-gray-600 hover:text-gray-800"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <span className="font-medium text-gray-900">{c.name}</span>
+        )}
+      </td>
+      <td className="py-2 pr-4 align-middle">
+        {editingCategoryId !== c._id && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingCategoryId(c._id);
+                setEditCategoryName(c.name);
+              }}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full text-blue-600 hover:bg-blue-50"
+              title="Edit category"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => window.confirm('Delete this category?') && onDelete(c._id)}
+              disabled={deletingCategoryId === c._id}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full text-red-600 hover:bg-red-50 disabled:opacity-50"
+              title="Delete category"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </button>
+          </div>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+function SortableSubjectRow({
+  s,
+  editingSubjectId,
+  editSubjectTitle,
+  setEditSubjectTitle,
+  setEditingSubjectId,
+  onUpdateSubject,
+  onDelete,
+  deletingSubjectId,
+  disabled,
+}: {
+  s: any;
+  editingSubjectId: string | null;
+  editSubjectTitle: string;
+  setEditSubjectTitle: (v: string) => void;
+  setEditingSubjectId: (v: string | null) => void;
+  onUpdateSubject: (id: string) => void;
+  onDelete: (id: string) => void;
+  deletingSubjectId: string | null;
+  disabled?: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: s._id,
+    disabled,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={`border-b border-gray-100 ${isDragging ? 'bg-gray-50 opacity-60' : ''}`}
+    >
+      <td className="py-2 pr-2 w-10 align-middle">
+        <button
+          type="button"
+          className="inline-flex cursor-grab active:cursor-grabbing touch-none p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+          title="Drag to reorder"
+          {...attributes}
+          {...listeners}
+        >
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <path d="M8 6h2v2H8V6zm0 5h2v2H8v-2zm0 5h2v2H8v-2zm5-10h2v2h-2V6zm0 5h2v2h-2v-2zm0 5h2v2h-2v-2z" />
+          </svg>
+        </button>
+      </td>
+      <td className="py-2 pr-4 align-middle">
+        {editingSubjectId === s._id ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              type="text"
+              value={editSubjectTitle}
+              onChange={(e) => setEditSubjectTitle(e.target.value)}
+              className="rounded border border-gray-300 px-2 py-1 text-sm w-56 text-gray-900 bg-white"
+            />
+            <button
+              type="button"
+              onClick={() => onUpdateSubject(s._id)}
+              className="text-xs font-medium text-green-600 hover:text-green-700"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingSubjectId(null);
+                setEditSubjectTitle('');
+              }}
+              className="text-xs text-gray-600 hover:text-gray-800"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <span className="font-medium text-gray-900">{s.title}</span>
+        )}
+      </td>
+      <td className="py-2 pr-4 align-middle text-sm text-gray-700">
+        {s.domain || '—'}
+      </td>
+      <td className="py-2 pr-4 align-middle text-sm text-gray-700">
+        {s.category || '—'}
+      </td>
+      <td className="py-2 pr-4 align-middle">
+        {editingSubjectId !== s._id && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingSubjectId(s._id);
+                setEditSubjectTitle(s.title);
+              }}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full text-blue-600 hover:bg-blue-50"
+              title="Edit subject"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => window.confirm('Delete this subject?') && onDelete(s._id)}
+              disabled={deletingSubjectId === s._id}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full text-red-600 hover:bg-red-50 disabled:opacity-50"
+              title="Delete subject"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </button>
+          </div>
+        )}
+      </td>
+    </tr>
+  );
+}
+
 function SortableDomainRow({
   d,
   editingDomainId,
@@ -105,17 +660,54 @@ function SortableDomainRow({
       </td>
       <td className="py-2">
         {editingDomainId !== d._id && (
-          <>
-            <button type="button" onClick={() => { setEditingDomainId(d._id); setEditDomainName(d.name); }} className="text-blue-600 hover:underline mr-2">Edit</button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingDomainId(d._id);
+                setEditDomainName(d.name);
+              }}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full text-blue-600 hover:bg-blue-50"
+              title="Edit domain"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                />
+              </svg>
+            </button>
             <button
               type="button"
               onClick={() => window.confirm('Delete this domain?') && onDelete(d._id)}
               disabled={deletingDomainId === d._id}
-              className="text-red-600 hover:underline disabled:opacity-50"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full text-red-600 hover:bg-red-50 disabled:opacity-50"
+              title="Delete domain"
             >
-              {deletingDomainId === d._id ? 'Deleting…' : 'Delete'}
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
             </button>
-          </>
+          </div>
         )}
       </td>
     </tr>
@@ -1296,41 +1888,37 @@ export default function SubjectsAndTopicsPage() {
               ) : categoriesList.length === 0 ? (
                 <p className="text-sm text-gray-500">No categories yet. Add one above.</p>
               ) : (
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCategoriesDragEnd}>
-                  <SortableContext items={categoriesList.map((c) => c._id)} strategy={verticalListSortingStrategy}>
-                    <ul className="space-y-0">
-                      {categoriesList.map((c) => (
-                        <SortableLi key={c._id} id={c._id} disabled={savingCategoryOrder}>
-                          {editingCategoryId === c._id ? (
-                            <>
-                              <input
-                                type="text"
-                                value={editCategoryName}
-                                onChange={(e) => setEditCategoryName(e.target.value)}
-                                className="rounded border border-gray-300 px-2 py-1 text-sm w-48 text-gray-900 bg-white"
-                              />
-                              <button type="button" onClick={() => handleUpdateCategory(c._id)} className="text-sm text-green-600 font-medium">Save</button>
-                              <button type="button" onClick={() => { setEditingCategoryId(null); setEditCategoryName(''); }} className="text-sm text-gray-600">Cancel</button>
-                            </>
-                          ) : (
-                            <>
-                              <span className="font-medium text-gray-900">{c.name}</span>
-                              <button type="button" onClick={() => { setEditingCategoryId(c._id); setEditCategoryName(c.name); }} className="text-sm text-blue-600 hover:underline">Edit</button>
-                              <button
-                                type="button"
-                                onClick={() => window.confirm('Delete this category?') && handleDeleteCategory(c._id)}
-                                disabled={deletingCategoryId === c._id}
-                                className="text-sm text-red-600 hover:underline disabled:opacity-50"
-                              >
-                                {deletingCategoryId === c._id ? 'Deleting…' : 'Delete'}
-                              </button>
-                            </>
-                          )}
-                        </SortableLi>
-                      ))}
-                    </ul>
-                  </SortableContext>
-                </DndContext>
+                <div className="overflow-x-auto max-h-72">
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCategoriesDragEnd}>
+                    <SortableContext items={categoriesList.map((c) => c._id)} strategy={verticalListSortingStrategy}>
+                      <table className="min-w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-200 text-left text-gray-600">
+                            <th className="py-2 pr-2 w-10" aria-label="Drag" />
+                            <th className="py-2 pr-4">Category</th>
+                            <th className="py-2 pr-4">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {categoriesList.map((c) => (
+                            <SortableCategoryRow
+                              key={c._id}
+                              c={c}
+                              editingCategoryId={editingCategoryId}
+                              editCategoryName={editCategoryName}
+                              setEditCategoryName={setEditCategoryName}
+                              setEditingCategoryId={setEditingCategoryId}
+                              onUpdateCategory={handleUpdateCategory}
+                              onDelete={handleDeleteCategory}
+                              deletingCategoryId={deletingCategoryId}
+                              disabled={savingCategoryOrder}
+                            />
+                          ))}
+                        </tbody>
+                      </table>
+                    </SortableContext>
+                  </DndContext>
+                </div>
               )
             )}
           </div>
@@ -1388,42 +1976,39 @@ export default function SubjectsAndTopicsPage() {
             ) : subjectsList.length === 0 ? (
               <p className="text-sm text-gray-500">No subjects match the filter. Use &quot;All&quot; or add one above.</p>
             ) : (
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSubjectsDragEnd}>
-                <SortableContext items={subjectsList.map((s) => s._id)} strategy={verticalListSortingStrategy}>
-                  <ul className="space-y-0 max-h-64 overflow-y-auto">
-                    {subjectsList.map((s) => (
-                      <SortableLi key={s._id} id={s._id} disabled={savingSubjectOrder}>
-                        {editingSubjectId === s._id ? (
-                          <>
-                            <input
-                              type="text"
-                              value={editSubjectTitle}
-                              onChange={(e) => setEditSubjectTitle(e.target.value)}
-                              className="rounded border border-gray-300 px-2 py-1 text-sm w-48 text-gray-900 bg-white"
-                            />
-                            <button type="button" onClick={() => handleManageUpdateSubject(s._id)} className="text-sm text-green-600 font-medium">Save</button>
-                            <button type="button" onClick={() => { setEditingSubjectId(null); setEditSubjectTitle(''); }} className="text-sm text-gray-600">Cancel</button>
-                          </>
-                        ) : (
-                          <>
-                            <span className="font-medium text-gray-900">{s.title}</span>
-                            <span className="text-xs text-gray-500">({s.domain || '—'})</span>
-                            <button type="button" onClick={() => { setEditingSubjectId(s._id); setEditSubjectTitle(s.title); }} className="text-sm text-blue-600 hover:underline">Edit</button>
-                            <button
-                              type="button"
-                              onClick={() => window.confirm('Delete this subject?') && handleManageDeleteSubject(s._id)}
-                              disabled={deletingSubjectId === s._id}
-                              className="text-sm text-red-600 hover:underline disabled:opacity-50"
-                            >
-                              {deletingSubjectId === s._id ? 'Deleting…' : 'Delete'}
-                            </button>
-                          </>
-                        )}
-                      </SortableLi>
-                    ))}
-                  </ul>
-                </SortableContext>
-              </DndContext>
+              <div className="overflow-x-auto max-h-72">
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSubjectsDragEnd}>
+                  <SortableContext items={subjectsList.map((s) => s._id)} strategy={verticalListSortingStrategy}>
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200 text-left text-gray-600">
+                          <th className="py-2 pr-2 w-10" aria-label="Drag" />
+                          <th className="py-2 pr-4">Subject</th>
+                          <th className="py-2 pr-4">Domain</th>
+                          <th className="py-2 pr-4">Category</th>
+                          <th className="py-2 pr-4">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {subjectsList.map((s) => (
+                          <SortableSubjectRow
+                            key={s._id}
+                            s={s}
+                            editingSubjectId={editingSubjectId}
+                            editSubjectTitle={editSubjectTitle}
+                            setEditSubjectTitle={setEditSubjectTitle}
+                            setEditingSubjectId={setEditingSubjectId}
+                            onUpdateSubject={handleManageUpdateSubject}
+                            onDelete={handleManageDeleteSubject}
+                            deletingSubjectId={deletingSubjectId}
+                            disabled={savingSubjectOrder}
+                          />
+                        ))}
+                      </tbody>
+                    </table>
+                  </SortableContext>
+                </DndContext>
+              </div>
             )}
           </div>
         )}
@@ -1500,41 +2085,37 @@ export default function SubjectsAndTopicsPage() {
             ) : topicsList.length === 0 ? (
               <p className="text-sm text-gray-500">No root topics yet. Add one above.</p>
             ) : (
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleTopicsDragEnd}>
-                <SortableContext items={topicsList.map((t) => t._id)} strategy={verticalListSortingStrategy}>
-                  <ul className="space-y-0 max-h-64 overflow-y-auto">
-                    {topicsList.map((t) => (
-                      <SortableLi key={t._id} id={t._id} disabled={savingTopicOrder}>
-                        {editingTopicId === t._id ? (
-                          <>
-                            <input
-                              type="text"
-                              value={editTopicTitle}
-                              onChange={(e) => setEditTopicTitle(e.target.value)}
-                              className="rounded border border-gray-300 px-2 py-1 text-sm w-48 text-gray-900 bg-white"
-                            />
-                            <button type="button" onClick={() => handleManageUpdateTopic(t._id)} className="text-sm text-green-600 font-medium">Save</button>
-                            <button type="button" onClick={() => { setEditingTopicId(null); setEditTopicTitle(''); }} className="text-sm text-gray-600">Cancel</button>
-                          </>
-                        ) : (
-                          <>
-                            <span className="font-medium text-gray-900">{t.title}</span>
-                            <button type="button" onClick={() => { setEditingTopicId(t._id); setEditTopicTitle(t.title); }} className="text-sm text-blue-600 hover:underline">Edit</button>
-                            <button
-                              type="button"
-                              onClick={() => window.confirm('Delete this topic?') && handleManageDeleteTopic(t._id)}
-                              disabled={deletingTopicId === t._id}
-                              className="text-sm text-red-600 hover:underline disabled:opacity-50"
-                            >
-                              {deletingTopicId === t._id ? 'Deleting…' : 'Delete'}
-                            </button>
-                          </>
-                        )}
-                      </SortableLi>
-                    ))}
-                  </ul>
-                </SortableContext>
-              </DndContext>
+              <div className="overflow-x-auto max-h-72">
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleTopicsDragEnd}>
+                  <SortableContext items={topicsList.map((t) => t._id)} strategy={verticalListSortingStrategy}>
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200 text-left text-gray-600">
+                          <th className="py-2 pr-2 w-10" aria-label="Drag" />
+                          <th className="py-2 pr-4">Topic</th>
+                          <th className="py-2 pr-4">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {topicsList.map((t) => (
+                          <SortableTopicRow
+                            key={t._id}
+                            t={t}
+                            editingTopicId={editingTopicId}
+                            editTopicTitle={editTopicTitle}
+                            setEditTopicTitle={setEditTopicTitle}
+                            setEditingTopicId={setEditingTopicId}
+                            onUpdateTopic={handleManageUpdateTopic}
+                            onDelete={handleManageDeleteTopic}
+                            deletingTopicId={deletingTopicId}
+                            disabled={savingTopicOrder}
+                          />
+                        ))}
+                      </tbody>
+                    </table>
+                  </SortableContext>
+                </DndContext>
+              </div>
             )}
           </div>
         )}
@@ -1622,42 +2203,43 @@ export default function SubjectsAndTopicsPage() {
             ) : subTopicsList.length === 0 ? (
               <p className="text-sm text-gray-500">No sub-topics for this filter. Add one above.</p>
             ) : (
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSubTopicsDragEnd}>
-                <SortableContext items={subTopicsList.map((t) => t._id)} strategy={verticalListSortingStrategy}>
-                  <ul className="space-y-0 max-h-64 overflow-y-auto">
-                    {subTopicsList.map((t) => (
-                      <SortableLi key={t._id} id={t._id} disabled={savingSubTopicOrder}>
-                        {editingSubTopicId === t._id ? (
-                          <>
-                            <input
-                              type="text"
-                              value={editSubTopicTitle}
-                              onChange={(e) => setEditSubTopicTitle(e.target.value)}
-                              className="rounded border border-gray-300 px-2 py-1 text-sm w-48 text-gray-900 bg-white"
-                            />
-                            <button type="button" onClick={() => handleManageUpdateSubTopic(t._id)} className="text-sm text-green-600 font-medium">Save</button>
-                            <button type="button" onClick={() => { setEditingSubTopicId(null); setEditSubTopicTitle(''); }} className="text-sm text-gray-600">Cancel</button>
-                          </>
-                        ) : (
-                          <>
-                            <span className="font-medium text-gray-900">{t.title}</span>
-                            <span className="text-xs text-gray-500">(under {mstRootTopics.find((r) => r._id === t.parentTopicId || r._id === (t as any).parentTopic)?.title || 'root'})</span>
-                            <button type="button" onClick={() => { setEditingSubTopicId(t._id); setEditSubTopicTitle(t.title); }} className="text-sm text-blue-600 hover:underline">Edit</button>
-                            <button
-                              type="button"
-                              onClick={() => window.confirm('Delete this sub-topic?') && handleManageDeleteSubTopic(t._id)}
-                              disabled={deletingSubTopicId === t._id}
-                              className="text-sm text-red-600 hover:underline disabled:opacity-50"
-                            >
-                              {deletingSubTopicId === t._id ? 'Deleting…' : 'Delete'}
-                            </button>
-                          </>
-                        )}
-                      </SortableLi>
-                    ))}
-                  </ul>
-                </SortableContext>
-              </DndContext>
+              <div className="overflow-x-auto max-h-72">
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSubTopicsDragEnd}>
+                  <SortableContext items={subTopicsList.map((t) => t._id)} strategy={verticalListSortingStrategy}>
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200 text-left text-gray-600">
+                          <th className="py-2 pr-2 w-10" aria-label="Drag" />
+                          <th className="py-2 pr-4">Sub-topic</th>
+                          <th className="py-2 pr-4">Parent topic</th>
+                          <th className="py-2 pr-4">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {subTopicsList.map((t) => (
+                          <SortableSubTopicRow
+                            key={t._id}
+                            t={t}
+                            parentLabel={
+                              mstRootTopics.find(
+                                (r) => r._id === t.parentTopicId || r._id === (t as any).parentTopic
+                              )?.title || 'root'
+                            }
+                            editingSubTopicId={editingSubTopicId}
+                            editSubTopicTitle={editSubTopicTitle}
+                            setEditSubTopicTitle={setEditSubTopicTitle}
+                            setEditingSubTopicId={setEditingSubTopicId}
+                            onUpdateSubTopic={handleManageUpdateSubTopic}
+                            onDelete={handleManageDeleteSubTopic}
+                            deletingSubTopicId={deletingSubTopicId}
+                            disabled={savingSubTopicOrder}
+                          />
+                        ))}
+                      </tbody>
+                    </table>
+                  </SortableContext>
+                </DndContext>
+              </div>
             )}
           </div>
         )}
