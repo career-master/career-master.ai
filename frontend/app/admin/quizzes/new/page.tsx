@@ -140,8 +140,60 @@ export default function AdminCreateQuizPage() {
 
   const filteredSubjects = useMemo(() => {
     let list = subjects;
-    if (selectedDomain) list = list.filter((s: any) => subjectInDomain(s, selectedDomain));
-    if (selectedDomain !== 'Olympiad Exams' && selectedCategory) list = list.filter((s: any) => s.category === selectedCategory);
+
+    // Always respect selected Domain first
+    if (selectedDomain) {
+      list = list.filter((s: any) => subjectInDomain(s, selectedDomain));
+    }
+
+    // If no category is selected (or category is hidden, e.g. Olympiad Exams),
+    // show all subjects in the domain.
+    if (!selectedCategory) return list;
+
+    const CANONICAL_PROGRAMMING = 'PROGRAMMING LANGUAGES';
+
+    // Special rule: For Technology → PROGRAMMING LANGUAGES, ensure the
+    // well‑known language subjects (C, C++, Java, etc.) always appear,
+    // even if their category text in the DB is slightly different.
+    if (
+      selectedDomain &&
+      selectedDomain.trim().toLowerCase() === 'technology' &&
+      selectedCategory.trim().toUpperCase() === CANONICAL_PROGRAMMING
+    ) {
+      const PROGRAMMING_TITLES = new Set(
+        ['C', 'C++', 'JAVA', 'PYTHON', 'PHP', 'C#', 'RUBY', 'GO', 'RUST'].map((t) =>
+          t.toUpperCase()
+        )
+      );
+
+      return list.filter((s: any) =>
+        PROGRAMMING_TITLES.has(String(s.title || '').trim().toUpperCase())
+      );
+    }
+
+    // Default: When a Category is chosen, only show subjects whose category
+    // matches it (case‑insensitive).
+    const sameCategory = (subjectCategory?: string, selected?: string) => {
+      if (!subjectCategory || !selected) return false;
+      return subjectCategory.trim().toLowerCase() === selected.trim().toLowerCase();
+    };
+
+    list = list.filter((s: any) => sameCategory(s.category, selectedCategory));
+
+    // De‑duplicate by Subject title within a Domain+Category so that
+    // admins do not see the same name (e.g. "C") multiple times, even
+    // if there are duplicate rows in the database.
+    const seen = new Set<string>();
+    list = list.filter((s: any) => {
+      const key = `${(s.domain || '').toString().trim().toLowerCase()}|${(s.category || '')
+        .toString()
+        .trim()
+        .toLowerCase()}|${(s.title || '').toString().trim().toLowerCase()}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
     return list;
   }, [subjects, selectedDomain, selectedCategory]);
   const [useSections, setUseSections] = useState(false);

@@ -29,10 +29,16 @@ export default function AdminReportsPage() {
   const [attempts, setAttempts] = useState<AdminQuizAttempt[]>([]);
   const [loading, setLoading] = useState(true);
   const [subjects, setSubjects] = useState<any[]>([]);
+  const [domains, setDomains] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [topics, setTopics] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
 
   const [filters, setFilters] = useState<{
+    domain?: string;
+    category?: string;
     subjectId?: string;
+    topicId?: string;
     email?: string;
     name?: string;
   }>({});
@@ -149,6 +155,11 @@ export default function AdminReportsPage() {
   useEffect(() => {
     const loadFilterData = async () => {
       try {
+        const domainsRes = await apiService.getDomains({ active: true });
+        if (domainsRes.success && Array.isArray(domainsRes.data)) {
+          setDomains((domainsRes.data as { name: string }[]).map((d) => d.name));
+        }
+
         const subjectsRes = await apiService.getSubjects({ page: 1, limit: 200, isActive: true });
         if (subjectsRes.success && subjectsRes.data?.items) {
           setSubjects(subjectsRes.data.items);
@@ -160,12 +171,59 @@ export default function AdminReportsPage() {
     loadFilterData();
   }, []);
 
+  // Load categories when domain changes
+  useEffect(() => {
+    const loadCategories = async () => {
+      if (!filters.domain) {
+        setCategories([]);
+        return;
+      }
+      try {
+        const res = await apiService.getCategories({ domain: filters.domain, active: true });
+        if (res.success && Array.isArray(res.data)) {
+          setCategories((res.data as { name: string }[]).map((c) => c.name));
+        } else {
+          setCategories([]);
+        }
+      } catch (e) {
+        console.error('Failed to load categories for reports filter', e);
+        setCategories([]);
+      }
+    };
+    loadCategories();
+  }, [filters.domain]);
+
+  // Load topics when subject changes
+  useEffect(() => {
+    const loadTopics = async () => {
+      if (!filters.subjectId) {
+        setTopics([]);
+        return;
+      }
+      try {
+        const res = await apiService.getTopics(filters.subjectId, true, 'roots');
+        if (res.success && Array.isArray(res.data)) {
+          setTopics(res.data);
+        } else {
+          setTopics([]);
+        }
+      } catch (e) {
+        console.error('Failed to load topics for reports filter', e);
+        setTopics([]);
+      }
+    };
+    loadTopics();
+  }, [filters.subjectId]);
+
   useEffect(() => {
     const loadAttempts = async () => {
       try {
         setLoading(true);
         const res = await apiService.getAdminUserQuizAttempts({
           subjectId: filters.subjectId,
+          domain: filters.domain,
+          category: filters.category,
+          topicId: filters.topicId,
           email: filters.email,
           name: filters.name,
           page,
@@ -250,25 +308,128 @@ export default function AdminReportsPage() {
       </div>
 
       <div className="bg-white rounded-xl shadow-lg p-4 border border-gray-200">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">
+              Domain
+            </label>
+            <select
+              value={filters.domain || ''}
+              onChange={(e) => {
+                const v = e.target.value;
+                setFilters((prev) => ({
+                  ...prev,
+                  domain: v || undefined,
+                  category: undefined,
+                  subjectId: undefined,
+                  topicId: undefined,
+                }));
+                setPage(1);
+              }}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500"
+            >
+              <option value="">All Domains</option>
+              {domains.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">
+              Category
+            </label>
+            <select
+              value={filters.category || ''}
+              onChange={(e) => {
+                const v = e.target.value;
+                setFilters((prev) => ({
+                  ...prev,
+                  category: v || undefined,
+                  subjectId: undefined,
+                  topicId: undefined,
+                }));
+                setPage(1);
+              }}
+              disabled={!filters.domain}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 disabled:bg-gray-100 disabled:text-gray-400"
+            >
+              <option value="">All Categories</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">
               Subject
             </label>
             <select
               value={filters.subjectId || ''}
-              onChange={(e) => handleFilterChange('subjectId', e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setFilters((prev) => ({
+                  ...prev,
+                  subjectId: v || undefined,
+                  topicId: undefined,
+                }));
+                setPage(1);
+              }}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500"
             >
               <option value="">All Subjects</option>
-              {subjects.map((s) => (
-                <option key={s._id} value={s._id}>
-                  {s.title}
+              {subjects
+                .filter((s) => {
+                  if (filters.domain && s.domain !== filters.domain) return false;
+                  if (filters.category && s.category !== filters.category) return false;
+                  return true;
+                })
+                .map((s) => (
+                  <option key={s._id} value={s._id}>
+                    {s.title}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">
+              Topic
+            </label>
+            <select
+              value={filters.topicId || ''}
+              onChange={(e) => handleFilterChange('topicId', e.target.value)}
+              disabled={!filters.subjectId}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 disabled:bg-gray-100 disabled:text-gray-400"
+            >
+              <option value="">All Topics</option>
+              {topics.map((t) => (
+                <option key={t._id} value={t._id}>
+                  {t.title}
                 </option>
               ))}
             </select>
           </div>
 
+          <div className="flex items-end">
+            <button
+              onClick={() => {
+                setFilters({});
+                setPage(1);
+              }}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              Clear Filters
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">
               Student Email
@@ -293,15 +454,6 @@ export default function AdminReportsPage() {
               placeholder="search by name"
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500"
             />
-          </div>
-
-          <div className="flex items-end">
-            <button
-              onClick={() => setFilters({})}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-            >
-              Clear Filters
-            </button>
           </div>
         </div>
       </div>

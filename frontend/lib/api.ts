@@ -539,6 +539,9 @@ class ApiService {
   async getAdminUserQuizAttempts(filters?: {
     quizId?: string;
     subjectId?: string;
+    domain?: string;
+    category?: string;
+    topicId?: string;
     email?: string;
     name?: string;
     page?: number;
@@ -547,6 +550,9 @@ class ApiService {
     const params = new URLSearchParams();
     if (filters?.quizId) params.append('quizId', filters.quizId);
     if (filters?.subjectId) params.append('subjectId', filters.subjectId);
+    if (filters?.domain) params.append('domain', filters.domain);
+    if (filters?.category) params.append('category', filters.category);
+    if (filters?.topicId) params.append('topicId', filters.topicId);
     if (filters?.email) params.append('email', filters.email);
     if (filters?.name) params.append('name', filters.name);
     if (filters?.page) params.append('page', String(filters.page));

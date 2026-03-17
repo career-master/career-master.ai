@@ -1,4 +1,5 @@
 const QuizSet = require('./quiz-sets.model');
+const Quiz = require('../quiz/quiz.model');
 const { ErrorHandler } = require('../middleware/errorHandler');
 
 /**
@@ -13,6 +14,36 @@ class QuizSetRepository {
    */
   static async createQuizSet(quizSetData) {
     try {
+      // Defensive check: prevent duplicates for same Topic + Quiz Number + Level.
+      // Service layer already performs this check, but we repeat here so that
+      // any future callers are also protected.
+      if (
+        quizSetData.topicId &&
+        quizSetData.quizNumber !== undefined &&
+        quizSetData.quizNumber !== null
+      ) {
+        const quiz = await Quiz.findById(quizSetData.quizId);
+        const newLevel = quiz?.level;
+
+        if (newLevel) {
+          const existingSets = await QuizSet.find({
+            topicId: quizSetData.topicId,
+            quizNumber: quizSetData.quizNumber
+          }).populate('quizId');
+
+          const hasSameLevel = existingSets.some(
+            (qs) => qs.quizId && qs.quizId.level === newLevel
+          );
+
+          if (hasSameLevel) {
+            throw new ErrorHandler(
+              400,
+              'A quiz with this topic, quiz number and level already exists.'
+            );
+          }
+        }
+      }
+
       const quizSet = new QuizSet(quizSetData);
       const savedQuizSet = await quizSet.save();
       return savedQuizSet;

@@ -434,7 +434,8 @@ class QuizService {
       throw new ErrorHandler(400, 'No valid questions found in Excel file');
     }
 
-    const title = metadata.title || rows[0].title || rows[0].Title || 'Untitled Quiz';
+    // Derive initial title/level from metadata or sheet
+    let title = metadata.title || rows[0].title || rows[0].Title || 'Untitled Quiz';
     const description = metadata.description || '';
     const durationMinutes = Number(metadata.durationMinutes || 30);
     const availableFrom = metadata.availableFrom && metadata.availableFrom.trim() !== '' 
@@ -458,6 +459,42 @@ class QuizService {
     const level = (metadata.level === 'basic' || metadata.level === 'hard')
       ? metadata.level
       : undefined;
+
+    // When uploading via Excel, if a quiz with the same title + level
+    // already exists, automatically bump the trailing "Quiz N" number:
+    //   "C++ - Basics - Quiz 1" → "C++ - Basics - Quiz 2", etc.
+    const norm = (v) => (v || '').toString().trim().toLowerCase();
+    const QUIZ_SUFFIX_REGEX = /^(.*?\bQuiz)\s*(\d+)\s*$/i;
+    if (level) {
+      const match = QUIZ_SUFFIX_REGEX.exec(title);
+      if (match) {
+        const [, basePart] = match;
+
+        // Load all quizzes at this level whose titles share the same base
+        const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const baseRe = new RegExp(`^${escapeRegex(basePart.trim())}\\s+\\d+\\s*$`, 'i');
+        const existing = await Quiz.find({ level, title: baseRe });
+
+        // Also include exact same title if it doesn't match pattern for some reason
+        const exactDup = await Quiz.findOne({ level, title });
+        if (exactDup && !existing.some((q) => String(q._id) === String(exactDup._id))) {
+          existing.push(exactDup);
+        }
+
+        if (existing.length > 0) {
+          let maxN = 1;
+          existing.forEach((q) => {
+            const m = QUIZ_SUFFIX_REGEX.exec(q.title || '');
+            if (!m) return;
+            const n = Number(m[2]);
+            if (Number.isFinite(n) && n > maxN) maxN = n;
+          });
+          const nextN = maxN + 1;
+          title = `${basePart} ${nextN}`;
+        }
+      }
+    }
+
     const quiz = await QuizRepository.createQuiz({
       title,
       description,

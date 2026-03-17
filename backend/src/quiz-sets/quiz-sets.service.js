@@ -25,12 +25,75 @@ class QuizSetService {
       throw new ErrorHandler(404, 'Quiz not found');
     }
 
+    // Normalize helper
+    const norm = (v) => (v || '').toString().trim().toLowerCase();
+
+    // Prevent / auto-adjust duplicates for:
+    // 1) Same Topic + Quiz Number + Level  → hard error
+    // 2) Same Topic + Quiz Title + Level   → auto-increment Quiz N in title
+    const hasQuizNumber =
+      quizNumber !== undefined && quizNumber !== null && quizNumber !== '';
+    if (topicId && quiz.level) {
+      const existingAll = await QuizSetRepository.getQuizSetsByTopicId(topicId, {});
+
+      // (1) Topic + Quiz Number + Level
+      if (hasQuizNumber) {
+        const duplicateByNumber = existingAll.find(
+          (qs) =>
+            qs.quizNumber === Number(quizNumber) &&
+            qs.quizId &&
+            qs.quizId.level === quiz.level
+        );
+        if (duplicateByNumber) {
+          throw new ErrorHandler(
+            400,
+            `A quiz with this topic, quiz number and level (${quiz.level}) already exists.`
+          );
+        }
+      }
+
+      // (2) Topic + Quiz Title + Level
+      // If a quiz with the same title+level already exists for this topic,
+      // automatically bump the trailing "Quiz N" number in the title:
+      //   "C - Fundamentals - Quiz 1" → "C - Fundamentals - Quiz 2", etc.
+      const QUIZ_SUFFIX_REGEX = /^(.*?\bQuiz)\s*(\d+)\s*$/i;
+      const baseMatch = QUIZ_SUFFIX_REGEX.exec(quiz.title || '');
+      if (baseMatch) {
+        const [, basePart] = baseMatch;
+        const quizTitleNorm = norm(quiz.title);
+
+        const duplicatesSameTitle = existingAll.filter(
+          (qs) =>
+            qs.quizId &&
+            norm(qs.quizId.title) === quizTitleNorm &&
+            qs.quizId.level === quiz.level
+        );
+
+        if (duplicatesSameTitle.length > 0) {
+          // Find max existing "Quiz N" number for this base + level
+          let maxN = 1;
+          existingAll.forEach((qs) => {
+            if (!qs.quizId || qs.quizId.level !== quiz.level) return;
+            const m = QUIZ_SUFFIX_REGEX.exec(qs.quizId.title || '');
+            if (!m) return;
+            const n = Number(m[2]);
+            if (Number.isFinite(n) && n > maxN) maxN = n;
+          });
+
+          const nextN = maxN + 1;
+          const newTitle = `${basePart} ${nextN}`;
+          quiz.title = newTitle;
+          await quiz.save();
+        }
+      }
+    }
+
     const quizSetData = {
       topicId,
       quizId,
       setName: setName || 'Quiz Set',
       order: order !== undefined ? order : 0,
-      quizNumber: quizNumber !== undefined && quizNumber !== null && quizNumber !== '' ? Number(quizNumber) : undefined,
+      quizNumber: hasQuizNumber ? Number(quizNumber) : undefined,
       assignedBy: userId,
       isActive: payload.isActive !== undefined ? payload.isActive : true
     };

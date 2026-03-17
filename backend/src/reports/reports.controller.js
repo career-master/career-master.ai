@@ -265,6 +265,9 @@ class ReportsController {
       const {
         subjectId,
         quizId,
+        domain,
+        category,
+        topicId,
         email,
         name,
         page = 1,
@@ -274,6 +277,9 @@ class ReportsController {
       const filters = {};
       if (subjectId) filters.subjectId = subjectId;
       if (quizId) filters.quizId = quizId;
+      if (domain) filters.domain = domain;
+      if (category) filters.category = category;
+      if (topicId) filters.topicId = topicId;
       if (email) filters.email = email;
       if (name) filters.name = name;
 

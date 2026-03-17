@@ -437,13 +437,16 @@ class QuizReportRepository {
       if (filters.quizId && mongoose.Types.ObjectId.isValid(filters.quizId)) {
         matchCriteria.quizId = new mongoose.Types.ObjectId(filters.quizId);
       }
+      if (filters.topicId && mongoose.Types.ObjectId.isValid(filters.topicId)) {
+        matchCriteria.topicId = new mongoose.Types.ObjectId(filters.topicId);
+      }
 
       const skip = (pageNum - 1) * limitNum;
 
       const [attempts, total] = await Promise.all([
         QuizAttempt.find(matchCriteria)
           .populate('quizId', 'title description level')
-          .populate('subjectId', 'name title')
+          .populate('subjectId', 'name title domain category')
           .populate('topicId', 'title')
           .populate('userId', 'name email')
           .sort({ submittedAt: -1, createdAt: -1 })
