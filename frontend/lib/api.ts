@@ -544,6 +544,8 @@ class ApiService {
     topicId?: string;
     email?: string;
     name?: string;
+    batchScope?: 'all' | 'batch_only' | 'non_batch';
+    batchCode?: string;
     page?: number;
     limit?: number;
   }): Promise<ApiResponse> {
@@ -555,11 +557,63 @@ class ApiService {
     if (filters?.topicId) params.append('topicId', filters.topicId);
     if (filters?.email) params.append('email', filters.email);
     if (filters?.name) params.append('name', filters.name);
+    if (filters?.batchScope) params.append('batchScope', filters.batchScope);
+    if (filters?.batchCode) params.append('batchCode', filters.batchCode);
     if (filters?.page) params.append('page', String(filters.page));
     if (filters?.limit) params.append('limit', String(filters.limit));
 
     const query = params.toString();
     return this.request(`/reports/admin/user-quiz-attempts${query ? `?${query}` : ''}`, {
+      method: 'GET',
+    });
+  }
+
+  // Admin: cumulative report (non-deleted data)
+  async getAdminCumulativeQuizSummary(filters?: {
+    quizId?: string;
+    subjectId?: string;
+    domain?: string;
+    category?: string;
+    topicId?: string;
+    email?: string;
+    name?: string;
+    batchScope?: 'all' | 'batch_only' | 'non_batch';
+    batchCode?: string;
+  }): Promise<ApiResponse> {
+    const params = new URLSearchParams();
+    if (filters?.quizId) params.append('quizId', filters.quizId);
+    if (filters?.subjectId) params.append('subjectId', filters.subjectId);
+    if (filters?.domain) params.append('domain', filters.domain);
+    if (filters?.category) params.append('category', filters.category);
+    if (filters?.topicId) params.append('topicId', filters.topicId);
+    if (filters?.email) params.append('email', filters.email);
+    if (filters?.name) params.append('name', filters.name);
+    if (filters?.batchScope) params.append('batchScope', filters.batchScope);
+    if (filters?.batchCode) params.append('batchCode', filters.batchCode);
+
+    const query = params.toString();
+    return this.request(`/reports/admin/cumulative-quiz-summary${query ? `?${query}` : ''}`, {
+      method: 'GET',
+    });
+  }
+
+  async getAdminUserCumulativeQuizReport(
+    userId: string,
+    filters?: {
+      subjectId?: string;
+      domain?: string;
+      category?: string;
+      topicId?: string;
+    }
+  ): Promise<ApiResponse> {
+    const params = new URLSearchParams();
+    if (filters?.subjectId) params.append('subjectId', filters.subjectId);
+    if (filters?.domain) params.append('domain', filters.domain);
+    if (filters?.category) params.append('category', filters.category);
+    if (filters?.topicId) params.append('topicId', filters.topicId);
+
+    const query = params.toString();
+    return this.request(`/reports/admin/user-cumulative-quiz-report/${userId}${query ? `?${query}` : ''}`, {
       method: 'GET',
     });
   }

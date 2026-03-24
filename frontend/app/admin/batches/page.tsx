@@ -156,14 +156,22 @@ export default function AdminBatchesListPage() {
                           {new Date(batch.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                             <Link
                               href={`/admin/batches/new?id=${batch._id}`}
                               className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                             >
                               Edit
                             </Link>
+                            <Link
+                              href={`/admin/reports?batchScope=batch_only&batchCode=${encodeURIComponent(batch.code)}`}
+                              className="text-amber-700 hover:text-amber-900 text-sm font-medium"
+                              title="Quiz reports for students in this batch"
+                            >
+                              Reports
+                            </Link>
                             <button
+                              type="button"
                               onClick={() => handleDelete(batch._id, batch.name)}
                               className="text-red-600 hover:text-red-800 text-sm font-medium"
                             >

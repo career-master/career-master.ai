@@ -7,6 +7,7 @@ const Topic = require('../topics/topics.model');
 const { ErrorHandler } = require('../middleware/errorHandler');
 const { getSettings } = require('../settings/settings.service');
 const SubjectJoinRequestService = require('../subjects/subject-requests.service');
+const QuizAttemptSummary = require('./quiz_attempt_summaries.model');
 
 /**
  * Quiz Attempt Service
@@ -301,6 +302,38 @@ class QuizAttemptService {
         topicId,
         subjectId
       });
+
+      // Create a lightweight summary snapshot for cumulative reports.
+      // This must not depend on the question-wise `answers` field.
+      try {
+        await QuizAttemptSummary.updateOne(
+          { attemptId: attempt._id },
+          {
+            $setOnInsert: {
+              attemptId: attempt._id,
+              quizId: attempt.quizId || quizId,
+              userId,
+              userEmail,
+              topicId: attempt.topicId ?? topicId ?? null,
+              subjectId: attempt.subjectId ?? subjectId ?? null,
+              submittedAt: attempt.submittedAt,
+              timeSpentInSeconds: attempt.timeSpentInSeconds || 0,
+              durationMinutesSnapshot: quiz.durationMinutes || 30,
+              marksObtained: attempt.marksObtained || 0,
+              totalMarks: attempt.totalMarks || 0,
+              percentage: attempt.percentage || 0,
+              result: attempt.result || 'fail',
+              correctAnswers: attempt.correctAnswers || 0,
+              incorrectAnswers: attempt.incorrectAnswers || 0,
+              unattemptedAnswers: attempt.unattemptedAnswers || 0,
+            },
+          },
+          { upsert: true }
+        );
+      } catch (summaryErr) {
+        // Do not fail quiz submission if the summary snapshot fails
+        console.error('Failed to create quiz attempt summary snapshot:', summaryErr);
+      }
 
       // Record quiz completion for topic progress (if quiz is part of a topic)
       try {

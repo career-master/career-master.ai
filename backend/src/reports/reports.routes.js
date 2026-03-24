@@ -26,6 +26,8 @@ router.get('/quiz-attempt/:attemptId/excel', ReportsController.downloadExcelRepo
 router.get('/user-quiz-attempts', ReportsController.getUserQuizAttempts);
 router.delete('/quiz-attempt/:attemptId', ReportsController.deleteUserQuizAttempt);
 router.get('/admin/user-quiz-attempts', ReportsController.getAdminUserQuizAttempts);
+router.get('/admin/cumulative-quiz-summary', ReportsController.getAdminCumulativeQuizSummary);
+router.get('/admin/user-cumulative-quiz-report/:userId', ReportsController.getAdminUserCumulativeQuizReport);
 router.delete('/admin/quiz-attempt/:attemptId', ReportsController.deleteAdminQuizAttempt);
 
 module.exports = router;

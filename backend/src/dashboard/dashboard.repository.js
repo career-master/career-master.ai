@@ -1,6 +1,7 @@
 const User = require('../user/users.model');
 const Quiz = require('../quiz/quiz.model');
 const Batch = require('../batches/batches.model');
+const QuizSet = require('../quiz-sets/quiz-sets.model');
 const { ErrorHandler } = require('../middleware/errorHandler');
 
 class DashboardRepository {
@@ -111,6 +112,61 @@ class DashboardRepository {
         { $limit: 10 }
       ]);
 
+      // Quizzes linked via quiz_sets → topic → subject: count distinct quizId per domain
+      let quizzesByDomain = [];
+      let quizzesUnlinkedToTopic = 0;
+      try {
+        const domainRows = await QuizSet.aggregate([
+          {
+            $lookup: {
+              from: 'topics',
+              localField: 'topicId',
+              foreignField: '_id',
+              as: 'topic',
+            },
+          },
+          { $unwind: { path: '$topic', preserveNullAndEmptyArrays: false } },
+          {
+            $lookup: {
+              from: 'subjects',
+              localField: 'topic.subjectId',
+              foreignField: '_id',
+              as: 'subject',
+            },
+          },
+          { $unwind: { path: '$subject', preserveNullAndEmptyArrays: false } },
+          {
+            $group: {
+              _id: { domain: '$subject.domain', quizId: '$quizId' },
+            },
+          },
+          {
+            $group: {
+              _id: '$_id.domain',
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { count: -1 } },
+        ]);
+        quizzesByDomain = (domainRows || []).map((r) => ({
+          domain: r._id || 'Unknown',
+          count: r.count || 0,
+        }));
+
+        const linkedQuizIds = await QuizSet.distinct('quizId');
+        const linkedIds = (linkedQuizIds || []).filter(Boolean);
+        if (linkedIds.length > 0) {
+          quizzesUnlinkedToTopic = await Quiz.countDocuments({
+            _id: { $nin: linkedIds },
+          });
+        } else {
+          quizzesUnlinkedToTopic = totalQuizzes;
+        }
+      } catch (e) {
+        quizzesByDomain = [];
+        quizzesUnlinkedToTopic = 0;
+      }
+
       return {
         overview: {
           totalUsers,
@@ -142,7 +198,9 @@ class DashboardRepository {
           quizzesByBatch: {
             withBatches: quizzesWithBatches,
             withoutBatches: quizzesWithoutBatches
-          }
+          },
+          quizzesByDomain,
+          quizzesUnlinkedToTopic,
         },
         recentUsers: recentUsers.map(u => ({
           _id: u._id,

@@ -1,7 +1,7 @@
  'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { apiService } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 
@@ -24,9 +24,20 @@ interface AdminQuizAttempt {
 type SortField = 'date' | 'score' | 'subject' | 'result';
 type SortDir = 'asc' | 'desc';
 
+/** Explicit text on white cards — avoids inheriting body foreground (light in OS dark mode). */
+const filterControlClass =
+  'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-600 [color-scheme:light] focus:border-red-500 focus:ring-1 focus:ring-red-500';
+
+const filterSelectClass = `${filterControlClass} disabled:bg-gray-100 disabled:text-gray-500`;
+
 export default function AdminReportsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [attempts, setAttempts] = useState<AdminQuizAttempt[]>([]);
+  type ReportMode = 'normal' | 'cumulative';
+  const [reportMode, setReportMode] = useState<ReportMode>('normal');
+  const [cumulativeUsers, setCumulativeUsers] = useState<any[]>([]);
+  const [cumulativeTotalUsers, setCumulativeTotalUsers] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [domains, setDomains] = useState<string[]>([]);
@@ -54,6 +65,51 @@ export default function AdminReportsPage() {
   const [deleteModalBulk, setDeleteModalBulk] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deletingBulk, setDeletingBulk] = useState(false);
+
+  /** Default: all users; narrow to one batch via the Batches menu. */
+  const [batchScope, setBatchScope] = useState<'non_batch' | 'batch_only' | 'all'>('all');
+  const [batchCode, setBatchCode] = useState('');
+  const [batches, setBatches] = useState<{ code: string; name: string }[]>([]);
+  const [batchMenuOpen, setBatchMenuOpen] = useState(false);
+  const batchMenuRef = useRef<HTMLDivElement>(null);
+
+  // Deep links from Batch Management: ?batchScope=batch_only&batchCode=...
+  useEffect(() => {
+    const bs = searchParams.get('batchScope');
+    const bc = searchParams.get('batchCode');
+    if (bs === 'batch_only' || bs === 'all') {
+      setBatchScope(bs);
+    } else if (bs === 'non_batch') {
+      setBatchScope('all');
+    } else {
+      setBatchScope('all');
+    }
+    if (bc) {
+      setBatchCode(decodeURIComponent(bc.trim()));
+    } else {
+      setBatchCode('');
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!batchMenuOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (batchMenuRef.current && !batchMenuRef.current.contains(e.target as Node)) {
+        setBatchMenuOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [batchMenuOpen]);
+
+  const batchFilterSummary = useMemo(() => {
+    if (batchScope === 'all') return 'All users';
+    if (batchScope === 'batch_only' && batchCode) {
+      const b = batches.find((x) => x.code === batchCode);
+      return b ? `${b.name} (${batchCode})` : batchCode;
+    }
+    return 'All users';
+  }, [batchScope, batchCode, batches]);
 
   const sortedAttempts = useMemo(() => {
     const list = [...attempts];
@@ -83,6 +139,19 @@ export default function AdminReportsPage() {
     list.sort((a, b) => (sortDir === 'asc' ? cmp(a, b) : -cmp(a, b)));
     return list;
   }, [attempts, sortBy, sortDir]);
+
+  const cumulativeTotalAttempts = useMemo(() => {
+    return (cumulativeUsers || []).reduce((sum, u) => sum + (u.totalAttempts || 0), 0);
+  }, [cumulativeUsers]);
+
+  const goToUserCumulativeReport = (targetUserId: string) => {
+    const params = new URLSearchParams();
+    if (filters.domain) params.set('domain', filters.domain);
+    if (filters.category) params.set('category', filters.category);
+    if (filters.subjectId) params.set('subjectId', filters.subjectId);
+    if (filters.topicId) params.set('topicId', filters.topicId);
+    router.push(`/admin/reports/user/${targetUserId}${params.toString() ? `?${params.toString()}` : ''}`);
+  };
 
   const allSelected = attempts.length > 0 && selectedIds.size === attempts.length;
   const someSelected = selectedIds.size > 0;
@@ -171,6 +240,25 @@ export default function AdminReportsPage() {
     loadFilterData();
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await apiService.getBatches(1, 500);
+        const items = (res as any)?.data?.items;
+        if (res && (res as any).success && Array.isArray(items)) {
+          setBatches(
+            items.map((b: { code?: string; name?: string }) => ({
+              code: String(b.code ?? ''),
+              name: String(b.name ?? b.code ?? ''),
+            }))
+          );
+        }
+      } catch {
+        setBatches([]);
+      }
+    })();
+  }, []);
+
   // Load categories when domain changes
   useEffect(() => {
     const loadCategories = async () => {
@@ -226,6 +314,8 @@ export default function AdminReportsPage() {
           topicId: filters.topicId,
           email: filters.email,
           name: filters.name,
+          batchScope,
+          batchCode: batchCode || undefined,
           page,
           limit: pageSize,
         });
@@ -246,8 +336,73 @@ export default function AdminReportsPage() {
       }
     };
 
+    if (reportMode !== 'normal') {
+      setAttempts([]);
+      setTotal(0);
+      return;
+    }
+
     loadAttempts();
-  }, [filters.subjectId, filters.email, filters.name, page]);
+  }, [reportMode, filters.subjectId, filters.domain, filters.category, filters.topicId, filters.email, filters.name, page, batchScope, batchCode]);
+
+  useEffect(() => {
+    const loadCumulative = async () => {
+      setLoading(true);
+      setCumulativeUsers([]);
+      setCumulativeTotalUsers(0);
+      try {
+        const res = await apiService.getAdminCumulativeQuizSummary({
+          subjectId: filters.subjectId,
+          quizId: undefined,
+          domain: filters.domain,
+          category: filters.category,
+          topicId: filters.topicId,
+          email: filters.email,
+          name: filters.name,
+          batchScope,
+          batchCode: batchCode || undefined,
+        });
+
+        if (res && res.success && res.data?.users) {
+          setCumulativeUsers(res.data.users);
+          setCumulativeTotalUsers(res.data.totalUsers ?? res.data.users.length ?? 0);
+        } else {
+          setCumulativeUsers([]);
+          setCumulativeTotalUsers(0);
+        }
+      } catch (error) {
+        console.error('Failed to load cumulative summary', error);
+        setCumulativeUsers([]);
+        setCumulativeTotalUsers(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (reportMode !== 'cumulative') return;
+    loadCumulative();
+  }, [reportMode, filters.domain, filters.category, filters.subjectId, filters.topicId, filters.email, filters.name, batchScope, batchCode]);
+
+  const cumulativeOverview = useMemo(() => {
+    const users = cumulativeUsers || [];
+    const totalUsersCount = users.length;
+    const attemptsCount = users.reduce((sum, u) => sum + (u.totalAttempts || 0), 0);
+    const marksObtained = users.reduce((sum, u) => sum + (u.totalMarksObtained || 0), 0);
+    const marksPossible = users.reduce((sum, u) => sum + (u.totalMarksPossible || 0), 0);
+    const passAttempts = users.reduce((sum, u) => sum + (u.passCount || 0), 0);
+    const overallPercent = marksPossible > 0 ? (marksObtained / marksPossible) * 100 : 0;
+    const passRate = attemptsCount > 0 ? (passAttempts / attemptsCount) * 100 : 0;
+    const avgAttemptsPerStudent = totalUsersCount > 0 ? attemptsCount / totalUsersCount : 0;
+    return {
+      totalUsersCount,
+      attemptsCount,
+      marksObtained,
+      marksPossible,
+      overallPercent,
+      passRate,
+      avgAttemptsPerStudent,
+    };
+  }, [cumulativeUsers]);
 
   const handleFilterChange = (key: keyof typeof filters, value: string) => {
     setFilters((prev) => {
@@ -305,12 +460,48 @@ export default function AdminReportsPage() {
             View quiz performance across students and subjects. Filter and download detailed reports.
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setReportMode('normal');
+              setPage(1);
+              setSelectedIds(new Set());
+              setDeleteModalSingle(null);
+              setDeleteModalBulk(false);
+            }}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold border transition-colors ${
+              reportMode === 'normal'
+                ? 'bg-red-600 text-white border-red-600'
+                : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            Normal
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setReportMode('cumulative');
+              setPage(1);
+              setSelectedIds(new Set());
+              setDeleteModalSingle(null);
+              setDeleteModalBulk(false);
+            }}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold border transition-colors ${
+              reportMode === 'cumulative'
+                ? 'bg-red-600 text-white border-red-600'
+                : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            Cumulative
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-lg p-4 border border-gray-200">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
               Domain
             </label>
             <select
@@ -326,7 +517,7 @@ export default function AdminReportsPage() {
                 }));
                 setPage(1);
               }}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500"
+              className={filterSelectClass}
             >
               <option value="">All Domains</option>
               {domains.map((d) => (
@@ -338,7 +529,7 @@ export default function AdminReportsPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
               Category
             </label>
             <select
@@ -354,7 +545,7 @@ export default function AdminReportsPage() {
                 setPage(1);
               }}
               disabled={!filters.domain}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 disabled:bg-gray-100 disabled:text-gray-400"
+              className={filterSelectClass}
             >
               <option value="">All Categories</option>
               {categories.map((c) => (
@@ -366,7 +557,7 @@ export default function AdminReportsPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
               Subject
             </label>
             <select
@@ -380,7 +571,8 @@ export default function AdminReportsPage() {
                 }));
                 setPage(1);
               }}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500"
+              disabled={!filters.category}
+              className={filterSelectClass}
             >
               <option value="">All Subjects</option>
               {subjects
@@ -398,14 +590,14 @@ export default function AdminReportsPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
               Topic
             </label>
             <select
               value={filters.topicId || ''}
               onChange={(e) => handleFilterChange('topicId', e.target.value)}
               disabled={!filters.subjectId}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 disabled:bg-gray-100 disabled:text-gray-400"
+              className={filterSelectClass}
             >
               <option value="">All Topics</option>
               {topics.map((t) => (
@@ -418,8 +610,12 @@ export default function AdminReportsPage() {
 
           <div className="flex items-end">
             <button
+              type="button"
               onClick={() => {
                 setFilters({});
+                setBatchScope('all');
+                setBatchCode('');
+                setBatchMenuOpen(false);
                 setPage(1);
               }}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
@@ -431,7 +627,7 @@ export default function AdminReportsPage() {
 
         <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
               Student Email
             </label>
             <input
@@ -439,21 +635,103 @@ export default function AdminReportsPage() {
               value={filters.email || ''}
               onChange={(e) => handleFilterChange('email', e.target.value)}
               placeholder="search by email"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500"
+              className={filterControlClass}
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">
+          <div className="md:col-span-2">
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
               Student Name
             </label>
-            <input
-              type="text"
-              value={filters.name || ''}
-              onChange={(e) => handleFilterChange('name', e.target.value)}
-              placeholder="search by name"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500"
-            />
+            <div className="flex gap-2 items-stretch">
+              <input
+                type="text"
+                value={filters.name || ''}
+                onChange={(e) => handleFilterChange('name', e.target.value)}
+                placeholder="search by name"
+                className={`${filterControlClass} flex-1 min-w-0`}
+              />
+              <div className="relative shrink-0" ref={batchMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setBatchMenuOpen((o) => !o)}
+                  className={`h-full min-h-[42px] rounded-lg border px-3 py-2 text-sm font-semibold whitespace-nowrap transition-colors [color-scheme:light] ${
+                    batchScope === 'batch_only' && batchCode
+                      ? 'border-amber-500 bg-amber-50 text-amber-900'
+                      : 'border-gray-300 bg-white text-gray-800 hover:bg-gray-50'
+                  }`}
+                  aria-expanded={batchMenuOpen}
+                  aria-haspopup="listbox"
+                  title={batchFilterSummary}
+                >
+                  Batches
+                  <span className="ml-1 opacity-70" aria-hidden>
+                    ▼
+                  </span>
+                </button>
+                {batchMenuOpen && (
+                  <div
+                    className="absolute right-0 z-50 mt-1 w-[min(100vw-2rem,20rem)] rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+                    role="listbox"
+                  >
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={batchScope === 'all'}
+                      onClick={() => {
+                        setBatchScope('all');
+                        setBatchCode('');
+                        setPage(1);
+                        setBatchMenuOpen(false);
+                      }}
+                      className={`flex w-full items-center px-3 py-2 text-left text-sm ${
+                        batchScope === 'all'
+                          ? 'bg-amber-50 font-semibold text-amber-900'
+                          : 'text-gray-800 hover:bg-gray-50'
+                      }`}
+                    >
+                      All users
+                    </button>
+                    {batches.length > 0 && (
+                      <>
+                        <div className="my-1 border-t border-gray-100" />
+                        <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                          Batch wise
+                        </div>
+                        <div className="max-h-48 overflow-y-auto">
+                          {batches.map((b) => {
+                            const selected = batchScope === 'batch_only' && batchCode === b.code;
+                            return (
+                              <button
+                                key={b.code}
+                                type="button"
+                                role="option"
+                                aria-selected={selected}
+                                onClick={() => {
+                                  setBatchScope('batch_only');
+                                  setBatchCode(b.code);
+                                  setPage(1);
+                                  setBatchMenuOpen(false);
+                                }}
+                                className={`flex w-full flex-col items-start px-3 py-2 text-left text-sm ${
+                                  selected ? 'bg-amber-50 font-semibold text-amber-900' : 'text-gray-800 hover:bg-gray-50'
+                                }`}
+                              >
+                                <span>{b.name}</span>
+                                <span className="text-xs text-gray-500">{b.code}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Batch filter: <span className="font-medium text-gray-700">{batchFilterSummary}</span>
+            </p>
           </div>
         </div>
       </div>
@@ -463,12 +741,13 @@ export default function AdminReportsPage() {
           <div className="py-8 text-center text-gray-600 text-sm">
             Loading reports...
           </div>
-        ) : attempts.length === 0 ? (
-          <div className="py-8 text-center text-gray-600 text-sm">
-            No quiz attempts found for the selected filters.
-          </div>
-        ) : (
-          <>
+        ) : reportMode === 'normal' ? (
+          attempts.length === 0 ? (
+            <div className="py-8 text-center text-gray-600 text-sm">
+              No quiz attempts found for the selected filters.
+            </div>
+          ) : (
+            <>
             <div className="flex flex-wrap items-center gap-3 mb-4">
               <span className="text-sm font-medium text-gray-700">Sort by:</span>
               <div className="flex flex-wrap gap-2">
@@ -750,7 +1029,155 @@ export default function AdminReportsPage() {
                 </div>
               </div>
             )}
-          </>
+            </>
+          )
+        ) : cumulativeUsers.length > 0 ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-bold text-gray-900">Cumulative (User-wise)</h2>
+                <p className="text-sm text-gray-600">Aggregated marks, right/wrong, averages/percentages and time-limit performance per student.</p>
+              </div>
+              <div className="text-xs text-gray-500">
+                {cumulativeTotalUsers} student(s) • {cumulativeTotalAttempts} attempt(s)
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500">Students</p>
+                <p className="mt-1 text-lg font-semibold text-gray-900">{cumulativeOverview.totalUsersCount}</p>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500">Attempts</p>
+                <p className="mt-1 text-lg font-semibold text-gray-900">{cumulativeOverview.attemptsCount}</p>
+                <p className="text-[11px] text-gray-500 mt-1">
+                  Avg/student: {cumulativeOverview.avgAttemptsPerStudent.toFixed(1)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500">Overall Marks %</p>
+                <p className="mt-1 text-lg font-semibold text-gray-900">
+                  {cumulativeOverview.overallPercent.toFixed(2)}%
+                </p>
+                <p className="text-[11px] text-gray-500 mt-1">
+                  {cumulativeOverview.marksObtained}/{cumulativeOverview.marksPossible}
+                </p>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500">Pass Rate</p>
+                <p className="mt-1 text-lg font-semibold text-gray-900">{cumulativeOverview.passRate.toFixed(2)}%</p>
+              </div>
+            </div>
+
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-sm min-w-[1200px] whitespace-nowrap">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="py-2 px-3 font-semibold text-gray-800">Rank</th>
+                    <th className="py-2 px-3 font-semibold text-gray-800">Student</th>
+                    <th className="py-2 px-3 font-semibold text-gray-800">Attempts</th>
+                    <th className="py-2 px-3 font-semibold text-gray-800">Marks</th>
+                    <th className="py-2 px-3 font-semibold text-gray-800">Avg %</th>
+                    <th className="py-2 px-3 font-semibold text-gray-800">Overall %</th>
+                    <th className="py-2 px-3 font-semibold text-gray-800">Right/Wrong</th>
+                    <th className="py-2 px-3 font-semibold text-gray-800">Accuracy</th>
+                    <th className="py-2 px-3 font-semibold text-gray-800">Pass Rate</th>
+                    <th className="py-2 px-3 font-semibold text-gray-800">Time (limit)</th>
+                    <th className="py-2 px-3 font-semibold text-gray-800">Avg Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cumulativeUsers.map((u) => (
+                    <tr key={u.userId} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-2 px-3 text-gray-900">{u.rank}</td>
+                      <td className="py-2 px-3 text-gray-900">
+                        <button
+                          type="button"
+                          onClick={() => goToUserCumulativeReport(u.userId)}
+                          className="text-left underline decoration-gray-300 hover:decoration-gray-700 text-gray-900 font-medium"
+                        >
+                          {(u.userName || 'Unknown') + ' (' + (u.userEmail || '—') + ')'}
+                        </button>
+                      </td>
+                      <td className="py-2 px-3 text-gray-900">{u.totalAttempts || 0}</td>
+                      <td className="py-2 px-3 text-gray-900">
+                        {u.totalMarksObtained || 0}/{u.totalMarksPossible || 0}
+                      </td>
+                      <td className="py-2 px-3 text-gray-900">{u.averagePercentage?.toFixed?.(2) ?? u.averagePercentage ?? 0}%</td>
+                      <td className="py-2 px-3 text-gray-900">{u.overallPercentage?.toFixed?.(2) ?? u.overallPercentage ?? 0}%</td>
+                      <td className="py-2 px-3 text-gray-900">
+                        {u.correctAnswers || 0}/{u.incorrectAnswers || 0}
+                      </td>
+                      <td className="py-2 px-3 text-gray-900">{u.accuracyPercentage?.toFixed?.(2) ?? u.accuracyPercentage ?? 0}%</td>
+                      <td className="py-2 px-3 text-gray-900">{u.passRate?.toFixed?.(2) ?? u.passRate ?? 0}%</td>
+                      <td className="py-2 px-3 text-gray-900">
+                        {u.timeWithinLimitCount || 0}/{u.totalAttempts || 0} ({u.timeWithinLimitPercent?.toFixed?.(2) ?? u.timeWithinLimitPercent ?? 0}%)
+                      </td>
+                      <td className="py-2 px-3 text-gray-900">{u.averageTimeSpentFormatted || '0m 0s'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="md:hidden space-y-3">
+              {cumulativeUsers.map((u) => (
+                <div key={u.userId} className="rounded-xl border border-gray-200 p-3 text-sm">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <div className="text-xs text-gray-400">Rank #{u.rank}</div>
+                      <button
+                        type="button"
+                        onClick={() => goToUserCumulativeReport(u.userId)}
+                        className="font-semibold text-gray-900 text-left underline decoration-gray-300 hover:decoration-gray-700"
+                      >
+                        {u.userName || 'Unknown'}
+                      </button>
+                      <div className="text-xs text-gray-500">{u.userEmail || '—'}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-gray-500">Overall</div>
+                      <div className="font-bold text-gray-900">{u.overallPercentage?.toFixed?.(2) ?? u.overallPercentage ?? 0}%</div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs text-gray-700">
+                    <div className="rounded-lg bg-gray-50 p-2">
+                      <div className="text-gray-500">Marks</div>
+                      <div className="font-semibold">{u.totalMarksObtained || 0}/{u.totalMarksPossible || 0}</div>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 p-2">
+                      <div className="text-gray-500">Right/Wrong</div>
+                      <div className="font-semibold">{u.correctAnswers || 0}/{u.incorrectAnswers || 0}</div>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 p-2">
+                      <div className="text-gray-500">Accuracy</div>
+                      <div className="font-semibold">{u.accuracyPercentage?.toFixed?.(2) ?? u.accuracyPercentage ?? 0}%</div>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 p-2">
+                      <div className="text-gray-500">Pass Rate</div>
+                      <div className="font-semibold">{u.passRate?.toFixed?.(2) ?? u.passRate ?? 0}%</div>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 p-2">
+                      <div className="text-gray-500">Time (limit)</div>
+                      <div className="font-semibold">
+                        {u.timeWithinLimitCount || 0}/{u.totalAttempts || 0}
+                      </div>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 p-2">
+                      <div className="text-gray-500">Avg Time</div>
+                      <div className="font-semibold">{u.averageTimeSpentFormatted || '0m 0s'}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="py-8 text-center text-gray-600 text-sm">
+            No cumulative data found for the selected filters.
+          </div>
         )}
       </div>
 

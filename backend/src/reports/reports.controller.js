@@ -270,6 +270,8 @@ class ReportsController {
         topicId,
         email,
         name,
+        batchScope,
+        batchCode,
         page = 1,
         limit = 20,
       } = req.query;
@@ -282,6 +284,8 @@ class ReportsController {
       if (topicId) filters.topicId = topicId;
       if (email) filters.email = email;
       if (name) filters.name = name;
+      if (batchScope) filters.batchScope = batchScope;
+      if (batchCode) filters.batchCode = batchCode;
 
       const pagination = {
         page: parseInt(page, 10) || 1,
@@ -293,6 +297,82 @@ class ReportsController {
       return res.status(200).json(result);
     } catch (error) {
       console.error('Error in getAdminUserQuizAttempts controller:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * Admin: Get cumulative quiz summary (non-deleted data)
+   * GET /api/reports/admin/cumulative-quiz-summary
+   */
+  static async getAdminCumulativeQuizSummary(req, res, next) {
+    try {
+      const reqUser = req.user;
+      if (!reqUser || !Array.isArray(reqUser.roles) || !reqUser.roles.includes('super_admin')) {
+        return res.status(403).json({
+          success: false,
+          message: 'Admin access required',
+        });
+      }
+
+      const {
+        subjectId,
+        quizId,
+        domain,
+        category,
+        topicId,
+        email,
+        name,
+        batchScope,
+        batchCode,
+      } = req.query;
+
+      const filters = {};
+      if (subjectId) filters.subjectId = subjectId;
+      if (quizId) filters.quizId = quizId;
+      if (domain) filters.domain = domain;
+      if (category) filters.category = category;
+      if (topicId) filters.topicId = topicId;
+      if (email) filters.email = email;
+      if (name) filters.name = name;
+      if (batchScope) filters.batchScope = batchScope;
+      if (batchCode) filters.batchCode = batchCode;
+
+      const result = await QuizReportService.getAdminCumulativeQuizSummary(filters);
+      return res.status(200).json(result);
+    } catch (error) {
+      console.error('Error in getAdminCumulativeQuizSummary controller:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * Admin: Get a single user's cumulative report + login activity
+   * GET /api/reports/admin/user-cumulative/:userId
+   */
+  static async getAdminUserCumulativeQuizReport(req, res, next) {
+    try {
+      const reqUser = req.user;
+      if (!reqUser || !Array.isArray(reqUser.roles) || !reqUser.roles.includes('super_admin')) {
+        return res.status(403).json({
+          success: false,
+          message: 'Admin access required',
+        });
+      }
+
+      const { userId } = req.params;
+      const { subjectId, domain, category, topicId } = req.query;
+
+      const result = await QuizReportService.getAdminUserCumulativeQuizReport(userId, {
+        subjectId,
+        domain,
+        category,
+        topicId,
+      });
+
+      return res.status(200).json(result);
+    } catch (error) {
+      console.error('Error in getAdminUserCumulativeQuizReport controller:', error);
       next(error);
     }
   }
@@ -326,7 +406,7 @@ class ReportsController {
 
       return res.status(200).json({
         success: true,
-        message: 'Quiz attempt deleted successfully',
+        message: 'Quiz attempt removed from user view successfully',
       });
     } catch (error) {
       console.error('Error in deleteUserQuizAttempt controller:', error);
@@ -361,7 +441,7 @@ class ReportsController {
 
       return res.status(200).json({
         success: true,
-        message: 'Quiz attempt deleted successfully',
+        message: 'Quiz attempt removed from user view successfully',
       });
     } catch (error) {
       console.error('Error in deleteAdminQuizAttempt controller:', error);

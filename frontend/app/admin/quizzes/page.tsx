@@ -32,6 +32,7 @@ export default function AdminQuizzesPage() {
   const [categoriesFromApi, setCategoriesFromApi] = useState<string[]>([]);
   const [deleteModalQuiz, setDeleteModalQuiz] = useState<{ id: string; title: string } | null>(null);
   const [deletingQuizId, setDeletingQuizId] = useState<string | null>(null);
+  const [quizzesByDomain, setQuizzesByDomain] = useState<{ domain: string; count: number }[]>([]);
 
   useEffect(() => {
     if (!filterDomain) {
@@ -103,6 +104,13 @@ export default function AdminQuizzesPage() {
       if (res.success && Array.isArray(res.data)) setDomainNames((res.data as { name: string }[]).map((d) => d.name));
       else setDomainNames(FALLBACK_DOMAINS);
     })();
+    (async () => {
+      const dash = await apiService.getDashboardStatistics();
+      const qb = dash?.data?.charts?.quizzesByDomain;
+      if (dash.success && Array.isArray(qb)) {
+        setQuizzesByDomain(qb as { domain: string; count: number }[]);
+      }
+    })();
   }, [isAuthenticated, user, router]);
 
   useEffect(() => {
@@ -131,6 +139,11 @@ export default function AdminQuizzesPage() {
         return String(qLevel).toLowerCase() === String(filterLevel).toLowerCase();
       })
     : quizzes;
+
+  const totalLinkedQuizzes = useMemo(
+    () => quizzesByDomain.reduce((s, x) => s + (x.count || 0), 0),
+    [quizzesByDomain]
+  );
 
   const handleLevelChange = async (quizId: string, value: string) => {
     setUpdatingLevelId(quizId);
@@ -220,6 +233,48 @@ export default function AdminQuizzesPage() {
 
         {/* Existing Quizzes List */}
         <div className="bg-white rounded-xl shadow-lg p-6">
+          {quizzesByDomain.length > 0 && (
+            <div className="mb-5 rounded-xl border border-red-100 bg-gradient-to-r from-red-50/90 to-white px-4 py-3">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <span className="text-sm font-semibold text-gray-800">Quizzes created by domain</span>
+                <span
+                  className="inline-flex items-center rounded-lg bg-red-600 px-3 py-1 text-white shadow-sm"
+                  title="Distinct quizzes linked to a topic in each domain"
+                >
+                  <span className="text-xs font-medium opacity-90 mr-1.5">Total linked</span>
+                  <span className="text-lg font-bold tabular-nums">{totalLinkedQuizzes}</span>
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {quizzesByDomain.map((row) => {
+                  const active = filterDomain === row.domain;
+                  return (
+                    <button
+                      key={row.domain}
+                      type="button"
+                      onClick={() => {
+                        setFilterDomain(row.domain);
+                        setFilterCategory('');
+                        setFilterSubjectId('');
+                        setFilterTopicId('');
+                        setPage(1);
+                      }}
+                      className={`inline-flex items-baseline gap-2 rounded-lg border px-3 py-1.5 text-left transition-colors ${
+                        active
+                          ? 'border-red-500 bg-red-100 ring-2 ring-red-400/50'
+                          : 'border-gray-200 bg-white hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className="text-sm font-medium text-gray-800">{row.domain}</span>
+                      <span className={`text-base font-bold tabular-nums ${active ? 'text-red-700' : 'text-red-600'}`}>
+                        {row.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <h2 className="text-lg font-bold text-gray-900">Existing Quizzes</h2>
             <div className="flex flex-wrap items-center gap-3">

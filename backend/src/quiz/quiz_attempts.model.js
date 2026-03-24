@@ -101,6 +101,16 @@ const quizAttemptSchema = new mongoose.Schema(
     submittedAt: {
       type: Date,
       default: Date.now
+    },
+    // Soft-delete only for user-side report visibility.
+    // Admin reports should continue to show these attempts.
+    isDeletedForUser: {
+      type: Boolean,
+      default: false
+    },
+    deletedForUserAt: {
+      type: Date,
+      default: null
     }
   },
   {

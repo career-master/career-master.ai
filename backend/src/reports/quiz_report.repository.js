@@ -3,6 +3,7 @@ const Quiz = require('../quiz/quiz.model');
 const User = require('../user/users.model');
 const mongoose = require('mongoose');
 const { ErrorHandler } = require('../middleware/errorHandler');
+const { resolveUserIdsForBatchScope } = require('./batch_report_filters');
 
 class QuizReportRepository {
   /**
@@ -15,7 +16,8 @@ class QuizReportRepository {
     try {
       const attempt = await QuizAttempt.findOne({
         _id: attemptId,
-        userId: userId
+        userId: userId,
+        isDeletedForUser: { $ne: true },
       })
         .populate('quizId')
         .lean();
@@ -321,7 +323,10 @@ class QuizReportRepository {
         ? new mongoose.Types.ObjectId(userId) 
         : userId;
 
-      const matchCriteria = { userId: userIdObj };
+      const matchCriteria = {
+        userId: userIdObj,
+        isDeletedForUser: { $ne: true },
+      };
       
       // Handle quizId - ensure it's a valid ObjectId string, not an object
       if (quizId && typeof quizId === 'string' && quizId.trim() !== '') {
@@ -430,6 +435,14 @@ class QuizReportRepository {
       const limitNum = Number.isNaN(Number(limit)) ? 20 : Number(limit);
 
       const matchCriteria = {};
+
+      const batchUserIds = await resolveUserIdsForBatchScope(filters.batchScope, filters.batchCode);
+      if (batchUserIds !== null) {
+        if (batchUserIds.length === 0) {
+          return { data: [], total: 0 };
+        }
+        matchCriteria.userId = { $in: batchUserIds };
+      }
 
       if (filters.subjectId && mongoose.Types.ObjectId.isValid(filters.subjectId)) {
         matchCriteria.subjectId = new mongoose.Types.ObjectId(filters.subjectId);

@@ -331,6 +331,46 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
+      {/* Quizzes created by domain (distinct quizzes linked via Quiz Sets → topic → subject) */}
+      {((Array.isArray(charts?.quizzesByDomain) && charts.quizzesByDomain.length > 0) ||
+        (typeof charts?.quizzesUnlinkedToTopic === 'number' && charts.quizzesUnlinkedToTopic > 0)) && (
+        <div
+          className="bg-white rounded-xl shadow-lg p-5 border border-gray-200 mb-4 cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => router.push('/admin/quizzes')}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div>
+              <h5 className="font-bold text-gray-900">Quizzes created by domain</h5>
+              <p className="text-xs text-gray-500 mt-1">
+                Distinct quizzes assigned to a topic in each domain. Open Quiz Management to filter the list.
+              </p>
+            </div>
+            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-2 text-center min-w-[120px]">
+              <span className="text-xs font-semibold text-red-800 uppercase tracking-wide">Linked quizzes</span>
+              <div className="text-2xl font-bold text-red-700 tabular-nums">
+                {(charts.quizzesByDomain || []).reduce((s: number, x: { count?: number }) => s + (x.count || 0), 0)}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(charts.quizzesByDomain || []).map((row: { domain: string; count: number }) => (
+              <div
+                key={row.domain}
+                className="inline-flex items-baseline gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2"
+              >
+                <span className="text-sm font-medium text-gray-800">{row.domain}</span>
+                <span className="text-lg font-bold text-red-600 tabular-nums">{row.count}</span>
+              </div>
+            ))}
+          </div>
+          {typeof charts.quizzesUnlinkedToTopic === 'number' && charts.quizzesUnlinkedToTopic > 0 && (
+            <p className="text-xs text-amber-800 mt-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              {charts.quizzesUnlinkedToTopic} quiz(es) are not linked to any topic yet (not included in domain totals above).
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Secondary Summary Cards (New signups, Quizzes attempted, Subscriptions, Recent activity) */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
         {/* New Signups Today */}

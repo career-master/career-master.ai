@@ -3,6 +3,8 @@ const PDFDocument = require('pdfkit');
 const XLSX = require('xlsx');
 const QuizAttempt = require('../quiz/quiz_attempts.model');
 const { ErrorHandler } = require('../middleware/errorHandler');
+const QuizCumulativeRepository = require('./quiz_cumulative.repository');
+const UserActivityRepository = require('./user_activity.repository');
 
 class QuizReportService {
   /**
@@ -342,6 +344,77 @@ class QuizReportService {
   }
 
   /**
+   * Admin: Get cumulative (non-deleted) summary across attempts.
+   * Uses `quiz_attempt_summaries` + fallback from `quiz_attempts` if a summary snapshot is missing.
+   */
+  static async getAdminCumulativeQuizSummary(filters = {}) {
+    try {
+      const [users, quizWise] = await Promise.all([
+        QuizCumulativeRepository.getAdminCumulativeUsersQuizSummary(filters),
+        QuizCumulativeRepository.getAdminCumulativeQuizWiseSummary(filters),
+      ]);
+
+      const totalAttempts = (users || []).reduce((sum, u) => sum + (u.totalAttempts || 0), 0);
+      const passAttempts = (users || []).reduce((sum, u) => sum + (u.passCount || 0), 0);
+      const failAttempts = Math.max(0, totalAttempts - passAttempts);
+
+      return {
+        success: true,
+        data: {
+          users,
+          totalUsers: users.length,
+          totalAttempts,
+          charts: {
+            overallPassFail: {
+              labels: ['Pass', 'Fail'],
+              data: [passAttempts, failAttempts],
+            },
+          },
+          quizWise,
+        },
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Admin: Get cumulative user-wise report for a single user with optional filters.
+   */
+  static async getAdminUserCumulativeQuizReport(userId, filters = {}) {
+    try {
+      const [users, quizBreakdown, auth] = await Promise.all([
+        QuizCumulativeRepository.getAdminCumulativeUsersQuizSummary({
+          ...filters,
+          userId,
+        }),
+        QuizCumulativeRepository.getAdminUserQuizPerformanceBreakdown(userId, filters),
+        UserActivityRepository.getUserAuthActivity(userId),
+      ]);
+
+      const userRow = users?.[0] || null;
+      const passCount = userRow?.passCount || 0;
+      const totalAttempts = userRow?.totalAttempts || 0;
+      const failCount = Math.max(0, totalAttempts - passCount);
+
+      return {
+        success: true,
+        data: {
+          ...auth,
+          cumulative: userRow,
+          pie: {
+            labels: ['Pass', 'Fail'],
+            data: [passCount, failCount],
+          },
+          quizBreakdown,
+        },
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
    * Delete a single quiz attempt for a user
    * @param {string} userId
    * @param {string} attemptId
@@ -357,7 +430,15 @@ class QuizReportService {
         throw new ErrorHandler(403, 'You are not allowed to delete this attempt');
       }
 
-      await QuizAttempt.deleteOne({ _id: attemptId });
+      await QuizAttempt.updateOne(
+        { _id: attemptId },
+        {
+          $set: {
+            isDeletedForUser: true,
+            deletedForUserAt: new Date(),
+          },
+        }
+      );
     } catch (error) {
       throw error;
     }
@@ -373,7 +454,16 @@ class QuizReportService {
       if (!attempt) {
         throw new ErrorHandler(404, 'Quiz attempt not found');
       }
-      await QuizAttempt.deleteOne({ _id: attemptId });
+      // Keep record for admin-side reporting, hide only from user-side report lists.
+      await QuizAttempt.updateOne(
+        { _id: attemptId },
+        {
+          $set: {
+            isDeletedForUser: true,
+            deletedForUserAt: new Date(),
+          },
+        }
+      );
     } catch (error) {
       throw error;
     }
