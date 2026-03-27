@@ -28,6 +28,8 @@ export default function DashboardLayout({
       setActiveItem('reports');
     } else if (pathname?.includes('/quizzes')) {
       setActiveItem('quizzes');
+    } else if (pathname?.includes('/coupons')) {
+      setActiveItem('coupons');
     } else if (pathname?.includes('/subjects')) {
       setActiveItem('subjects');
     } else if (pathname?.includes('/profile')) {
@@ -87,6 +89,16 @@ export default function DashboardLayout({
         </svg>
       ), 
       href: '/dashboard/profile' 
+    },
+    { 
+      id: 'coupons', 
+      label: 'Apply Coupon', 
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9h8M8 15h8M5 4h14a1 1 0 011 1v3a2 2 0 010 4v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3a2 2 0 010-4V5a1 1 0 011-1z" />
+        </svg>
+      ), 
+      href: '/dashboard/coupons' 
     },
   ];
 

@@ -523,27 +523,6 @@ export default function DashboardPage() {
               </span>
             </div>
               <div className="flex items-center gap-3 relative">
-              {/* Quick actions */}
-              <div className="hidden md:flex items-center gap-2">
-                <Link
-                  href="/dashboard"
-                  className="px-3 py-2 text-xs font-semibold bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors backdrop-blur-sm"
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/dashboard/reports"
-                  className="px-3 py-2 text-xs font-semibold bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors backdrop-blur-sm"
-                >
-                  Reports
-                </Link>
-                <Link
-                  href="/dashboard/subjects"
-                  className="px-3 py-2 text-xs font-semibold bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors backdrop-blur-sm"
-                >
-                  Subjects
-                </Link>
-              </div>
               {/* Profile dropdown */}
               <div
                 className="relative"
@@ -603,52 +582,6 @@ export default function DashboardPage() {
                   </svg>
                   AI PREMIUM
                 </span>
-              </div>
-
-              <div className="mb-5">
-                <h6 className="font-bold mb-4 text-gray-900 text-sm uppercase tracking-wide">AI Learning Profile</h6>
-                <div className="mb-4">
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Average Score</span>
-                    <span className="text-sm font-bold text-gray-900">
-                      {loading ? '...' : stats ? `${stats.overview.averagePercentage.toFixed(1)}%` : '0%'}
-                    </span>
-                  </div>
-                  <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-blue-500 rounded-full" 
-                      style={{ width: loading ? '0%' : stats ? `${Math.min(stats.overview.averagePercentage, 100)}%` : '0%' }}
-                    ></div>
-                  </div>
-                </div>
-                <div className="mb-4">
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Accuracy</span>
-                    <span className="text-sm font-bold text-gray-900">
-                      {loading ? '...' : stats ? `${stats.overview.accuracy.toFixed(1)}%` : '0%'}
-                    </span>
-                  </div>
-                  <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-green-500 rounded-full" 
-                      style={{ width: loading ? '0%' : stats ? `${Math.min(stats.overview.accuracy, 100)}%` : '0%' }}
-                    ></div>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Pass Rate</span>
-                    <span className="text-sm font-bold text-gray-900">
-                      {loading ? '...' : stats ? `${stats.overview.passRate.toFixed(1)}%` : '0%'}
-                    </span>
-                  </div>
-                  <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-purple-500 rounded-full" 
-                      style={{ width: loading ? '0%' : stats ? `${Math.min(stats.overview.passRate, 100)}%` : '0%' }}
-                    ></div>
-                  </div>
-                </div>
               </div>
 
               <div className="mb-5">
@@ -940,7 +873,7 @@ export default function DashboardPage() {
                       </div>
                     )}
                     <button 
-                      onClick={() => router.push('/dashboard/quizzes')}
+                      onClick={() => router.push('/dashboard/reports')}
                       className="w-full mt-4 border-2 border-purple-600 text-purple-600 px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-purple-50 transition-all"
                     >
                       View All Quizzes
@@ -1054,56 +987,9 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* AI Predictions & Recent Tests */}
+            {/* Recent Tests */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white rounded-xl shadow-md p-5 border-t-4 border-pink-500">
-                <h5 className="font-bold mb-3 text-gray-900">Performance Overview</h5>
-                <p className="text-gray-600 text-sm mb-4">Based on your quiz attempts</p>
-                {loading ? (
-                  <div className="text-center py-4">
-                    <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
-                  </div>
-                ) : stats ? (
-                  <>
-                    {[
-                      { label: 'Average Score', value: stats.overview.averagePercentage },
-                      { label: 'Accuracy Rate', value: stats.overview.accuracy },
-                      { label: 'Pass Rate', value: stats.overview.passRate },
-                    ].map((pred) => (
-                      <div key={pred.label} className="mb-4">
-                        <div className="flex justify-between mb-2 text-sm">
-                          <span className="text-gray-700 font-medium">{pred.label}</span>
-                          <span className="font-bold text-gray-900">{pred.value.toFixed(1)}%</span>
-                        </div>
-                        <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-[#0dcaf0] to-[#6f42c1] rounded-full transition-all duration-1500"
-                            style={{ width: `${Math.min(pred.value, 100)}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    ))}
-                    <button 
-                      onClick={() => router.push('/dashboard/quizzes')}
-                      className="w-full mt-3 border border-purple-600 text-purple-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-purple-50 transition-colors"
-                    >
-                      Take More Quizzes
-                    </button>
-                  </>
-                ) : (
-                  <div className="text-center py-4">
-                    <p className="text-gray-600 mb-2">No data available</p>
-                    <button
-                      onClick={() => router.push('/dashboard/quizzes')}
-                      className="text-purple-600 hover:underline text-sm font-medium"
-                    >
-                      Start Your First Quiz
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="md:col-span-2 bg-white rounded-xl shadow-md p-5">
+              <div className="md:col-span-3 bg-white rounded-xl shadow-md p-5">
                 <div className="flex justify-between items-center mb-3">
                   <h5 className="font-bold text-gray-900">Recent Quiz Attempts</h5>
                   <div className="flex gap-3">
@@ -1117,7 +1003,7 @@ export default function DashboardPage() {
                       onClick={() => router.push('/dashboard/quizzes')}
                       className="text-sm text-purple-600 hover:underline font-medium"
                     >
-                      View All
+                      View All Quizzes
                     </button>
                   </div>
                 </div>

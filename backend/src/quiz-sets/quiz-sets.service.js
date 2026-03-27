@@ -29,9 +29,9 @@ class QuizSetService {
     // Normalize helper
     const norm = (v) => (v || '').toString().trim().toLowerCase();
 
-    // Prevent / auto-adjust duplicates for:
-    // 1) Same Topic + Quiz Number + Level  → hard error
-    // 2) Same Topic + Quiz Title + Level   → auto-increment Quiz N in title
+    // Prevent duplicates for:
+    // 1) Same Topic + Quiz Number + Level
+    // 2) Same Topic + Quiz Title + Level
     const hasQuizNumber =
       quizNumber !== undefined && quizNumber !== null && quizNumber !== '';
     if (topicId && quiz.level) {
@@ -54,38 +54,18 @@ class QuizSetService {
       }
 
       // (2) Topic + Quiz Title + Level
-      // If a quiz with the same title+level already exists for this topic,
-      // automatically bump the trailing "Quiz N" number in the title:
-      //   "C - Fundamentals - Quiz 1" → "C - Fundamentals - Quiz 2", etc.
-      const QUIZ_SUFFIX_REGEX = /^(.*?\bQuiz)\s*(\d+)\s*$/i;
-      const baseMatch = QUIZ_SUFFIX_REGEX.exec(quiz.title || '');
-      if (baseMatch) {
-        const [, basePart] = baseMatch;
-        const quizTitleNorm = norm(quiz.title);
-
-        const duplicatesSameTitle = existingAll.filter(
-          (qs) =>
-            qs.quizId &&
-            norm(qs.quizId.title) === quizTitleNorm &&
-            qs.quizId.level === quiz.level
+      const quizTitleNorm = norm(quiz.title);
+      const duplicateByTitle = existingAll.find(
+        (qs) =>
+          qs.quizId &&
+          norm(qs.quizId.title) === quizTitleNorm &&
+          qs.quizId.level === quiz.level
+      );
+      if (duplicateByTitle) {
+        throw new ErrorHandler(
+          400,
+          `A quiz with this topic, title and level (${quiz.level}) already exists.`
         );
-
-        if (duplicatesSameTitle.length > 0) {
-          // Find max existing "Quiz N" number for this base + level
-          let maxN = 1;
-          existingAll.forEach((qs) => {
-            if (!qs.quizId || qs.quizId.level !== quiz.level) return;
-            const m = QUIZ_SUFFIX_REGEX.exec(qs.quizId.title || '');
-            if (!m) return;
-            const n = Number(m[2]);
-            if (Number.isFinite(n) && n > maxN) maxN = n;
-          });
-
-          const nextN = maxN + 1;
-          const newTitle = `${basePart} ${nextN}`;
-          quiz.title = newTitle;
-          await quiz.save();
-        }
       }
     }
 
