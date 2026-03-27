@@ -444,11 +444,35 @@ class QuizReportRepository {
         matchCriteria.userId = { $in: batchUserIds };
       }
 
+      // Batch-wise report should include only quizzes explicitly assigned to that batch.
+      let batchQuizIds = null;
+      if (
+        filters.batchScope === 'batch_only' &&
+        typeof filters.batchCode === 'string' &&
+        filters.batchCode.trim()
+      ) {
+        const code = filters.batchCode.trim();
+        const quizzesForBatch = await Quiz.find({ batches: code }).select('_id').lean();
+        batchQuizIds = quizzesForBatch.map((q) => q._id);
+        if (batchQuizIds.length === 0) {
+          return { data: [], total: 0 };
+        }
+      }
+
       if (filters.subjectId && mongoose.Types.ObjectId.isValid(filters.subjectId)) {
         matchCriteria.subjectId = new mongoose.Types.ObjectId(filters.subjectId);
       }
       if (filters.quizId && mongoose.Types.ObjectId.isValid(filters.quizId)) {
-        matchCriteria.quizId = new mongoose.Types.ObjectId(filters.quizId);
+        const quizIdObj = new mongoose.Types.ObjectId(filters.quizId);
+        if (batchQuizIds) {
+          const isAllowed = batchQuizIds.some((id) => String(id) === String(quizIdObj));
+          if (!isAllowed) {
+            return { data: [], total: 0 };
+          }
+        }
+        matchCriteria.quizId = quizIdObj;
+      } else if (batchQuizIds) {
+        matchCriteria.quizId = { $in: batchQuizIds };
       }
       if (filters.topicId && mongoose.Types.ObjectId.isValid(filters.topicId)) {
         matchCriteria.topicId = new mongoose.Types.ObjectId(filters.topicId);

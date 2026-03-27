@@ -49,14 +49,27 @@ class QuizCumulativeRepository {
 
       const emailRegex = email ? new RegExp(String(email), 'i') : null;
       const nameRegex = name ? new RegExp(String(name), 'i') : null;
+      let batchQuizIds = null;
+      if (batchScope === 'batch_only' && typeof batchCode === 'string' && batchCode.trim()) {
+        const quizzesForBatch = await Quiz.find({ batches: batchCode.trim() }).select('_id').lean();
+        batchQuizIds = quizzesForBatch.map((q) => q._id);
+        if (batchQuizIds.length === 0) {
+          return [];
+        }
+      }
 
       // ---------- Summary collection pipeline (already snapshotted attempts) ----------
       const summaryMatch = {};
       if (quizIdObj) summaryMatch.quizId = quizIdObj;
+      if (!quizIdObj && batchQuizIds) summaryMatch.quizId = { $in: batchQuizIds };
       if (subjectIdObj) summaryMatch.subjectId = subjectIdObj;
       if (topicIdObj) summaryMatch.topicId = topicIdObj;
       if (userIdObj) summaryMatch.userId = userIdObj;
       if (emailRegex) summaryMatch.userEmail = emailRegex;
+      if (quizIdObj && batchQuizIds) {
+        const isAllowed = batchQuizIds.some((id) => String(id) === String(quizIdObj));
+        if (!isAllowed) return [];
+      }
 
       const summaryPipeline = [{ $match: summaryMatch }];
 
@@ -163,6 +176,7 @@ class QuizCumulativeRepository {
       // Include quiz_attempts that do NOT yet have a summary snapshot, to avoid missing older attempts.
       const attemptMatch = {};
       if (quizIdObj) attemptMatch.quizId = quizIdObj;
+      if (!quizIdObj && batchQuizIds) attemptMatch.quizId = { $in: batchQuizIds };
       if (subjectIdObj) attemptMatch.subjectId = subjectIdObj;
       if (topicIdObj) attemptMatch.topicId = topicIdObj;
       if (userIdObj) attemptMatch.userId = userIdObj;
@@ -577,8 +591,15 @@ class QuizCumulativeRepository {
       const userIdObj = castId(userId);
       const emailRegex = email ? new RegExp(String(email), 'i') : null;
       const nameRegex = name ? new RegExp(String(name), 'i') : null;
+      let batchQuizIds = null;
+      if (batchScope === 'batch_only' && typeof batchCode === 'string' && batchCode.trim()) {
+        const quizzesForBatch = await Quiz.find({ batches: batchCode.trim() }).select('_id').lean();
+        batchQuizIds = quizzesForBatch.map((q) => q._id);
+        if (batchQuizIds.length === 0) return [];
+      }
 
       const summaryMatch = {};
+      if (batchQuizIds) summaryMatch.quizId = { $in: batchQuizIds };
       if (subjectIdObj) summaryMatch.subjectId = subjectIdObj;
       if (topicIdObj) summaryMatch.topicId = topicIdObj;
       if (userIdObj) summaryMatch.userId = userIdObj;
@@ -626,6 +647,7 @@ class QuizCumulativeRepository {
       );
 
       const attemptMatch = {};
+      if (batchQuizIds) attemptMatch.quizId = { $in: batchQuizIds };
       if (subjectIdObj) attemptMatch.subjectId = subjectIdObj;
       if (topicIdObj) attemptMatch.topicId = topicIdObj;
       if (userIdObj) attemptMatch.userId = userIdObj;

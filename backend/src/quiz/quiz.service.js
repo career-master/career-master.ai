@@ -444,7 +444,10 @@ class QuizService {
     const availableTo = metadata.availableTo && metadata.availableTo.trim() !== ''
       ? new Date(metadata.availableTo)
       : undefined;
-    const availableToEveryone = metadata.availableToEveryone || false;
+    // Form-data sends booleans as strings; normalise to real boolean.
+    const availableToEveryone =
+      metadata.availableToEveryone === true ||
+      metadata.availableToEveryone === 'true';
     const maxAttempts = Number(metadata.maxAttempts || 999);
     
     // If available to everyone, don't set batches

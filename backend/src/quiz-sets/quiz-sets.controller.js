@@ -38,7 +38,8 @@ class QuizSetController {
       filter.isActive = isActive === 'true' || isActive === true;
     }
 
-    const quizSets = await QuizSetService.getQuizSetsByTopicId(req.params.topicId, filter);
+    const userId = req.user?.userId || req.user?.id || req.user?._id;
+    const quizSets = await QuizSetService.getQuizSetsByTopicId(req.params.topicId, filter, userId);
 
     res.status(200).json({
       success: true,

@@ -222,20 +222,23 @@ export default function AdminCreateQuizPage() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Upload Excel: enable only when title, topic, and max attempts are filled. Duration defaults to 30 min.
+  // Upload Excel: enable only when title, topic, max attempts,
+  // and audience scope (everyone or at least one batch) are set.
   const hasTitle = String(title ?? '').trim().length > 0;
   const hasTopic = String(selectedRootTopicId ?? '').trim().length > 0;
   const maxAttemptsVal = Number(maxAttempts);
   const hasMaxAttempts = Number.isFinite(maxAttemptsVal) && maxAttemptsVal >= 1;
+  const hasAudience = availableToEveryone || selectedBatches.length > 0;
   const durationVal = Number(durationInput);
   const effectiveDuration = Number.isFinite(durationVal) && durationVal >= 1 && durationVal <= 600 ? durationVal : 30;
-  const canUploadExcel = hasTitle && hasTopic && hasMaxAttempts;
+  const canUploadExcel = hasTitle && hasTopic && hasMaxAttempts && hasAudience;
 
   // Show what's missing when Upload is disabled
   const uploadMissing: string[] = [];
   if (!hasTitle) uploadMissing.push('Quiz Title');
   if (!hasTopic) uploadMissing.push('Topic');
   if (!hasMaxAttempts) uploadMissing.push('Max Attempts (≥ 1)');
+  if (!hasAudience) uploadMissing.push('Available to Everyone or at least one Batch');
 
   // Auto-generate quiz title from Subject, Topic, Sub-topic and Quiz number
   useEffect(() => {
@@ -244,12 +247,12 @@ export default function AdminCreateQuizPage() {
     // Do not override if admin manually edited title
     if (userEditedTitle) return;
 
-    const subject = subjects.find((s: any) => s._id === subjectId);
+    const subject = subjects.find((s: any) => String(s?._id) === String(subjectId));
     if (!subject) return;
 
     const subjectTitle: string = subject.title || '';
-    const rootTopic = rootTopics.find((t: any) => t._id === selectedRootTopicId);
-    const subTopic = subTopics.find((t: any) => t._id === selectedSubTopicId);
+    const rootTopic = rootTopics.find((t: any) => String(t?._id) === String(selectedRootTopicId));
+    const subTopic = subTopics.find((t: any) => String(t?._id) === String(selectedSubTopicId));
     const quizNo = linkQuizNumber === '' || linkQuizNumber == null ? 1 : linkQuizNumber;
 
     let generatedTitle = '';
@@ -1116,6 +1119,9 @@ export default function AdminCreateQuizPage() {
       formData.append('maxAttempts', String(maxAttempts ?? 5));
       formData.append('defaultMarks', String(marksPerQuestion || 1));
       formData.append('level', level);
+      if (!availableToEveryone && selectedBatches.length === 0) {
+        throw new Error('Select at least one batch or enable "Available to Everyone" before Excel upload.');
+      }
       if (!availableToEveryone && selectedBatches.length > 0) {
         formData.append('batches', selectedBatches.join(','));
       }
@@ -1605,7 +1611,7 @@ export default function AdminCreateQuizPage() {
             {!quizId && (
             <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-4">
               <h3 className="text-sm font-bold text-gray-900 mb-2">Create via Excel</h3>
-              <p className="text-xs text-gray-600 mb-3">Download template → add questions &amp; options (marks can be in Excel). <strong>Upload is available after you fill: Quiz Title, Topic, and Max Attempts.</strong> Duration defaults to 30 minutes; you can set 1–600 minutes.</p>
+              <p className="text-xs text-gray-600 mb-3">Download template → add questions &amp; options (marks can be in Excel). <strong>Upload is available after you fill: Quiz Title, Topic, Max Attempts, and audience (Available to Everyone or at least one Batch).</strong> Duration defaults to 30 minutes; you can set 1–600 minutes.</p>
               <div className="flex flex-wrap items-center gap-3 mb-2">
                 <button type="button" onClick={downloadQuizExcelTemplate} className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-50 transition-colors">Download template</button>
                 <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleUploadExcel} />
@@ -1641,7 +1647,7 @@ export default function AdminCreateQuizPage() {
                 </p>
               )}
               <p className="text-xs text-gray-500">
-                <strong>Required for upload:</strong> Quiz Title, Topic, Max Attempts (≥ 1). Duration defaults to 30 minutes; you can set 1–600 minutes. Marks come from your Excel file (or use the default above). If you use &quot;Set Available From&quot; or &quot;Set Available To&quot;, those dates must be set and &quot;Available To&quot; must be after &quot;Available From&quot;.
+                <strong>Required for upload:</strong> Quiz Title, Topic, Max Attempts (≥ 1), and audience (Available to Everyone or at least one Batch). Duration defaults to 30 minutes; you can set 1–600 minutes. Marks come from your Excel file (or use the default above). If you use &quot;Set Available From&quot; or &quot;Set Available To&quot;, those dates must be set and &quot;Available To&quot; must be after &quot;Available From&quot;.
               </p>
             </div>
             )}
@@ -1700,12 +1706,7 @@ export default function AdminCreateQuizPage() {
                 <input
                   type="checkbox"
                   checked={availableToEveryone}
-                  onChange={(e) => {
-                    setAvailableToEveryone(e.target.checked);
-                    if (e.target.checked) {
-                      setSelectedBatches([]);
-                    }
-                  }}
+                  onChange={(e) => setAvailableToEveryone(e.target.checked)}
                   className="rounded border-gray-300 text-red-600 focus:ring-red-500"
                 />
                 <span className="text-sm font-semibold text-gray-700">Available to Everyone</span>

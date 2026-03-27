@@ -1,5 +1,6 @@
 const QuizSetRepository = require('./quiz-sets.repository');
 const Quiz = require('../quiz/quiz.model');
+const User = require('../user/users.model');
 const { ErrorHandler } = require('../middleware/errorHandler');
 
 /**
@@ -149,8 +150,27 @@ class QuizSetService {
    * @param {string} topicId
    * @param {Object} filter
    */
-  static async getQuizSetsByTopicId(topicId, filter = {}) {
-    return await QuizSetRepository.getQuizSetsByTopicId(topicId, filter);
+  static async getQuizSetsByTopicId(topicId, filter = {}, userId = null) {
+    const quizSets = await QuizSetRepository.getQuizSetsByTopicId(topicId, filter);
+    if (!userId) return quizSets;
+
+    const user = await User.findById(userId).select('batches').lean();
+    const userBatches = Array.isArray(user?.batches) ? user.batches : [];
+    const now = new Date();
+
+    return (quizSets || []).filter((qs) => {
+      const quiz = qs?.quizId;
+      if (!quiz) return false;
+      if (!quiz.isActive) return false;
+      if (quiz.availableFrom && now < new Date(quiz.availableFrom)) return false;
+      if (quiz.availableTo && now > new Date(quiz.availableTo)) return false;
+
+      if (quiz.availableToEveryone) return true;
+      if (Array.isArray(quiz.batches) && quiz.batches.length > 0) {
+        return quiz.batches.some((b) => userBatches.includes(b));
+      }
+      return false;
+    });
   }
 
   /**
