@@ -13,14 +13,23 @@ class ReportsController {
         limit = 10,
         quizId = null,
         batchId = null,
-        sortBy = 'averageScore'
+        subjectId = null,
+        topicId = null,
+        sortBy = 'averageScore',
+        page
       } = req.query;
 
+      const lim = parseInt(String(limit), 10);
       const result = await ReportsService.getTopPerformers({
-        limit: parseInt(limit),
+        limit: Number.isFinite(lim) && lim > 0 ? lim : 10,
         quizId: quizId || null,
         batchId: batchId || null,
-        sortBy
+        subjectId: subjectId || null,
+        topicId: topicId || null,
+        sortBy,
+        ...(page !== undefined && page !== '' && page !== null
+          ? { page: parseInt(String(page), 10) || 1 }
+          : {})
       });
 
       res.status(200).json(result);
@@ -36,11 +45,13 @@ class ReportsController {
   static async getUserRankAndComparison(req, res, next) {
     try {
       const { userId } = req.params;
-      const { quizId = null, batchId = null } = req.query;
+      const { quizId = null, batchId = null, subjectId = null, topicId = null } = req.query;
 
       const result = await ReportsService.getUserRankAndComparison(userId, {
         quizId: quizId || null,
-        batchId: batchId || null
+        batchId: batchId || null,
+        subjectId: subjectId || null,
+        topicId: topicId || null
       });
 
       res.status(200).json(result);

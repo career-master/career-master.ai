@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { apiService } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import LeaderboardCard from '@/components/LeaderboardCard';
+import HomeTopStudents from '@/components/HomeTopStudents';
 import ComparisonView from '@/components/ComparisonView';
 import SubjectRequestModal from '@/components/SubjectRequestModal';
 import { toast } from 'react-hot-toast';
@@ -670,6 +671,7 @@ export default function DashboardPage() {
 
           {/* Main Content Area */}
           <div className="lg:col-span-3 animate-fade-in animate-delay-1">
+            <HomeTopStudents />
             {/* AI Mentor Section */}
             <div className="bg-white rounded-xl shadow-lg p-6 mb-4 border-l-4 border-purple-500 relative overflow-hidden animate-fade-in">
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-100 to-pink-100 opacity-50 rounded-bl-full"></div>

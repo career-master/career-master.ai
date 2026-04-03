@@ -21,6 +21,7 @@ const announcementsRoutes = require('./announcements/announcements.routes');
 const settingsRoutes = require('./settings/settings.routes');
 const domainsRoutes = require('./domains/domains.routes');
 const categoriesRoutes = require('./categories/categories.routes');
+const institutionsRoutes = require('./institutions/institutions.routes');
 const env = require('./config/env');
 
 /**
@@ -197,6 +198,7 @@ app.use('/api/announcements', announcementsRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/domains', domainsRoutes);
 app.use('/api/categories', categoriesRoutes);
+app.use('/api/institutions', institutionsRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -210,6 +212,7 @@ app.get('/', (req, res) => {
       roles: '/api/roles',
       quizzes: '/api/quizzes',
       batches: '/api/batches',
+      institutions: '/api/institutions',
       users: '/api/users',
       dashboard: '/api/dashboard',
       reports: '/api/reports',
@@ -238,6 +241,7 @@ app.get('/api', (req, res) => {
       roles: '/api/roles',
       quizzes: '/api/quizzes',
       batches: '/api/batches',
+      institutions: '/api/institutions',
       users: '/api/users',
       dashboard: '/api/dashboard',
       reports: '/api/reports',

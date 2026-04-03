@@ -283,6 +283,11 @@ export default function QuizSectionEditor({ sections, onChange }: QuizSectionEdi
                           {question.questionType}
                         </span>
                       </div>
+                      {question.questionType === 'multiple_choice_multiple' && (
+                        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1 mb-1">
+                          Multiple correct — students select all that apply
+                        </p>
+                      )}
                       <p className="text-sm text-gray-900 line-clamp-2">
                         {question.questionText || 'Untitled Question'}
                       </p>

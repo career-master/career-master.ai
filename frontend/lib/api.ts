@@ -14,6 +14,13 @@ export interface ApiResponse<T = any> {
   user?: T;
   /** Total count for paginated responses (e.g. admin user-quiz-attempts) */
   total?: number;
+  /** Leaderboard / top-performers when `page` query is sent */
+  meta?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
   error?: {
     message: string;
     details?: Array<{ field: string; message: string }>;
@@ -402,14 +409,22 @@ class ApiService {
   // Reports & Leaderboard
   async getTopPerformers(options?: {
     limit?: number;
+    page?: number;
     quizId?: string;
     batchId?: string;
+    /** When set, only attempts tied to this subject (via topic → quiz set) are counted */
+    subjectId?: string;
+    /** Optional root topic; narrows to attempts tagged with this topic */
+    topicId?: string;
     sortBy?: 'averageScore' | 'totalMarks' | 'totalAttempts' | 'bestScore';
   }): Promise<ApiResponse> {
     const params = new URLSearchParams();
     if (options?.limit) params.append('limit', String(options.limit));
+    if (options?.page != null && options.page >= 1) params.append('page', String(options.page));
     if (options?.quizId) params.append('quizId', options.quizId);
     if (options?.batchId) params.append('batchId', options.batchId);
+    if (options?.subjectId) params.append('subjectId', options.subjectId);
+    if (options?.topicId) params.append('topicId', options.topicId);
     if (options?.sortBy) params.append('sortBy', options.sortBy);
     
     const query = params.toString();
@@ -421,10 +436,14 @@ class ApiService {
   async getUserRankAndComparison(userId: string, options?: {
     quizId?: string;
     batchId?: string;
+    subjectId?: string;
+    topicId?: string;
   }): Promise<ApiResponse> {
     const params = new URLSearchParams();
     if (options?.quizId) params.append('quizId', options.quizId);
     if (options?.batchId) params.append('batchId', options.batchId);
+    if (options?.subjectId) params.append('subjectId', options.subjectId);
+    if (options?.topicId) params.append('topicId', options.topicId);
     
     const query = params.toString();
     return this.request(`/reports/user-rank/${userId}${query ? `?${query}` : ''}`, {
@@ -764,6 +783,38 @@ class ApiService {
     return this.request(`/batches/${id}`, {
       method: 'GET',
     });
+  }
+
+  // Institutions (admin)
+  async getInstitutions(page = 1, limit = 10, search = ''): Promise<ApiResponse> {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+    if (search.trim()) params.set('search', search.trim());
+    return this.request(`/institutions?${params.toString()}`, { method: 'GET' });
+  }
+
+  async getInstitutionById(id: string): Promise<ApiResponse> {
+    return this.request(`/institutions/${id}`, { method: 'GET' });
+  }
+
+  async createInstitution(payload: Record<string, unknown>): Promise<ApiResponse> {
+    return this.request('/institutions', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateInstitution(id: string, payload: Record<string, unknown>): Promise<ApiResponse> {
+    return this.request(`/institutions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteInstitution(id: string): Promise<ApiResponse> {
+    return this.request(`/institutions/${id}`, { method: 'DELETE' });
   }
 
   async addStudentsToBatch(batchCode: string, userIds: string[]): Promise<ApiResponse> {

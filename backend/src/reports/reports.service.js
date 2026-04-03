@@ -10,6 +10,24 @@ class ReportsService {
   static async getTopPerformers(options = {}) {
     try {
       const performers = await ReportsRepository.getTopPerformers(options);
+      if (
+        performers &&
+        typeof performers === 'object' &&
+        !Array.isArray(performers) &&
+        Array.isArray(performers.items)
+      ) {
+        return {
+          success: true,
+          data: performers.items,
+          count: performers.items.length,
+          meta: {
+            total: performers.total,
+            page: performers.page,
+            limit: performers.limit,
+            totalPages: performers.totalPages
+          }
+        };
+      }
       return {
         success: true,
         data: performers,

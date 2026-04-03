@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const QuizAttempt = require('../quiz/quiz_attempts.model');
 const User = require('../user/users.model');
 const Quiz = require('../quiz/quiz.model');
@@ -12,16 +13,50 @@ class ReportsRepository {
   static async getTopPerformers(options = {}) {
     try {
       const {
-        limit = 10,
+        limit: limitOpt = 10,
         quizId = null,
         batchId = null,
-        sortBy = 'averageScore' // 'averageScore', 'totalMarks', 'totalAttempts'
+        subjectId = null,
+        topicId = null,
+        sortBy = 'averageScore', // 'averageScore', 'totalMarks', 'totalAttempts'
+        page: pageOpt = null
       } = options;
+
+      const usePagination =
+        pageOpt != null &&
+        String(pageOpt).trim() !== '' &&
+        !Number.isNaN(parseInt(String(pageOpt), 10));
+
+      let limit = parseInt(String(limitOpt), 10);
+      if (!Number.isFinite(limit) || limit < 1) {
+        limit = 10;
+      }
+      if (usePagination && limit > 100) {
+        limit = 100;
+      }
+      if (!usePagination && limit > 5000) {
+        limit = 5000;
+      }
+
+      const page = usePagination ? Math.max(1, parseInt(String(pageOpt), 10) || 1) : 1;
+      const skip = usePagination ? (page - 1) * limit : 0;
 
       // Build match criteria
       const matchCriteria = {};
       if (quizId) {
         matchCriteria.quizId = quizId;
+      }
+      if (subjectId) {
+        if (!mongoose.Types.ObjectId.isValid(subjectId)) {
+          throw new ErrorHandler(400, 'Invalid subject ID');
+        }
+        matchCriteria.subjectId = new mongoose.Types.ObjectId(subjectId);
+      }
+      if (topicId) {
+        if (!mongoose.Types.ObjectId.isValid(topicId)) {
+          throw new ErrorHandler(400, 'Invalid topic ID');
+        }
+        matchCriteria.topicId = new mongoose.Types.ObjectId(topicId);
       }
 
       // If batchId is provided, filter users by batch
@@ -66,6 +101,7 @@ class ReportsRepository {
             userId: '$_id',
             name: { $ifNull: ['$user.name', 'Unknown'] },
             email: { $ifNull: ['$user.email', ''] },
+            profilePicture: { $ifNull: ['$user.profilePicture', ''] },
             totalAttempts: 1,
             totalMarksObtained: 1,
             totalMarksPossible: 1,
@@ -118,15 +154,38 @@ class ReportsRepository {
       }
 
       pipeline.push({ $sort: { [sortField]: -1 } });
+
+      let total = null;
+      let totalPages = null;
+      if (usePagination) {
+        const countAgg = await QuizAttempt.aggregate([
+          { $match: matchCriteria },
+          { $group: { _id: '$userId' } },
+          { $count: 'total' }
+        ]);
+        total = countAgg[0]?.total ?? 0;
+        totalPages = Math.max(1, Math.ceil(total / limit));
+        pipeline.push({ $skip: skip });
+      }
+
       pipeline.push({ $limit: limit });
 
       const topPerformers = await QuizAttempt.aggregate(pipeline);
 
-      // Add rank to each performer
       const performersWithRank = topPerformers.map((performer, index) => ({
         ...performer,
-        rank: index + 1
+        rank: usePagination ? skip + index + 1 : index + 1
       }));
+
+      if (usePagination) {
+        return {
+          items: performersWithRank,
+          total,
+          page,
+          limit,
+          totalPages
+        };
+      }
 
       return performersWithRank;
     } catch (error) {
@@ -142,13 +201,15 @@ class ReportsRepository {
    */
   static async getUserRankAndComparison(userId, options = {}) {
     try {
-      const { quizId = null, batchId = null } = options;
+      const { quizId = null, batchId = null, subjectId = null, topicId = null } = options;
 
       // Get all top performers
       const topPerformers = await this.getTopPerformers({
         limit: 1000, // Get all for ranking
         quizId,
         batchId,
+        subjectId,
+        topicId,
         sortBy: 'averageScore'
       });
 

@@ -1051,8 +1051,8 @@ export default function AdminCreateQuizPage() {
       { Column: 'optionB', Description: 'Option B (required)' },
       { Column: 'optionC', Description: 'Option C (optional)' },
       { Column: 'optionD', Description: 'Option D (optional)' },
-      { Column: 'correctOption', Description: 'Correct: A, B, C, D; or A,C for multiple' },
-      { Column: 'type', Description: 'multiple_choice_single, multiple_choice_multiple, or true_false' },
+      { Column: 'correctOption', Description: 'Single type: one letter (A–D). Multiple type: comma list e.g. A,C' },
+      { Column: 'type', Description: 'Use multiple_choice_single or multiple_choice_multiple (not just "multiple" — that confuses single rows). true_false also supported.' },
       { Column: 'marks', Description: 'Marks per question (or use default above)' },
       { Column: 'negativeMarks', Description: 'Negative marks for wrong answer (default 0)' },
     ];

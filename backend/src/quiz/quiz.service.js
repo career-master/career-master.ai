@@ -311,7 +311,7 @@ class QuizService {
    * - title (quiz title) - only in first row or provided separately
    * - question
    * - optionA, optionB, optionC, optionD
-   * - correctOption (A/B/C/D)
+   * - correctOption: one letter for single type; comma-separated (A,C) when type is multiple_choice_multiple
    * - marks
    * - negativeMarks
    */
@@ -350,13 +350,31 @@ class QuizService {
         continue;
       }
 
-      // Determine question type
+      // Determine question type (order matters: "multiple_choice_single" contains "multiple")
+      const qt = questionType.replace(/\s+/g, '_');
       let finalQuestionType = 'multiple_choice_single';
-      if (questionType.includes('multiple') || questionType.includes('multi')) {
-        finalQuestionType = 'multiple_choice_multiple';
-      } else if (questionType.includes('true') || questionType.includes('false') || questionType === 'tf') {
+      if (
+        qt.includes('true_false') ||
+        qt === 'tf' ||
+        (qt.includes('true') && qt.includes('false'))
+      ) {
         finalQuestionType = 'true_false';
-      } else if (questionType.includes('single') || questionType.includes('mcq')) {
+      } else if (
+        qt.includes('multiple_choice_multiple') ||
+        qt.includes('multi_correct') ||
+        qt.includes('multiple_correct') ||
+        (qt.includes('multiple') && !qt.includes('single')) ||
+        qt === 'multi'
+      ) {
+        finalQuestionType = 'multiple_choice_multiple';
+      } else if (
+        qt.includes('multiple_choice_single') ||
+        qt.includes('single_correct') ||
+        qt.includes('mcq_single') ||
+        qt.includes('single') ||
+        qt.includes('mcq') ||
+        qt === ''
+      ) {
         finalQuestionType = 'multiple_choice_single';
       }
 
@@ -403,18 +421,17 @@ class QuizService {
       if (optionC) options.push(optionC);
       if (optionD) options.push(optionD);
 
-      // Check if multiple correct answers (comma-separated like "A,C,D")
-      const correctOptions = correctOption.split(',').map(opt => opt.trim()).filter(Boolean);
-      
-      if (finalQuestionType === 'multiple_choice_multiple' || correctOptions.length > 1) {
-        // Multiple correct answers
-        const correctIndexMap = { A: 0, B: 1, C: 2, D: 3, E: 4, F: 5 };
+      const correctIndexMap = { A: 0, B: 1, C: 2, D: 3, E: 4, F: 5 };
+
+      // Multi-correct only when type column says so; comma-separated "A,C" on single-type rows uses first letter only
+      if (finalQuestionType === 'multiple_choice_multiple') {
+        const correctOptions = correctOption.split(/[,;]/).map(opt => opt.trim()).filter(Boolean);
         const correctIndices = correctOptions
-          .map(opt => correctIndexMap[opt[0]])
+          .map(opt => correctIndexMap[opt[0]?.toUpperCase()])
           .filter(idx => idx !== undefined);
 
         if (correctIndices.length === 0) {
-          continue; // Invalid correct answers
+          continue;
         }
 
         questions.push({
@@ -426,12 +443,12 @@ class QuizService {
           negativeMarks: Number.isNaN(negativeMarks) ? 0 : negativeMarks
         });
       } else {
-        // Single correct answer
-        const correctIndexMap = { A: 0, B: 1, C: 2, D: 3, E: 4, F: 5 };
-        const correctOptionIndex = correctIndexMap[correctOption[0]];
+        const firstToken = (correctOption.split(/[,;]/)[0] || '').trim().toUpperCase();
+        const letter = firstToken[0];
+        const correctOptionIndex = correctIndexMap[letter];
 
         if (correctOptionIndex === undefined) {
-          continue; // Invalid correct option
+          continue;
         }
 
         questions.push({

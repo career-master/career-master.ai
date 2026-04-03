@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { apiService } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import ProfileAvatar3D from '@/components/ProfileAvatar3D';
 
 interface TopPerformer {
   userId: string;
@@ -16,6 +17,7 @@ interface TopPerformer {
   bestScore: number;
   passRate: number;
   accuracy: number;
+  profilePicture?: string;
 }
 
 interface UserRankData {
@@ -116,11 +118,12 @@ export default function LeaderboardCard() {
 
               return (
                 <div key={player.userId} className="flex flex-col items-center">
-                  <div className={`w-12 h-12 rounded-full overflow-hidden border-2 ${config.border} shadow-lg mb-2 bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center`}>
-                    <span className="text-white font-bold text-lg">
-                      {player.name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
+                  <ProfileAvatar3D
+                    src={player.profilePicture}
+                    name={player.name}
+                    size="lg"
+                    className={`mb-2 border-2 ${config.border} shadow-lg`}
+                  />
                   <div className="text-center mb-2">
                     <p className="text-xs font-semibold text-gray-900 truncate max-w-[60px]">
                       {player.name.split(' ')[0]}
@@ -145,11 +148,12 @@ export default function LeaderboardCard() {
       {userRankData?.userData && (
         <div className="mb-4">
           <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 border border-blue-200">
-            <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center flex-shrink-0">
-              <span className="text-blue-100 font-semibold text-lg">
-                {userRankData.userData.name.charAt(0).toUpperCase()}
-              </span>
-            </div>
+            <ProfileAvatar3D
+              src={userRankData.userData.profilePicture}
+              name={userRankData.userData.name}
+              size="md"
+              className="flex-shrink-0 ring-2 ring-blue-200"
+            />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-gray-900 truncate">
                 {userRankData.userData.name} (You)

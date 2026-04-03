@@ -1234,7 +1234,7 @@ function QuizAttemptContent() {
   const currentQ = allQuestions[currentQuestion];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex min-h-0 w-full flex-1 flex-col bg-gray-50">
       {/* Fullscreen Button */}
       {!isFullscreen && (
         <button
@@ -1269,12 +1269,12 @@ function QuizAttemptContent() {
         </div>
       )}
 
-      {/* Main Layout: Middle (Quiz) + Right (Info) */}
-      <div className="flex">
-        {/* Middle - Quiz Content (More Spacious) */}
-        <div className="flex-1 min-w-0 p-8 overflow-auto">
-          <div className="max-w-5xl mx-auto">
-            <div className="bg-white p-10 rounded-lg shadow-lg">
+      {/* Main Layout: full-width question area + sidebar (fills viewport height) */}
+      <div className="flex min-h-0 min-w-0 flex-1">
+        {/* Middle - Quiz Content */}
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:px-8 lg:py-6">
+          <div className="w-full max-w-none">
+            <div className="rounded-lg bg-white p-6 shadow-lg sm:p-8 lg:p-10">
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-2xl font-semibold text-gray-900">
@@ -1300,6 +1300,12 @@ function QuizAttemptContent() {
                 </div>
                 <div className="prose max-w-none">
                   <p className="text-lg mb-6 text-gray-800 whitespace-pre-wrap">{currentQ.questionText}</p>
+                  {resolveQuestionType(currentQ) === 'multiple_choice_multiple' && (
+                    <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                      <span className="font-semibold">Select all that apply.</span>{' '}
+                      This question has more than one correct answer; choose every option that is correct.
+                    </div>
+                  )}
                   {/* Show image if it's an image-based question (but not hotspot - hotspot image is shown in renderQuestion) */}
                   {currentQ.questionType === 'image_based' && currentQ.imageUrl && (
                     <div className="mb-6">
@@ -1364,7 +1370,7 @@ function QuizAttemptContent() {
         </div>
 
         {/* Right Sidebar - Quiz Info, Timer, Questions, Submit */}
-        <div className="w-96 bg-white border-l border-gray-200 p-6 flex flex-col overflow-y-auto">
+        <div className="flex min-h-0 w-72 shrink-0 flex-col overflow-y-auto border-l border-gray-200 bg-white p-4 sm:w-80 sm:p-6 lg:w-96">
         {/* Quiz Title */}
         <div className="mb-6">
           <h1 className="text-xl font-bold text-gray-900 mb-2">{quiz.title}</h1>

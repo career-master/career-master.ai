@@ -26,6 +26,8 @@ export default function DashboardLayout({
     // Set active item based on current path
     if (pathname?.includes('/reports')) {
       setActiveItem('reports');
+    } else if (pathname?.includes('/leaderboard')) {
+      setActiveItem('leaderboard');
     } else if (pathname?.includes('/quizzes')) {
       setActiveItem('quizzes');
     } else if (pathname?.includes('/coupons')) {
@@ -69,6 +71,16 @@ export default function DashboardLayout({
         </svg>
       ), 
       href: '/dashboard/quizzes' 
+    },
+    { 
+      id: 'leaderboard', 
+      label: 'Leaderboard', 
+      icon: (
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M7 2a1 1 0 00-1 1v1H4a1 1 0 00-1 1v1a4 4 0 003 3.874V12a3 3 0 01-3 3H3a1 1 0 100 2h14a1 1 0 100-2h-.001A3 3 0 0114 12v-2.126A4.002 4.002 0 0017 6V5a1 1 0 00-1-1h-2V3a1 1 0 00-1-1H7zm7 4a2 2 0 01-1.555 1.946A1 1 0 0012 8v-.382A3.001 3.001 0 0110.528 5H14v1zM6 5h3.472A3.001 3.001 0 019 7.618V8a1 1 0 01-1.445.894A2 2 0 016 6V5z" clipRule="evenodd" />
+        </svg>
+      ), 
+      href: '/dashboard/leaderboard' 
     },
     { 
       id: 'reports', 
@@ -201,8 +213,16 @@ export default function DashboardLayout({
       </div>
       )}
 
-      {/* Main Content */}
-      <div className={`flex-1 transition-all duration-300 ${isQuizAttemptPage ? 'ml-0' : (collapsed ? 'ml-16' : 'ml-64')} print:ml-0`}>
+      {/* Main Content — quiz attempts fill the viewport (no sidebar) */}
+      <div
+        className={`flex-1 transition-all duration-300 print:ml-0 ${
+          isQuizAttemptPage
+            ? 'ml-0 flex min-h-[100dvh] w-full flex-col'
+            : collapsed
+              ? 'ml-16'
+              : 'ml-64'
+        }`}
+      >
         {children}
       </div>
     </div>
