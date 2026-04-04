@@ -1,9 +1,11 @@
  'use client';
 
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { apiService } from '@/lib/api';
 import { toast } from 'react-hot-toast';
+import AdminExportButtons from '@/components/AdminExportButtons';
+import { exportRowsToDoc, exportRowsToPdf } from '@/lib/adminExport';
 
 interface AdminQuizAttempt {
   attemptId: string;
@@ -451,6 +453,155 @@ export default function AdminReportsPage() {
     }
   };
 
+  const exportReportsDocuments = useCallback(
+    async (format: 'pdf' | 'doc') => {
+      const subjectTitle = subjects.find((s) => String(s._id) === String(filters.subjectId))?.title;
+      const topicTitle = topics.find((t) => String(t._id) === String(filters.topicId))?.title;
+      const filterLine = `Mode: ${reportMode} · ${batchFilterSummary} · Domain: ${filters.domain || '—'} · Category: ${filters.category || '—'} · Subject: ${subjectTitle || '—'} · Topic: ${topicTitle || '—'} · Email: ${filters.email || '—'} · Name: ${filters.name || '—'}`;
+
+      if (reportMode === 'normal') {
+        const limit = 100;
+        let p = 1;
+        let totalPages = 1;
+        let totalCount = 0;
+        const collected: AdminQuizAttempt[] = [];
+        const first = await apiService.getAdminUserQuizAttempts({
+          subjectId: filters.subjectId,
+          domain: filters.domain,
+          category: filters.category,
+          topicId: filters.topicId,
+          email: filters.email,
+          name: filters.name,
+          batchScope,
+          batchCode: batchCode || undefined,
+          page: 1,
+          limit,
+        });
+        if (!first?.success || !Array.isArray(first.data)) {
+          throw new Error('Could not load attempts for export');
+        }
+        totalCount = typeof first.total === 'number' ? first.total : first.data.length;
+        totalPages = Math.max(1, Math.ceil(totalCount / limit));
+        collected.push(...(first.data as AdminQuizAttempt[]));
+        p = 2;
+        while (p <= totalPages && p < 500) {
+          const res = await apiService.getAdminUserQuizAttempts({
+            subjectId: filters.subjectId,
+            domain: filters.domain,
+            category: filters.category,
+            topicId: filters.topicId,
+            email: filters.email,
+            name: filters.name,
+            batchScope,
+            batchCode: batchCode || undefined,
+            page: p,
+            limit,
+          });
+          if (res?.success && Array.isArray(res.data)) {
+            collected.push(...(res.data as AdminQuizAttempt[]));
+          }
+          p += 1;
+        }
+
+        const cmp = (a: AdminQuizAttempt, b: AdminQuizAttempt): number => {
+          let av: number | string;
+          let bv: number | string;
+          switch (sortBy) {
+            case 'date':
+              av = new Date(a.submittedAt).getTime();
+              bv = new Date(b.submittedAt).getTime();
+              return (av as number) - (bv as number);
+            case 'score':
+              return a.percentage - b.percentage;
+            case 'subject':
+              return (a.subjectTitle ?? '').toLowerCase().localeCompare((b.subjectTitle ?? '').toLowerCase());
+            case 'result':
+              return (a.result ?? '').toLowerCase().localeCompare((b.result ?? '').toLowerCase());
+            default:
+              return 0;
+          }
+        };
+        const list = [...collected].sort((a, b) => (sortDir === 'asc' ? cmp(a, b) : -cmp(a, b)));
+        if (list.length === 0) {
+          throw new Error('No attempts to export for these filters');
+        }
+
+        const headers = ['S.No', 'Student', 'Email', 'Quiz', 'Subject', 'Topic', 'Level', 'Marks', '%', 'Result', 'Submitted'];
+        const rows = list.map((a, i) => [
+          String(i + 1),
+          a.userName || '—',
+          a.userEmail || '—',
+          a.quizTitle,
+          a.subjectTitle || '—',
+          a.topicTitle || '—',
+          a.level === 'basic' ? 'Easy' : a.level === 'hard' ? 'Hard' : '—',
+          `${a.marksObtained}/${a.totalMarks}`,
+          `${a.percentage?.toFixed(1) ?? '0'}%`,
+          (a.result || '').toUpperCase(),
+          a.submittedAt ? new Date(a.submittedAt).toLocaleString() : '—',
+        ]);
+        const sub = `${filterLine}\nRows: ${list.length}`;
+        if (format === 'pdf') {
+          exportRowsToPdf('Reports — quiz attempts', sub, headers, rows, 'admin-reports-attempts');
+        } else {
+          exportRowsToDoc('Reports — quiz attempts', sub, headers, rows, 'admin-reports-attempts');
+        }
+      } else {
+        if (!cumulativeUsers.length) {
+          throw new Error('No cumulative data to export for these filters');
+        }
+        const headers = [
+          'Rank',
+          'Student',
+          'Email',
+          'Attempts',
+          'Marks',
+          'Avg %',
+          'Overall %',
+          'Right/Wrong',
+          'Accuracy %',
+          'Pass rate %',
+          'Time (limit)',
+          'Avg time',
+        ];
+        const rows = cumulativeUsers.map((u: Record<string, unknown>) => [
+          String(u.rank ?? ''),
+          String(u.userName || '—'),
+          String(u.userEmail || '—'),
+          String(u.totalAttempts ?? 0),
+          `${u.totalMarksObtained ?? 0}/${u.totalMarksPossible ?? 0}`,
+          `${typeof u.averagePercentage === 'number' ? u.averagePercentage.toFixed(2) : u.averagePercentage ?? 0}%`,
+          `${typeof u.overallPercentage === 'number' ? u.overallPercentage.toFixed(2) : u.overallPercentage ?? 0}%`,
+          `${u.correctAnswers ?? 0}/${u.incorrectAnswers ?? 0}`,
+          `${typeof u.accuracyPercentage === 'number' ? u.accuracyPercentage.toFixed(2) : u.accuracyPercentage ?? 0}%`,
+          `${typeof u.passRate === 'number' ? u.passRate.toFixed(2) : u.passRate ?? 0}%`,
+          `${u.timeWithinLimitCount ?? 0}/${u.totalAttempts ?? 0}`,
+          String(u.averageTimeSpentFormatted || '—'),
+        ]);
+        const overview = `Students: ${cumulativeOverview.totalUsersCount} · Attempts: ${cumulativeOverview.attemptsCount} · Overall marks %: ${cumulativeOverview.overallPercent.toFixed(2)}%`;
+        const sub = `${filterLine}\n${overview}`;
+        if (format === 'pdf') {
+          exportRowsToPdf('Reports — cumulative per student', sub, headers, rows, 'admin-reports-cumulative');
+        } else {
+          exportRowsToDoc('Reports — cumulative per student', sub, headers, rows, 'admin-reports-cumulative');
+        }
+      }
+    },
+    [
+      reportMode,
+      filters,
+      batchScope,
+      batchCode,
+      sortBy,
+      sortDir,
+      cumulativeUsers,
+      cumulativeOverview,
+      batchFilterSummary,
+      subjects,
+      topics,
+    ]
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -460,7 +611,7 @@ export default function AdminReportsPage() {
             View quiz performance across students and subjects. Filter and download detailed reports.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => {
@@ -495,6 +646,11 @@ export default function AdminReportsPage() {
           >
             Cumulative
           </button>
+          <AdminExportButtons
+            disabled={loading}
+            onPdf={() => exportReportsDocuments('pdf')}
+            onDoc={() => exportReportsDocuments('doc')}
+          />
         </div>
       </div>
 

@@ -1,4 +1,6 @@
+const mongoose = require('mongoose');
 const User = require('./users.model');
+const Batch = require('../batches/batches.model');
 const CryptoUtil = require('../utils/crypto');
 const { ErrorHandler } = require('../middleware/errorHandler');
 
@@ -18,20 +20,40 @@ class UsersRepository {
 
   static async getUsersPaginated({ page = 1, limit = 10, search = '', role, batch }) {
     try {
-      const filter = {};
+      const and = [];
+
       if (search) {
-        filter.$or = [
-          { name: { $regex: search, $options: 'i' } },
-          { email: { $regex: search, $options: 'i' } },
-          { phone: { $regex: search, $options: 'i' } }
-        ];
+        and.push({
+          $or: [
+            { name: { $regex: search, $options: 'i' } },
+            { email: { $regex: search, $options: 'i' } },
+            { phone: { $regex: search, $options: 'i' } }
+          ]
+        });
       }
       if (role) {
-        filter.roles = role;
+        and.push({ roles: role });
       }
-      if (batch) {
-        filter.batches = batch;
+      if (batch && String(batch).trim()) {
+        const bKey = String(batch).trim();
+        const variants = new Set([bKey]);
+        try {
+          if (mongoose.Types.ObjectId.isValid(bKey)) {
+            const idStr = String(new mongoose.Types.ObjectId(bKey));
+            if (idStr === bKey) {
+              const doc = await Batch.findById(bKey).select('code').lean();
+              if (doc?.code) variants.add(doc.code);
+            }
+          }
+          const byCode = await Batch.findOne({ code: bKey }).select('_id').lean();
+          if (byCode?._id) variants.add(String(byCode._id));
+        } catch (_) {
+          /* ignore batch lookup errors */
+        }
+        and.push({ batches: { $in: Array.from(variants) } });
       }
+
+      const filter = and.length ? { $and: and } : {};
 
       const skip = (page - 1) * limit;
       const [items, total] = await Promise.all([

@@ -32,6 +32,7 @@ export default function AdminLeaderboardPage() {
     <SubjectLeaderboardView
       title="Subject leaderboard"
       subtitle="View student rankings per subject. Counts only quiz attempts linked to that subject through topic / quiz set (same as the student-facing leaderboard page)."
+      enableDocumentExport
     />
   );
 }

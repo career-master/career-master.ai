@@ -6,13 +6,25 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import { toast } from 'react-hot-toast';
+import AdminExportButtons from '@/components/AdminExportButtons';
+import { exportRowsToDoc, exportRowsToPdf } from '@/lib/adminExport';
 
 const TYPE_LABELS: Record<string, string> = {
   school: 'School',
+  university: 'University',
   college: 'College',
   coaching: 'Coaching',
   training_institute: 'Training Institute',
 };
+
+const TYPE_FILTER_OPTIONS = [
+  { value: '', label: 'All types' },
+  { value: 'school', label: 'School' },
+  { value: 'university', label: 'University' },
+  { value: 'college', label: 'College' },
+  { value: 'coaching', label: 'Coaching' },
+  { value: 'training_institute', label: 'Training Institute' },
+];
 
 export default function AdminInstitutionsPage() {
   const { user, isAuthenticated } = useAuth();
@@ -21,26 +33,52 @@ export default function AdminInstitutionsPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [filterType, setFilterType] = useState('');
+  const [filterLocation, setFilterLocation] = useState('');
+  const [filterMinStr, setFilterMinStr] = useState('');
+  const [filterMaxStr, setFilterMaxStr] = useState('');
+  const [sortBy, setSortBy] = useState<'createdAt' | 'institutionName' | 'studentStrength'>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [error, setError] = useState('');
 
-  const load = useCallback(async (pageNumber: number, searchTerm: string) => {
-    try {
-      setLoading(true);
-      const res = await apiService.getInstitutions(pageNumber, 10, searchTerm);
-      if (res.success && res.data) {
-        const data: any = res.data;
-        setItems(Array.isArray(data.items) ? data.items : []);
-        setPage(data.page || pageNumber);
-        setTotalPages(data.totalPages || 1);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchInput), 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, filterType, filterLocation, filterMinStr, filterMaxStr, sortBy, sortOrder]);
+
+  const load = useCallback(
+    async (pageNumber: number) => {
+      try {
+        setLoading(true);
+        const res = await apiService.getInstitutions(pageNumber, 10, debouncedSearch, {
+          institutionType: filterType,
+          location: filterLocation,
+          minStudentStrength: filterMinStr,
+          maxStudentStrength: filterMaxStr,
+          sortBy,
+          sortOrder,
+        });
+        if (res.success && res.data) {
+          const data: any = res.data;
+          setItems(Array.isArray(data.items) ? data.items : []);
+          setPage(data.page || pageNumber);
+          setTotalPages(data.totalPages || 1);
+        }
+      } catch (err: any) {
+        console.error(err);
+        setError(err.message || 'Failed to load institutions');
+      } finally {
+        setLoading(false);
       }
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Failed to load institutions');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [debouncedSearch, filterType, filterLocation, filterMinStr, filterMaxStr, sortBy, sortOrder]
+  );
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -55,8 +93,8 @@ export default function AdminInstitutionsPage() {
 
   useEffect(() => {
     if (!isAuthenticated || !user?.roles?.includes('super_admin')) return;
-    load(page, search);
-  }, [page, search, load, isAuthenticated, user]);
+    load(page);
+  }, [page, load, isAuthenticated, user]);
 
   const handleDelete = async (id: string, name: string) => {
     if (!window.confirm(`Delete institution "${name}"? This cannot be undone.`)) return;
@@ -64,7 +102,7 @@ export default function AdminInstitutionsPage() {
       const res = await apiService.deleteInstitution(id);
       if (res.success) {
         toast.success('Institution deleted');
-        await load(page, search);
+        await load(page);
       } else {
         throw new Error(res.error?.message || 'Failed to delete');
       }
@@ -72,6 +110,71 @@ export default function AdminInstitutionsPage() {
       toast.error(err.message || 'Failed to delete institution');
     }
   };
+
+  const listOpts = {
+    institutionType: filterType,
+    location: filterLocation,
+    minStudentStrength: filterMinStr,
+    maxStudentStrength: filterMaxStr,
+    sortBy,
+    sortOrder,
+  };
+
+  const exportInstitutionsDocuments = useCallback(
+    async (format: 'pdf' | 'doc') => {
+      const limit = 100;
+      let p = 1;
+      let tp = 1;
+      const all: any[] = [];
+      do {
+        const res = await apiService.getInstitutions(p, limit, debouncedSearch, listOpts);
+        if (!res.success || !res.data) break;
+        const data: any = res.data;
+        const chunk = Array.isArray(data.items) ? data.items : [];
+        all.push(...chunk);
+        tp = data.totalPages || 1;
+        p += 1;
+      } while (p <= tp && p < 200);
+
+      if (all.length === 0) {
+        throw new Error('No institutions to export for these filters');
+      }
+
+      const headers = [
+        'S.No',
+        'Name',
+        'Type',
+        'City',
+        'District',
+        'State',
+        'Strength',
+        'Admin',
+        'Admin email',
+        'Official email',
+        'Created',
+      ];
+      const rows = all.map((row, i) => [
+        String(i + 1),
+        row.institutionName || '—',
+        TYPE_LABELS[row.institutionType] || row.institutionType || '—',
+        row.city || '—',
+        row.district || '—',
+        row.state || '—',
+        row.studentStrength != null ? String(row.studentStrength) : '—',
+        row.adminName || '—',
+        row.adminEmail || '—',
+        row.officialEmail || '—',
+        row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '—',
+      ]);
+      const sub = `Total: ${all.length} · Search: ${debouncedSearch || '—'} · Type: ${filterType || 'all'} · Location: ${filterLocation || '—'}`;
+      if (format === 'pdf') {
+        exportRowsToPdf('Institutions', sub, headers, rows, 'admin-institutions');
+      } else {
+        exportRowsToDoc('Institutions', sub, headers, rows, 'admin-institutions');
+      }
+    },
+    [debouncedSearch, filterType, filterLocation, filterMinStr, filterMaxStr, sortBy, sortOrder]
+  );
 
   return (
     <div className="rounded-xl bg-white p-6 shadow-lg">
@@ -82,12 +185,19 @@ export default function AdminInstitutionsPage() {
             Register schools, colleges, and training centres. Edit or remove records anytime.
           </p>
         </div>
-        <Link
-          href="/admin/institutions/new"
-          className="rounded-lg bg-red-600 px-4 py-2 text-center text-sm font-semibold text-white transition-colors hover:bg-red-700"
-        >
-          + Add institution
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <AdminExportButtons
+            disabled={loading}
+            onPdf={() => exportInstitutionsDocuments('pdf')}
+            onDoc={() => exportInstitutionsDocuments('doc')}
+          />
+          <Link
+            href="/admin/institutions/new"
+            className="rounded-lg bg-red-600 px-4 py-2 text-center text-sm font-semibold text-white transition-colors hover:bg-red-700"
+          >
+            + Add institution
+          </Link>
+        </div>
       </div>
 
       {error && (
@@ -96,14 +206,84 @@ export default function AdminInstitutionsPage() {
         </div>
       )}
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-col gap-3">
         <input
           type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
           placeholder="Search by name, city, or district…"
           className="w-full max-w-md rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-900 focus:border-red-500 focus:ring-2 focus:ring-red-500"
         />
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Type</label>
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+            >
+              {TYPE_FILTER_OPTIONS.map((o) => (
+                <option key={o.value || 'all'} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Location</label>
+            <input
+              type="text"
+              value={filterLocation}
+              onChange={(e) => setFilterLocation(e.target.value)}
+              placeholder="City, district, state…"
+              className="w-44 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 sm:w-52"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Min strength</label>
+            <input
+              type="number"
+              min={0}
+              value={filterMinStr}
+              onChange={(e) => setFilterMinStr(e.target.value)}
+              placeholder="0"
+              className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Max strength</label>
+            <input
+              type="number"
+              min={0}
+              value={filterMaxStr}
+              onChange={(e) => setFilterMaxStr(e.target.value)}
+              className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Sort by</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+            >
+              <option value="createdAt">Date created</option>
+              <option value="institutionName">Name</option>
+              <option value="studentStrength">Student strength</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Order</label>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+            >
+              <option value="desc">High → low / Z–A / Newest</option>
+              <option value="asc">Low → high / A–Z / Oldest</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-gray-200">
@@ -118,13 +298,14 @@ export default function AdminInstitutionsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px]">
+            <table className="w-full min-w-[800px]">
               <thead className="border-b border-gray-200 bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-900">#</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-900">Name</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-900">Type</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-900">Location</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-900">Strength</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-900">Admin</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-900">Created</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-900">Actions</th>
@@ -156,6 +337,9 @@ export default function AdminInstitutionsPage() {
                     </td>
                     <td className="max-w-[200px] px-4 py-3 text-sm text-gray-600">
                       {[row.city, row.district].filter(Boolean).join(', ') || '—'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {row.studentStrength != null ? row.studentStrength : '—'}
                     </td>
                     <td className="max-w-[180px] px-4 py-3 text-sm text-gray-600">
                       <div className="truncate">{row.adminName || '—'}</div>

@@ -8,6 +8,8 @@ import { apiService, User } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import { getProfileCompletionPercent } from '@/lib/profileConfig';
 import { useProfileSettings } from '@/contexts/ProfileSettingsContext';
+import AdminExportButtons from '@/components/AdminExportButtons';
+import { exportRowsToDoc, exportRowsToPdf } from '@/lib/adminExport';
 
 const PAGE_SIZE = 25;
 
@@ -29,6 +31,7 @@ export default function AdminUsersListPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const selectAllRef = useRef<HTMLInputElement>(null);
+  const [batchCatalog, setBatchCatalog] = useState<{ _id: string; code: string; name: string }[]>([]);
 
   const loadUsers = useCallback(
     async (pageNumber: number) => {
@@ -70,6 +73,22 @@ export default function AdminUsersListPage() {
   }, [isAuthenticated, user, router]);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+    if (!user?.roles?.includes('super_admin') && !user?.roles?.includes('institution_admin')) return;
+    (async () => {
+      try {
+        const res = await apiService.getBatches(1, 500);
+        if (res.success && res.data) {
+          const data: any = res.data;
+          setBatchCatalog(Array.isArray(data.items) ? data.items : []);
+        }
+      } catch {
+        /* non-fatal */
+      }
+    })();
+  }, [isAuthenticated, user]);
+
+  useEffect(() => {
     loadUsers(page);
   }, [page, loadUsers]);
 
@@ -88,6 +107,15 @@ export default function AdminUsersListPage() {
     setPage(1);
     loadUsers(1);
   };
+
+  // Typing in the search bar updates results after a short pause (no need to click Search).
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setSearchApplied(search);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(id);
+  }, [search]);
 
   const handleReset = () => {
     setSearch('');
@@ -145,6 +173,22 @@ export default function AdminUsersListPage() {
     setSelected(next);
   };
 
+  const batchOptions = useMemo(
+    () => [...batchCatalog].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })),
+    [batchCatalog]
+  );
+
+  const batchDisplay = useCallback(
+    (stored: string) => {
+      const b = batchCatalog.find((x) => x.code === stored || String(x._id) === String(stored));
+      return {
+        code: b?.code ?? stored,
+        title: b ? `${b.name} (${b.code})` : stored,
+      };
+    },
+    [batchCatalog]
+  );
+
   const exportCsv = () => {
     const headers = ['S.No', 'Name', 'Email', 'Phone', 'Profile %', 'Roles', 'Batches', 'Status'];
     const rows = users.map((u, i) => {
@@ -157,7 +201,9 @@ export default function AdminUsersListPage() {
         `"${((u as any).phone || '').replace(/"/g, '""')}"`,
         pct,
         (u.roles || []).join('; '),
-        Array.isArray((u as any).batches) ? (u as any).batches.join('; ') : '',
+        Array.isArray((u as any).batches)
+          ? (u as any).batches.map((x: string) => batchDisplay(x).code).join('; ')
+          : '',
         status,
       ].join(',');
     });
@@ -171,15 +217,57 @@ export default function AdminUsersListPage() {
     toast.success('Export started');
   };
 
+  const exportUsersDocuments = useCallback(
+    async (format: 'pdf' | 'doc') => {
+      const limit = 150;
+      let pageNum = 1;
+      let totalP = 1;
+      const all: User[] = [];
+      do {
+        const res = await apiService.getUsers({
+          page: pageNum,
+          limit,
+          search: searchApplied || undefined,
+          role: filterRole || undefined,
+          batch: filterBatch || undefined,
+        });
+        if (!res.success || !res.data) break;
+        const data: any = res.data;
+        const items = Array.isArray(data.items) ? data.items : [];
+        all.push(...items);
+        totalP = data.totalPages || 1;
+        pageNum += 1;
+      } while (pageNum <= totalP && pageNum < 400);
+
+      if (all.length === 0) {
+        throw new Error('No users match the current filters');
+      }
+
+      const headers = ['S.No', 'Name', 'Email', 'Phone', 'Profile %', 'Roles', 'Batches', 'Status'];
+      const rows = all.map((u, i) => [
+        String(i + 1),
+        u.name || '',
+        u.email || '',
+        String((u as any).phone || ''),
+        String(getProfileCompletionPercent(u as any)),
+        (u.roles || []).join(', '),
+        Array.isArray((u as any).batches)
+          ? (u as any).batches.map((x: string) => batchDisplay(x).code).join(', ')
+          : '',
+        String((u as any).status || 'active'),
+      ]);
+      const sub = `Total: ${all.length} · Role: ${filterRole || 'all'} · Batch: ${filterBatch || 'all'} · Search: ${searchApplied || '—'}`;
+      if (format === 'pdf') {
+        exportRowsToPdf('User management', sub, headers, rows, 'admin-users');
+      } else {
+        exportRowsToDoc('User management', sub, headers, rows, 'admin-users');
+      }
+    },
+    [searchApplied, filterRole, filterBatch, batchDisplay]
+  );
+
   const start = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const end = Math.min(page * PAGE_SIZE, total);
-  const batchOptions = useMemo(() => {
-    const set = new Set<string>();
-    users.forEach((u) => {
-      Array.isArray((u as any).batches) && (u as any).batches.forEach((b: string) => set.add(b));
-    });
-    return Array.from(set).sort();
-  }, [users]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -215,7 +303,9 @@ export default function AdminUsersListPage() {
               >
                 <option value="">All Batches</option>
                 {batchOptions.map((b) => (
-                  <option key={b} value={b}>{b}</option>
+                  <option key={b._id} value={b.code}>
+                    {b.name} ({b.code})
+                  </option>
                 ))}
               </select>
             </div>
@@ -234,6 +324,11 @@ export default function AdminUsersListPage() {
             >
               Reset
             </button>
+            <AdminExportButtons
+              disabled={loading}
+              onPdf={() => exportUsersDocuments('pdf')}
+              onDoc={() => exportUsersDocuments('doc')}
+            />
           </div>
         </div>
 
@@ -275,7 +370,9 @@ export default function AdminUsersListPage() {
             >
               <option value="">All Batches</option>
               {batchOptions.map((b) => (
-                <option key={b} value={b}>{b}</option>
+                <option key={b._id} value={b.code}>
+                  {b.name} ({b.code})
+                </option>
               ))}
             </select>
             <button
@@ -296,8 +393,13 @@ export default function AdminUsersListPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Export
+              CSV
             </button>
+            <AdminExportButtons
+              disabled={loading}
+              onPdf={() => exportUsersDocuments('pdf')}
+              onDoc={() => exportUsersDocuments('doc')}
+            />
           </div>
         </div>
 
@@ -394,14 +496,18 @@ export default function AdminUsersListPage() {
                           <td className="px-4 py-2">
                             <div className="flex items-center gap-1 max-w-[160px] overflow-x-auto no-scrollbar">
                               {Array.isArray((u as any).batches) && (u as any).batches.length > 0 ? (
-                                (u as any).batches.map((b: string) => (
-                                  <span
-                                    key={b}
-                                    className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800"
-                                  >
-                                    {b}
-                                  </span>
-                                ))
+                                (u as any).batches.map((b: string) => {
+                                  const { code, title } = batchDisplay(b);
+                                  return (
+                                    <span
+                                      key={`${u._id}-${b}`}
+                                      title={title}
+                                      className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800"
+                                    >
+                                      {code}
+                                    </span>
+                                  );
+                                })
                               ) : (
                                 <span className="text-gray-400">—</span>
                               )}

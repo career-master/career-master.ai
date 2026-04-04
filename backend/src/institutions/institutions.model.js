@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const INSTITUTION_TYPES = ['school', 'college', 'coaching', 'training_institute'];
+const INSTITUTION_TYPES = ['school', 'college', 'coaching', 'training_institute', 'university'];
 
 const institutionSchema = new mongoose.Schema(
   {

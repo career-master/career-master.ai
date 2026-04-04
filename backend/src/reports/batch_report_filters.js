@@ -8,18 +8,18 @@ const User = require('../user/users.model');
  */
 async function resolveUserIdsForBatchScope(batchScope, batchCode) {
   const scope = batchScope && String(batchScope).trim() ? String(batchScope).trim() : 'all';
+  const code = batchCode && typeof batchCode === 'string' && batchCode.trim() ? batchCode.trim() : '';
 
-  if (scope === 'all' && !batchCode) {
+  // "all" must never filter by batch; ignore batchCode so leftover UI values do not hide students.
+  if (scope === 'all') {
     return null;
   }
 
-  if (batchCode && typeof batchCode === 'string' && batchCode.trim() && scope !== 'non_batch') {
-    const code = batchCode.trim();
-    const users = await User.find({ batches: code }).select('_id').lean();
-    return users.map((u) => u._id);
-  }
-
   if (scope === 'batch_only') {
+    if (code) {
+      const users = await User.find({ batches: code }).select('_id').lean();
+      return users.map((u) => u._id);
+    }
     const users = await User.find({
       batches: { $exists: true, $ne: [] },
     })
@@ -50,27 +50,28 @@ function userDocBatchMatchStages(batchScope, batchCode) {
   const scope = batchScope && String(batchScope).trim() ? String(batchScope).trim() : 'all';
   const code = batchCode && String(batchCode).trim() ? String(batchCode).trim() : '';
 
-  if (scope === 'all' && !code) {
+  if (scope === 'all') {
     return null;
   }
 
-  const stages = [];
-
-  if (code && scope !== 'non_batch') {
-    stages.push({ $match: { 'user.batches': code } });
-  } else if (scope === 'batch_only' && !code) {
-    stages.push({ $match: { 'user.batches.0': { $exists: true } } });
+  if (scope === 'batch_only') {
+    if (code) {
+      return [{ $match: { 'user.batches': code } }];
+    }
+    return [{ $match: { 'user.batches.0': { $exists: true } } }];
   }
 
   if (scope === 'non_batch') {
-    stages.push({
-      $match: {
-        $or: [{ 'user.batches': { $exists: false } }, { 'user.batches': { $size: 0 } }],
+    return [
+      {
+        $match: {
+          $or: [{ 'user.batches': { $exists: false } }, { 'user.batches': { $size: 0 } }],
+        },
       },
-    });
+    ];
   }
 
-  return stages.length ? stages : null;
+  return null;
 }
 
 module.exports = {

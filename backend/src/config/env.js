@@ -62,7 +62,19 @@ const env = {
 
   // Google OAuth Configuration
   // Get credentials from: https://console.cloud.google.com/apis/credentials
-  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || ''
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+
+  /** Optional HTTPS URL to a background image (JPG/PNG) for subject certificates */
+  CERTIFICATE_BACKGROUND_URL: process.env.CERTIFICATE_BACKGROUND_URL || '',
+  /**
+   * Optional absolute path to a landscape certificate template image (JPG/PNG).
+   * If unset, bundled `default-certificate-template` is used when no CERTIFICATE_BACKGROUND_URL.
+   */
+  CERTIFICATE_ACHIEVEMENT_TEMPLATE_PATH: process.env.CERTIFICATE_ACHIEVEMENT_TEMPLATE_PATH || '',
+  /**
+   * Optional HTTPS URL to the same achievement template (e.g. Cloudinary). Takes precedence over PATH then bundled file.
+   */
+  CERTIFICATE_ACHIEVEMENT_TEMPLATE_URL: process.env.CERTIFICATE_ACHIEVEMENT_TEMPLATE_URL || ''
 };
 
 // Validate required environment variables in production

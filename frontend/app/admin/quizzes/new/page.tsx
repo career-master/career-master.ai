@@ -139,6 +139,27 @@ export default function AdminCreateQuizPage() {
   }, [subjects, selectedDomain, categoriesFromApi]);
 
   const filteredSubjects = useMemo(() => {
+    const sameCategory = (subjectCategory?: string, selected?: string) => {
+      if (!subjectCategory || !selected) return false;
+      return subjectCategory.trim().toLowerCase() === selected.trim().toLowerCase();
+    };
+
+    /** DB may use "PROGRAMMING LANG" vs dropdown "PROGRAMMING LANGUAGES" */
+    const isProgrammingCategoryLabel = (cat: string) => {
+      const x = cat.trim().toLowerCase();
+      return x.includes('programming') && x.includes('lang');
+    };
+
+    const programmingSlotMatches = (subjectCategory?: string, selected?: string) => {
+      if (!subjectCategory || !selected) return false;
+      if (sameCategory(subjectCategory, selected)) return true;
+      const sel = selected.trim().toLowerCase();
+      if (sel.includes('programming') && sel.includes('lang') && isProgrammingCategoryLabel(subjectCategory)) {
+        return true;
+      }
+      return false;
+    };
+
     let list = subjects;
 
     // Always respect selected Domain first
@@ -152,33 +173,25 @@ export default function AdminCreateQuizPage() {
 
     const CANONICAL_PROGRAMMING = 'PROGRAMMING LANGUAGES';
 
-    // Special rule: For Technology → PROGRAMMING LANGUAGES, ensure the
-    // well‑known language subjects (C, C++, Java, etc.) always appear,
-    // even if their category text in the DB is slightly different.
-    if (
+    const isTechProgrammingDropdown =
       selectedDomain &&
       selectedDomain.trim().toLowerCase() === 'technology' &&
-      selectedCategory.trim().toUpperCase() === CANONICAL_PROGRAMMING
-    ) {
-      const PROGRAMMING_TITLES = new Set(
-        ['C', 'C++', 'JAVA', 'PYTHON', 'PHP', 'C#', 'RUBY', 'GO', 'RUST'].map((t) =>
-          t.toUpperCase()
-        )
-      );
+      selectedCategory.trim().toUpperCase() === CANONICAL_PROGRAMMING;
 
-      return list.filter((s: any) =>
-        PROGRAMMING_TITLES.has(String(s.title || '').trim().toUpperCase())
+    if (isTechProgrammingDropdown) {
+      // Show every subject in this domain+category (including ones you add in Subjects).
+      // Also keep legacy rows whose category string drifted but title is a known language.
+      const LEGACY_PROGRAMMING_TITLES = new Set(
+        ['C', 'C++', 'JAVA', 'PYTHON', 'PHP', 'C#', 'RUBY', 'GO', 'RUST'].map((t) => t.toUpperCase())
       );
+      list = list.filter(
+        (s: any) =>
+          programmingSlotMatches(s.category, selectedCategory) ||
+          LEGACY_PROGRAMMING_TITLES.has(String(s.title || '').trim().toUpperCase())
+      );
+    } else {
+      list = list.filter((s: any) => sameCategory(s.category, selectedCategory));
     }
-
-    // Default: When a Category is chosen, only show subjects whose category
-    // matches it (case‑insensitive).
-    const sameCategory = (subjectCategory?: string, selected?: string) => {
-      if (!subjectCategory || !selected) return false;
-      return subjectCategory.trim().toLowerCase() === selected.trim().toLowerCase();
-    };
-
-    list = list.filter((s: any) => sameCategory(s.category, selectedCategory));
 
     // De‑duplicate by Subject title within a Domain+Category so that
     // admins do not see the same name (e.g. "C") multiple times, even

@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import { toast } from 'react-hot-toast';
+import AdminExportButtons from '@/components/AdminExportButtons';
+import { exportRowsToDoc, exportRowsToPdf } from '@/lib/adminExport';
 
 export default function AdminBatchesListPage() {
   const { user, isAuthenticated } = useAuth();
@@ -76,20 +78,79 @@ export default function AdminBatchesListPage() {
     }
   };
 
+  const exportBatchesDocuments = useCallback(
+    async (format: 'pdf' | 'doc') => {
+      const limit = 150;
+      let p = 1;
+      let tp = 1;
+      const all: any[] = [];
+      do {
+        const res = await apiService.getBatches(p, limit);
+        if (!res.success || !res.data) break;
+        const data: any = res.data;
+        const items = Array.isArray(data.items) ? data.items : [];
+        all.push(...items);
+        tp = data.totalPages || 1;
+        p += 1;
+      } while (p <= tp && p < 200);
+
+      let list = all;
+      if (search.trim()) {
+        const q = search.trim().toLowerCase();
+        list = all.filter(
+          (b: any) =>
+            String(b.name || '')
+              .toLowerCase()
+              .includes(q) || String(b.code || '')
+              .toLowerCase()
+              .includes(q)
+        );
+      }
+
+      if (list.length === 0) {
+        throw new Error('No batches to export (adjust search if needed)');
+      }
+
+      const headers = ['S.No', 'Batch name', 'Code', 'Description', 'Status', 'Created'];
+      const rows = list.map((batch: any, index: number) => [
+        String(index + 1),
+        batch.name || '—',
+        batch.code || '—',
+        (batch.description || '—').replace(/\s+/g, ' ').slice(0, 500),
+        batch.isActive ? 'Active' : 'Inactive',
+        batch.createdAt ? new Date(batch.createdAt).toLocaleDateString() : '—',
+      ]);
+      const sub = `Rows: ${list.length}${search.trim() ? ` · Search: "${search.trim()}"` : ''}`;
+      if (format === 'pdf') {
+        exportRowsToPdf('Batch management', sub, headers, rows, 'admin-batches');
+      } else {
+        exportRowsToDoc('Batch management', sub, headers, rows, 'admin-batches');
+      }
+    },
+    [search]
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Batch Management</h1>
             <p className="text-gray-600 text-sm">View and manage all batches</p>
           </div>
-          <Link
-            href="/admin/batches/new"
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
-          >
-            + Add New Batch
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <AdminExportButtons
+              disabled={loading}
+              onPdf={() => exportBatchesDocuments('pdf')}
+              onDoc={() => exportBatchesDocuments('doc')}
+            />
+            <Link
+              href="/admin/batches/new"
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+            >
+              + Add New Batch
+            </Link>
+          </div>
         </div>
 
         {error && (

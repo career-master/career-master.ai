@@ -187,26 +187,35 @@ export default function SubjectDetailPage() {
             )}
               </div>
               
-              {/* Progress Bar */}
-              {subjectProgress && subjectProgress.topics && Array.isArray(subjectProgress.topics) && subjectProgress.topics.length > 0 && (
-                <div className="mt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Overall Progress</span>
-                    <span className="text-sm font-semibold text-purple-600">
-                      {subjectProgress.completedTopics || 0}/{subjectProgress.totalTopics || 0} topics completed
-                    </span>
+              {/* Progress: quiz-based when the subject has assigned quizzes (matches certificates); else topic-based */}
+              {subjectProgress &&
+                ((subjectProgress.assignedQuizCount ?? 0) > 0 || (subjectProgress.totalTopics ?? 0) > 0) && (
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Overall Progress</span>
+                      <span className="text-sm font-semibold text-purple-600">
+                        {(subjectProgress.assignedQuizCount ?? 0) > 0
+                          ? `${subjectProgress.passedQuizCount ?? 0}/${subjectProgress.assignedQuizCount} quizzes passed`
+                          : `${subjectProgress.completedTopics || 0}/${subjectProgress.totalTopics || 0} topics completed`}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-purple-500 to-blue-500 h-full rounded-full transition-all duration-500 ease-out"
+                        style={{
+                          width: `${Math.min(100, subjectProgress.progressPercentage || 0)}%`,
+                          minWidth: '4px',
+                        }}
+                      />
+                    </div>
+                    {(subjectProgress.assignedQuizCount ?? 0) > 0 ? (
+                      <p className="mt-1.5 text-xs text-gray-500">
+                        Bar = quizzes with a passing attempt out of all quizzes assigned to this subject (empty topics do not
+                        count). A certificate still needs every quiz passed and your admin&apos;s minimum average.
+                      </p>
+                    ) : null}
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                    <div
-                      className="bg-gradient-to-r from-purple-500 to-blue-500 h-full rounded-full transition-all duration-500 ease-out"
-                      style={{
-                        width: `${subjectProgress.progressPercentage || 0}%`,
-                        minWidth: '4px'
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
+                )}
             </div>
           </div>
         </div>

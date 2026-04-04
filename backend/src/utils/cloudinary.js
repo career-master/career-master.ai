@@ -86,9 +86,72 @@ const deleteImage = async (publicId) => {
   }
 };
 
+/**
+ * Upload PDF buffer as raw resource to Cloudinary
+ * @param {Buffer} buffer
+ * @param {Object} options
+ * @returns {Promise<{ url: string, publicId: string }>}
+ */
+const uploadPdfBuffer = async (buffer, options = {}) => {
+  try {
+    if (!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) {
+      throw new ErrorHandler(500, 'Cloudinary configuration is missing.');
+    }
+    if (!Buffer.isBuffer(buffer)) {
+      throw new ErrorHandler(400, 'Expected PDF buffer.');
+    }
+
+    const folder = options.folder || 'career-master/certificates';
+
+    const result = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder,
+          resource_type: 'raw',
+          format: 'pdf',
+          use_filename: true,
+          unique_filename: true
+        },
+        (err, uploadResult) => {
+          if (err) reject(err);
+          else resolve(uploadResult);
+        }
+      );
+      stream.end(buffer);
+    });
+
+    return {
+      url: result.secure_url,
+      publicId: result.public_id
+    };
+  } catch (error) {
+    if (error instanceof ErrorHandler) throw error;
+    throw new ErrorHandler(500, `Error uploading PDF to Cloudinary: ${error.message}`);
+  }
+};
+
+/**
+ * Delete raw PDF from Cloudinary
+ * @param {string} publicId
+ */
+const deleteRawAsset = async (publicId) => {
+  try {
+    if (!publicId) return;
+    if (!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) {
+      throw new ErrorHandler(500, 'Cloudinary configuration is missing.');
+    }
+    await cloudinary.uploader.destroy(publicId, { resource_type: 'raw' });
+  } catch (error) {
+    if (error instanceof ErrorHandler) throw error;
+    throw new ErrorHandler(500, `Error deleting asset from Cloudinary: ${error.message}`);
+  }
+};
+
 module.exports = {
   uploadImage,
+  uploadPdfBuffer,
   deleteImage,
+  deleteRawAsset,
   cloudinary
 };
 

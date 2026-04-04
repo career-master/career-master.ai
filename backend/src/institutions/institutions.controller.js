@@ -37,7 +37,23 @@ class InstitutionsController {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
     const search = req.query.search || '';
-    const result = await InstitutionsService.list({ page, limit, search });
+    const institutionType = req.query.institutionType || '';
+    const location = req.query.location || '';
+    const minStudentStrength = req.query.minStudentStrength;
+    const maxStudentStrength = req.query.maxStudentStrength;
+    const sortBy = req.query.sortBy || 'createdAt';
+    const sortOrder = req.query.sortOrder || 'desc';
+    const result = await InstitutionsService.list({
+      page,
+      limit,
+      search,
+      institutionType,
+      location,
+      minStudentStrength,
+      maxStudentStrength,
+      sortBy,
+      sortOrder
+    });
     res.status(200).json({
       success: true,
       data: result

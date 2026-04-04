@@ -55,7 +55,20 @@ interface DashboardStats {
 function SubjectSuggestions({ user }: { user: any }) {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [subjectProgress, setSubjectProgress] = useState<Record<string, { progressPercentage: number; completedTopics: number; totalTopics: number }>>({});
+  const [subjectProgress, setSubjectProgress] = useState<
+    Record<
+      string,
+      {
+        progressPercentage: number;
+        completedTopics: number;
+        totalTopics: number;
+        assignedQuizCount?: number;
+        passedQuizCount?: number;
+        attemptedQuizCount?: number;
+        progressMode?: 'quizzes' | 'topics';
+      }
+    >
+  >({});
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState<any>(null);
   const router = useRouter();
@@ -124,14 +137,37 @@ function SubjectSuggestions({ user }: { user: any }) {
               apiService.getSubjectProgress(s._id).then((r) => ({ subjectId: s._id, res: r }))
             )
           );
-          const progressMap: Record<string, { progressPercentage: number; completedTopics: number; totalTopics: number }> = {};
+          const progressMap: Record<
+            string,
+            {
+              progressPercentage: number;
+              completedTopics: number;
+              totalTopics: number;
+              assignedQuizCount?: number;
+              passedQuizCount?: number;
+              attemptedQuizCount?: number;
+              progressMode?: 'quizzes' | 'topics';
+            }
+          > = {};
           progressRes.forEach(({ subjectId, res }) => {
             if (res.success && res.data && typeof res.data === 'object') {
-              const d = res.data as { progressPercentage?: number; completedTopics?: number; totalTopics?: number };
+              const d = res.data as {
+                progressPercentage?: number;
+                completedTopics?: number;
+                totalTopics?: number;
+                assignedQuizCount?: number;
+                passedQuizCount?: number;
+                attemptedQuizCount?: number;
+                progressMode?: 'quizzes' | 'topics';
+              };
               progressMap[subjectId] = {
                 progressPercentage: typeof d.progressPercentage === 'number' ? d.progressPercentage : 0,
                 completedTopics: typeof d.completedTopics === 'number' ? d.completedTopics : 0,
                 totalTopics: typeof d.totalTopics === 'number' ? d.totalTopics : 0,
+                assignedQuizCount: typeof d.assignedQuizCount === 'number' ? d.assignedQuizCount : undefined,
+                passedQuizCount: typeof d.passedQuizCount === 'number' ? d.passedQuizCount : undefined,
+                attemptedQuizCount: typeof d.attemptedQuizCount === 'number' ? d.attemptedQuizCount : undefined,
+                progressMode: d.progressMode,
               };
             }
           });
@@ -259,12 +295,18 @@ function SubjectSuggestions({ user }: { user: any }) {
                   const pct = progress ? progress.progressPercentage : 0;
                   const total = progress?.totalTopics ?? 0;
                   const completed = progress?.completedTopics ?? 0;
+                  const aq = progress?.assignedQuizCount ?? 0;
+                  const passed = progress?.passedQuizCount ?? 0;
                   return (
                     <div className="mt-3">
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-xs font-medium text-gray-600">Progress</span>
                         <span className="text-xs font-semibold text-gray-900">
-                          {total > 0 ? `${completed} / ${total} topics` : '—'}
+                          {aq > 0
+                            ? `${passed} / ${aq} quizzes`
+                            : total > 0
+                              ? `${completed} / ${total} topics`
+                              : '—'}
                         </span>
                       </div>
                       <div className="h-2 bg-gray-200 rounded-full overflow-hidden">

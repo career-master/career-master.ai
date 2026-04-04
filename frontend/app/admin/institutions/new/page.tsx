@@ -7,10 +7,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 
-type InstitutionType = 'school' | 'college' | 'coaching' | 'training_institute';
+type InstitutionType = 'school' | 'college' | 'coaching' | 'training_institute' | 'university';
 
 const TYPE_OPTIONS: { value: InstitutionType; label: string }[] = [
   { value: 'school', label: 'School' },
+  { value: 'university', label: 'University' },
   { value: 'college', label: 'College' },
   { value: 'coaching', label: 'Coaching' },
   { value: 'training_institute', label: 'Training Institute' },
@@ -44,48 +45,69 @@ function emptyForm() {
 }
 
 function buildPayload(form: ReturnType<typeof emptyForm>) {
-  const p: Record<string, unknown> = {
+  const year = Number(form.yearEstablished);
+  const strength = Number(form.studentStrength);
+  return {
     institutionName: form.institutionName.trim(),
     institutionType: form.institutionType,
+    yearEstablished: Number.isFinite(year) ? year : NaN,
+    affiliationBoard: form.affiliationBoard.trim(),
+    studentStrength: Number.isFinite(strength) ? strength : NaN,
+    logoUrl: form.logoUrl.trim(),
+    chairmanName: form.chairmanName.trim(),
+    principalName: form.principalName.trim(),
+    adminName: form.adminName.trim(),
+    adminEmail: form.adminEmail.trim().toLowerCase(),
+    adminMobile: form.adminMobile.trim(),
+    officialEmail: form.officialEmail.trim().toLowerCase(),
+    contactMobile1: form.contactMobile1.trim(),
+    contactMobile2: form.contactMobile2.trim(),
+    addressLine1: form.addressLine1.trim(),
+    addressLine2: form.addressLine2.trim(),
+    city: form.city.trim(),
+    mandal: form.mandal.trim(),
+    district: form.district.trim(),
+    state: form.state.trim(),
+    pinCode: form.pinCode.trim(),
+    googleMapLocation: form.googleMapLocation.trim(),
   };
-  const s = (v: string) => {
-    const t = v.trim();
-    return t === '' ? undefined : t;
-  };
-  const n = (v: string) => {
-    if (v.trim() === '') return undefined;
-    const x = Number(v);
-    return Number.isFinite(x) ? x : undefined;
-  };
-
-  p.yearEstablished = n(form.yearEstablished);
-  p.affiliationBoard = s(form.affiliationBoard);
-  p.studentStrength = n(form.studentStrength);
-  p.logoUrl = s(form.logoUrl);
-  p.chairmanName = s(form.chairmanName);
-  p.principalName = s(form.principalName);
-  p.adminName = s(form.adminName);
-  p.adminEmail = s(form.adminEmail);
-  p.adminMobile = s(form.adminMobile);
-  p.officialEmail = s(form.officialEmail);
-  p.contactMobile1 = s(form.contactMobile1);
-  p.contactMobile2 = s(form.contactMobile2);
-  p.addressLine1 = s(form.addressLine1);
-  p.addressLine2 = s(form.addressLine2);
-  p.city = s(form.city);
-  p.mandal = s(form.mandal);
-  p.district = s(form.district);
-  p.state = s(form.state);
-  p.pinCode = s(form.pinCode);
-  p.googleMapLocation = s(form.googleMapLocation);
-
-  return JSON.parse(JSON.stringify(p));
 }
 
+function validateInstitutionPayload(p: ReturnType<typeof buildPayload>): string | null {
+  if (!p.institutionName || p.institutionName.length < 2) return 'Institution name is required (min 2 characters).';
+  if (!Number.isFinite(p.yearEstablished) || p.yearEstablished < 1800 || p.yearEstablished > 2100) {
+    return 'Year established is required (1800–2100).';
+  }
+  if (!p.affiliationBoard) return 'Affiliation / board is required.';
+  if (!Number.isFinite(p.studentStrength) || p.studentStrength < 0) return 'Student strength is required (0 or more).';
+  if (!p.logoUrl || !/^https?:\/\//i.test(p.logoUrl)) return 'Logo is required (upload an image or paste a valid http(s) URL).';
+  if (!p.chairmanName) return 'Chairman name is required.';
+  if (!p.principalName) return 'Principal / head name is required.';
+  if (!p.adminName) return 'Admin name is required.';
+  if (!p.adminEmail || !/^\S+@\S+\.\S+$/.test(p.adminEmail)) return 'Valid admin email is required.';
+  if (!p.adminMobile) return 'Admin mobile is required.';
+  if (!p.officialEmail || !/^\S+@\S+\.\S+$/.test(p.officialEmail)) return 'Valid official email is required.';
+  if (!p.contactMobile1) return 'Contact mobile 1 is required.';
+  if (!p.contactMobile2) return 'Contact mobile 2 is required.';
+  if (!p.addressLine1) return 'Address line 1 is required.';
+  if (!p.addressLine2) return 'Address line 2 is required.';
+  if (!p.city) return 'City is required.';
+  if (!p.mandal) return 'Mandal is required.';
+  if (!p.district) return 'District is required.';
+  if (!p.state) return 'State is required.';
+  if (!p.pinCode) return 'PIN code is required.';
+  if (!p.googleMapLocation) return 'Google Maps link is required.';
+  return null;
+}
+
+const VALID_TYPES: InstitutionType[] = ['school', 'university', 'college', 'coaching', 'training_institute'];
+
 function fillFormFromApi(row: any) {
+  const t = row.institutionType as string;
+  const institutionType: InstitutionType = VALID_TYPES.includes(t as InstitutionType) ? (t as InstitutionType) : 'school';
   return {
     institutionName: row.institutionName || '',
-    institutionType: (row.institutionType || 'school') as InstitutionType,
+    institutionType,
     yearEstablished: row.yearEstablished != null ? String(row.yearEstablished) : '',
     affiliationBoard: row.affiliationBoard || '',
     studentStrength: row.studentStrength != null ? String(row.studentStrength) : '',
@@ -119,6 +141,7 @@ export default function AdminInstitutionNewPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoFileLabel, setLogoFileLabel] = useState('');
   const [error, setError] = useState('');
 
   const set = (key: keyof ReturnType<typeof emptyForm>, value: string) =>
@@ -157,6 +180,7 @@ export default function AdminInstitutionNewPage() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    setLogoFileLabel(file.name);
     try {
       setUploadingLogo(true);
       const res = await apiService.uploadImage(file, 'career-master/institution-logos');
@@ -167,6 +191,7 @@ export default function AdminInstitutionNewPage() {
         throw new Error('Upload did not return a URL');
       }
     } catch (err: any) {
+      setLogoFileLabel('');
       toast.error(err.message || 'Logo upload failed');
     } finally {
       setUploadingLogo(false);
@@ -176,13 +201,14 @@ export default function AdminInstitutionNewPage() {
   const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
     setError('');
-    if (!form.institutionName.trim()) {
-      setError('Institution name is required');
+    const payload = buildPayload(form);
+    const validationError = validateInstitutionPayload(payload);
+    if (validationError) {
+      setError(validationError);
       return;
     }
     setSaving(true);
     try {
-      const payload = buildPayload(form);
       const res = institutionId
         ? await apiService.updateInstitution(institutionId, payload)
         : await apiService.createInstitution(payload);
@@ -237,7 +263,9 @@ export default function AdminInstitutionNewPage() {
           <h2 className="mb-4 text-lg font-semibold text-gray-900">A) Institution basic info</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <label className="text-sm font-medium text-gray-700">Institution name *</label>
+              <label className="text-sm font-medium text-gray-700">
+                Institution name <span className="text-red-500">*</span>
+              </label>
               <input
                 className={inputCls}
                 value={form.institutionName}
@@ -246,11 +274,14 @@ export default function AdminInstitutionNewPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Institution type</label>
+              <label className="text-sm font-medium text-gray-700">
+                Institution type <span className="text-red-500">*</span>
+              </label>
               <select
                 className={inputCls}
                 value={form.institutionType}
                 onChange={(e) => set('institutionType', e.target.value as InstitutionType)}
+                required
               >
                 {TYPE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -260,7 +291,9 @@ export default function AdminInstitutionNewPage() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Year established</label>
+              <label className="text-sm font-medium text-gray-700">
+                Year established <span className="text-red-500">*</span>
+              </label>
               <input
                 type="number"
                 className={inputCls}
@@ -269,56 +302,74 @@ export default function AdminInstitutionNewPage() {
                 value={form.yearEstablished}
                 onChange={(e) => set('yearEstablished', e.target.value)}
                 placeholder="e.g. 1995"
+                required
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Affiliation / board</label>
+              <label className="text-sm font-medium text-gray-700">
+                Affiliation / board <span className="text-red-500">*</span>
+              </label>
               <input
                 className={inputCls}
                 value={form.affiliationBoard}
                 onChange={(e) => set('affiliationBoard', e.target.value)}
-                placeholder="CBSE, ICSE, State Board, University…"
+                placeholder="CBSE, ICSE, State Board…"
+                required
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Student strength</label>
+              <label className="text-sm font-medium text-gray-700">
+                Student strength <span className="text-red-500">*</span>
+              </label>
               <input
                 type="number"
                 min={0}
                 className={inputCls}
                 value={form.studentStrength}
                 onChange={(e) => set('studentStrength', e.target.value)}
+                required
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="text-sm font-medium text-gray-700">Logo</label>
-              <div className="mt-2 flex flex-wrap items-end gap-4">
+              <label className="text-sm font-medium text-gray-700">
+                Upload logo <span className="text-red-500">*</span>
+              </label>
+              <div className="mt-2 flex flex-wrap items-center gap-4">
                 {form.logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={form.logoUrl}
                     alt="Logo preview"
-                    className="h-20 w-20 rounded-lg border border-gray-200 object-contain"
+                    className="h-20 w-20 shrink-0 rounded-lg border border-gray-200 object-contain"
                   />
                 ) : null}
-                <div>
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+                  <label
+                    htmlFor="inst-logo-input"
+                    className="inline-flex shrink-0 cursor-pointer items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50"
+                  >
+                    Browse
+                  </label>
                   <input
+                    id="inst-logo-input"
                     type="file"
                     accept="image/*"
-                    className="text-sm text-gray-700"
+                    className="sr-only"
                     disabled={uploadingLogo}
                     onChange={handleLogoFile}
                   />
-                  <p className="mt-1 text-xs text-gray-500">
-                    {uploadingLogo ? 'Uploading…' : 'Or paste a URL below.'}
-                  </p>
+                  <span className="min-w-0 truncate text-sm text-gray-600" title={logoFileLabel || undefined}>
+                    {uploadingLogo ? 'Uploading…' : logoFileLabel || 'No file selected'}
+                  </span>
                 </div>
               </div>
+              <p className="mt-2 text-xs text-gray-500">Or paste image URL:</p>
               <input
-                className={`${inputCls} mt-2`}
+                className={`${inputCls} mt-1`}
                 value={form.logoUrl}
                 onChange={(e) => set('logoUrl', e.target.value)}
                 placeholder="https://…"
+                required
               />
             </div>
           </div>
@@ -328,12 +379,26 @@ export default function AdminInstitutionNewPage() {
           <h2 className="mb-4 text-lg font-semibold text-gray-900">B) Leadership</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="text-sm font-medium text-gray-700">Chairman name</label>
-              <input className={inputCls} value={form.chairmanName} onChange={(e) => set('chairmanName', e.target.value)} />
+              <label className="text-sm font-medium text-gray-700">
+                Chairman name <span className="text-red-500">*</span>
+              </label>
+              <input
+                className={inputCls}
+                value={form.chairmanName}
+                onChange={(e) => set('chairmanName', e.target.value)}
+                required
+              />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Principal / head name</label>
-              <input className={inputCls} value={form.principalName} onChange={(e) => set('principalName', e.target.value)} />
+              <label className="text-sm font-medium text-gray-700">
+                Principal / head name <span className="text-red-500">*</span>
+              </label>
+              <input
+                className={inputCls}
+                value={form.principalName}
+                onChange={(e) => set('principalName', e.target.value)}
+                required
+              />
             </div>
           </div>
         </section>
@@ -342,21 +407,28 @@ export default function AdminInstitutionNewPage() {
           <h2 className="mb-4 text-lg font-semibold text-gray-900">C) Admin details</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="text-sm font-medium text-gray-700">Admin name</label>
-              <input className={inputCls} value={form.adminName} onChange={(e) => set('adminName', e.target.value)} />
+              <label className="text-sm font-medium text-gray-700">
+                Admin name <span className="text-red-500">*</span>
+              </label>
+              <input className={inputCls} value={form.adminName} onChange={(e) => set('adminName', e.target.value)} required />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Admin email</label>
+              <label className="text-sm font-medium text-gray-700">
+                Admin email <span className="text-red-500">*</span>
+              </label>
               <input
                 type="email"
                 className={inputCls}
                 value={form.adminEmail}
                 onChange={(e) => set('adminEmail', e.target.value)}
+                required
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Admin mobile</label>
-              <input className={inputCls} value={form.adminMobile} onChange={(e) => set('adminMobile', e.target.value)} />
+              <label className="text-sm font-medium text-gray-700">
+                Admin mobile <span className="text-red-500">*</span>
+              </label>
+              <input className={inputCls} value={form.adminMobile} onChange={(e) => set('adminMobile', e.target.value)} required />
             </div>
           </div>
         </section>
@@ -365,21 +437,38 @@ export default function AdminInstitutionNewPage() {
           <h2 className="mb-4 text-lg font-semibold text-gray-900">D) Contact details</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="text-sm font-medium text-gray-700">Official email</label>
+              <label className="text-sm font-medium text-gray-700">
+                Official email <span className="text-red-500">*</span>
+              </label>
               <input
                 type="email"
                 className={inputCls}
                 value={form.officialEmail}
                 onChange={(e) => set('officialEmail', e.target.value)}
+                required
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Contact mobile 1</label>
-              <input className={inputCls} value={form.contactMobile1} onChange={(e) => set('contactMobile1', e.target.value)} />
+              <label className="text-sm font-medium text-gray-700">
+                Contact mobile 1 <span className="text-red-500">*</span>
+              </label>
+              <input
+                className={inputCls}
+                value={form.contactMobile1}
+                onChange={(e) => set('contactMobile1', e.target.value)}
+                required
+              />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Contact mobile 2</label>
-              <input className={inputCls} value={form.contactMobile2} onChange={(e) => set('contactMobile2', e.target.value)} />
+              <label className="text-sm font-medium text-gray-700">
+                Contact mobile 2 <span className="text-red-500">*</span>
+              </label>
+              <input
+                className={inputCls}
+                value={form.contactMobile2}
+                onChange={(e) => set('contactMobile2', e.target.value)}
+                required
+              />
             </div>
           </div>
         </section>
@@ -388,40 +477,67 @@ export default function AdminInstitutionNewPage() {
           <h2 className="mb-4 text-lg font-semibold text-gray-900">E) Address</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <label className="text-sm font-medium text-gray-700">Address line 1</label>
-              <input className={inputCls} value={form.addressLine1} onChange={(e) => set('addressLine1', e.target.value)} />
+              <label className="text-sm font-medium text-gray-700">
+                Address line 1 <span className="text-red-500">*</span>
+              </label>
+              <input
+                className={inputCls}
+                value={form.addressLine1}
+                onChange={(e) => set('addressLine1', e.target.value)}
+                required
+              />
             </div>
             <div className="sm:col-span-2">
-              <label className="text-sm font-medium text-gray-700">Address line 2</label>
-              <input className={inputCls} value={form.addressLine2} onChange={(e) => set('addressLine2', e.target.value)} />
+              <label className="text-sm font-medium text-gray-700">
+                Address line 2 <span className="text-red-500">*</span>
+              </label>
+              <input
+                className={inputCls}
+                value={form.addressLine2}
+                onChange={(e) => set('addressLine2', e.target.value)}
+                required
+              />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Village / city</label>
-              <input className={inputCls} value={form.city} onChange={(e) => set('city', e.target.value)} />
+              <label className="text-sm font-medium text-gray-700">
+                Village / city <span className="text-red-500">*</span>
+              </label>
+              <input className={inputCls} value={form.city} onChange={(e) => set('city', e.target.value)} required />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Mandal</label>
-              <input className={inputCls} value={form.mandal} onChange={(e) => set('mandal', e.target.value)} />
+              <label className="text-sm font-medium text-gray-700">
+                Mandal <span className="text-red-500">*</span>
+              </label>
+              <input className={inputCls} value={form.mandal} onChange={(e) => set('mandal', e.target.value)} required />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">District</label>
-              <input className={inputCls} value={form.district} onChange={(e) => set('district', e.target.value)} />
+              <label className="text-sm font-medium text-gray-700">
+                District <span className="text-red-500">*</span>
+              </label>
+              <input className={inputCls} value={form.district} onChange={(e) => set('district', e.target.value)} required />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">State</label>
-              <input className={inputCls} value={form.state} onChange={(e) => set('state', e.target.value)} />
+              <label className="text-sm font-medium text-gray-700">
+                State <span className="text-red-500">*</span>
+              </label>
+              <input className={inputCls} value={form.state} onChange={(e) => set('state', e.target.value)} required />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">PIN code</label>
-              <input className={inputCls} value={form.pinCode} onChange={(e) => set('pinCode', e.target.value)} />
+              <label className="text-sm font-medium text-gray-700">
+                PIN code <span className="text-red-500">*</span>
+              </label>
+              <input className={inputCls} value={form.pinCode} onChange={(e) => set('pinCode', e.target.value)} required />
             </div>
             <div className="sm:col-span-2">
-              <label className="text-sm font-medium text-gray-700">Google Maps link</label>
+              <label className="text-sm font-medium text-gray-700">
+                Google Maps link <span className="text-red-500">*</span>
+              </label>
               <input
                 className={inputCls}
                 value={form.googleMapLocation}
                 onChange={(e) => set('googleMapLocation', e.target.value)}
                 placeholder="https://maps.google.com/…"
+                required
               />
             </div>
           </div>

@@ -87,13 +87,29 @@ class InstitutionsService {
     return doc;
   }
 
-  static async list({ page = 1, limit = 10, search = '' } = {}) {
+  static async list({
+    page = 1,
+    limit = 10,
+    search = '',
+    institutionType,
+    location,
+    minStudentStrength,
+    maxStudentStrength,
+    sortBy,
+    sortOrder
+  } = {}) {
     const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), 100);
     const safePage = Math.max(Number(page) || 1, 1);
     return InstitutionsRepository.listPaginated({
       page: safePage,
       limit: safeLimit,
-      search: typeof search === 'string' ? search : ''
+      search: typeof search === 'string' ? search : '',
+      institutionType: typeof institutionType === 'string' && institutionType.trim() ? institutionType.trim() : undefined,
+      location: typeof location === 'string' ? location : '',
+      minStudentStrength,
+      maxStudentStrength,
+      sortBy: ['createdAt', 'institutionName', 'studentStrength'].includes(sortBy) ? sortBy : 'createdAt',
+      sortOrder: sortOrder === 'asc' ? 'asc' : 'desc'
     });
   }
 }

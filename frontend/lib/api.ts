@@ -786,12 +786,30 @@ class ApiService {
   }
 
   // Institutions (admin)
-  async getInstitutions(page = 1, limit = 10, search = ''): Promise<ApiResponse> {
+  async getInstitutions(
+    page = 1,
+    limit = 10,
+    search = '',
+    opts?: {
+      institutionType?: string;
+      location?: string;
+      minStudentStrength?: string;
+      maxStudentStrength?: string;
+      sortBy?: 'createdAt' | 'institutionName' | 'studentStrength';
+      sortOrder?: 'asc' | 'desc';
+    }
+  ): Promise<ApiResponse> {
     const params = new URLSearchParams({
       page: String(page),
       limit: String(limit),
     });
     if (search.trim()) params.set('search', search.trim());
+    if (opts?.institutionType?.trim()) params.set('institutionType', opts.institutionType.trim());
+    if (opts?.location?.trim()) params.set('location', opts.location.trim());
+    if (opts?.minStudentStrength?.trim()) params.set('minStudentStrength', opts.minStudentStrength.trim());
+    if (opts?.maxStudentStrength?.trim()) params.set('maxStudentStrength', opts.maxStudentStrength.trim());
+    if (opts?.sortBy) params.set('sortBy', opts.sortBy);
+    if (opts?.sortOrder) params.set('sortOrder', opts.sortOrder);
     return this.request(`/institutions?${params.toString()}`, { method: 'GET' });
   }
 
@@ -815,6 +833,88 @@ class ApiService {
 
   async deleteInstitution(id: string): Promise<ApiResponse> {
     return this.request(`/institutions/${id}`, { method: 'DELETE' });
+  }
+
+  /** Subject certificates (admin + student my-list) */
+  async getCertificateEligible(params: {
+    subjectId: string;
+    minAverage?: number;
+    batchScope?: string;
+    batchCode?: string;
+    /** Limits eligibility to quizzes under these topic roots + subtopics (comma-separated) */
+    topicIds?: string;
+  }): Promise<ApiResponse> {
+    const q = new URLSearchParams({ subjectId: params.subjectId });
+    if (params.minAverage != null) q.set('minAverage', String(params.minAverage));
+    if (params.batchScope) q.set('batchScope', params.batchScope);
+    if (params.batchCode) q.set('batchCode', params.batchCode);
+    if (params.topicIds && params.topicIds.trim()) q.set('topicIds', params.topicIds.trim());
+    return this.request(`/certificates/eligible?${q.toString()}`, { method: 'GET' });
+  }
+
+  /** All students with any attempt on subject quizzes + pass / avg (admin). */
+  async getCertificateSubjectProgress(params: {
+    subjectId: string;
+    minAverage?: number;
+    batchScope?: string;
+    batchCode?: string;
+    topicIds?: string;
+  }): Promise<ApiResponse> {
+    const q = new URLSearchParams({ subjectId: params.subjectId });
+    if (params.minAverage != null) q.set('minAverage', String(params.minAverage));
+    if (params.batchScope) q.set('batchScope', params.batchScope);
+    if (params.batchCode) q.set('batchCode', params.batchCode);
+    if (params.topicIds && params.topicIds.trim()) q.set('topicIds', params.topicIds.trim());
+    return this.request(`/certificates/subject-progress?${q.toString()}`, { method: 'GET' });
+  }
+
+  async generateSubjectCertificates(payload: {
+    subjectId: string;
+    userIds: string[];
+    minAverage?: number;
+    batchScope?: string;
+    batchCode?: string;
+    sendEmail?: boolean;
+    topicScopeIds?: string[];
+  }): Promise<ApiResponse> {
+    return this.request('/certificates/generate', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async listSubjectCertificates(
+    page = 1,
+    limit = 20,
+    subjectId?: string,
+    search?: string
+  ): Promise<ApiResponse> {
+    const q = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (subjectId) q.set('subjectId', subjectId);
+    if (search && search.trim()) q.set('search', search.trim());
+    return this.request(`/certificates?${q.toString()}`, { method: 'GET' });
+  }
+
+  async getMyCertificates(): Promise<ApiResponse> {
+    return this.request('/certificates/my', { method: 'GET' });
+  }
+
+  async getCertificateById(id: string): Promise<ApiResponse> {
+    return this.request(`/certificates/${id}`, { method: 'GET' });
+  }
+
+  async updateCertificate(
+    id: string,
+    body: { recipientName?: string; issuedOnText?: string }
+  ): Promise<ApiResponse> {
+    return this.request(`/certificates/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+  }
+
+  async deleteCertificate(id: string): Promise<ApiResponse> {
+    return this.request(`/certificates/${id}`, { method: 'DELETE' });
   }
 
   async addStudentsToBatch(batchCode: string, userIds: string[]): Promise<ApiResponse> {

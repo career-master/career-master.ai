@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiService } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import ProfileAvatar3D from '@/components/ProfileAvatar3D';
+import AdminExportButtons from '@/components/AdminExportButtons';
+import { exportRowsToDoc, exportRowsToPdf } from '@/lib/adminExport';
 
 type Performer = {
   userId: string;
@@ -28,9 +30,12 @@ const filterSelectClass =
 export default function SubjectLeaderboardView({
   title = 'Leaderboard by subject',
   subtitle = 'Filter by domain, category, subject, and optional topic — same flow as Admin → Reports. Rankings use quiz attempts linked through topic / quiz set.',
+  enableDocumentExport = false,
 }: {
   title?: string;
   subtitle?: string;
+  /** When true (e.g. Admin → Leaderboard), show PDF/DOC export for the full ranked list. */
+  enableDocumentExport?: boolean;
 }) {
   const [filters, setFilters] = useState<{
     domain?: string;
@@ -186,6 +191,52 @@ export default function SubjectLeaderboardView({
     return `Subject: ${sub?.title ?? '—'} (all topics)`;
   }, [filters.subjectId, filters.topicId, subjects, topics]);
 
+  const exportLeaderboardDocuments = useCallback(
+    async (format: 'pdf' | 'doc') => {
+      if (!filters.subjectId) {
+        throw new Error('Select a subject before exporting');
+      }
+      const all: Performer[] = [];
+      let p = 1;
+      let totalPages = 1;
+      do {
+        const res = await apiService.getTopPerformers({
+          limit: PAGE_SIZE,
+          page: p,
+          subjectId: filters.subjectId,
+          ...(filters.topicId ? { topicId: filters.topicId } : {}),
+          sortBy: 'averageScore',
+        });
+        if (!res.success || !Array.isArray(res.data)) break;
+        all.push(...(res.data as Performer[]));
+        totalPages = res.meta?.totalPages ?? 1;
+        p += 1;
+      } while (p <= totalPages && p < 500);
+
+      if (all.length === 0) {
+        throw new Error('No leaderboard rows to export for this scope');
+      }
+
+      const headers = ['Rank', 'Student', 'Email', 'Avg score %', 'Best %', 'Attempts', 'Pass rate %'];
+      const rows = all.map((r) => [
+        String(r.rank),
+        r.name,
+        r.email || '',
+        String(r.averageScore != null ? Number(r.averageScore).toFixed(1) : ''),
+        String(r.bestScore != null ? Number(r.bestScore).toFixed(1) : ''),
+        String(r.totalAttempts ?? ''),
+        String(r.passRate != null ? Number(r.passRate).toFixed(0) : ''),
+      ]);
+      const sub = scopeHint ? `${scopeHint} · ${all.length} students` : `${all.length} students`;
+      if (format === 'pdf') {
+        exportRowsToPdf(title, sub, headers, rows, 'admin-leaderboard');
+      } else {
+        exportRowsToDoc(title, sub, headers, rows, 'admin-leaderboard');
+      }
+    },
+    [filters.subjectId, filters.topicId, scopeHint, title]
+  );
+
   return (
     <div className="rounded-xl bg-white p-6 shadow-lg">
       <div className="mb-6">
@@ -319,6 +370,16 @@ export default function SubjectLeaderboardView({
             Choose domain, category, and subject to load rankings. Topic is optional (narrow to one root topic).
           </p>
         )}
+        {enableDocumentExport && filters.subjectId ? (
+          <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 pt-4">
+            <span className="text-xs text-gray-500">Export full list:</span>
+            <AdminExportButtons
+              disabled={loadingBoard}
+              onPdf={() => exportLeaderboardDocuments('pdf')}
+              onDoc={() => exportLeaderboardDocuments('doc')}
+            />
+          </div>
+        ) : null}
       </div>
 
       <div className="overflow-hidden rounded-lg border border-gray-200">

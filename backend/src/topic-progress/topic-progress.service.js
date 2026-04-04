@@ -1,8 +1,44 @@
+const mongoose = require('mongoose');
 const TopicProgressRepository = require('./topic-progress.repository');
 const Topic = require('../topics/topics.model');
 const QuizSet = require('../quiz-sets/quiz-sets.model');
 const QuizAttempt = require('../quiz/quiz_attempts.model');
+const { getAssignedQuizIdsForSubject } = require('../subjects/subjectAssignedQuizzes.util');
 const { ErrorHandler } = require('../middleware/errorHandler');
+
+/** Per assigned quiz: whether the student has any attempt and any passing attempt (matches certificate rules). */
+async function getStudentPassedQuizCounts(studentId, quizObjectIds) {
+  if (!quizObjectIds.length) {
+    return { passedQuizCount: 0, attemptedQuizCount: 0 };
+  }
+  const sid = new mongoose.Types.ObjectId(studentId);
+  const rows = await QuizAttempt.aggregate([
+    {
+      $match: {
+        userId: sid,
+        quizId: { $in: quizObjectIds },
+        isDeletedForUser: { $ne: true },
+      },
+    },
+    {
+      $group: {
+        _id: '$quizId',
+        hasPass: { $max: { $cond: [{ $eq: ['$result', 'pass'] }, 1, 0] } },
+      },
+    },
+  ]);
+  const byQuiz = new Map(rows.map((r) => [String(r._id), r]));
+  let passedQuizCount = 0;
+  let attemptedQuizCount = 0;
+  for (const oid of quizObjectIds) {
+    const r = byQuiz.get(String(oid));
+    if (r) {
+      attemptedQuizCount += 1;
+      if (Number(r.hasPass) === 1) passedQuizCount += 1;
+    }
+  }
+  return { passedQuizCount, attemptedQuizCount };
+}
 
 /**
  * Topic Progress Service
@@ -305,19 +341,43 @@ class TopicProgressService {
    */
   static async getSubjectProgress(studentId, subjectId) {
     const progressList = await TopicProgressRepository.getSubjectProgress(studentId, subjectId);
-    
-    // Calculate overall progress
+
     const topics = await Topic.find({ subjectId, isActive: true });
     const totalTopics = topics.length;
-    const completedTopics = progressList.filter(p => p.isCompleted).length;
-    const progressPercentage = totalTopics > 0 ? (completedTopics / totalTopics) * 100 : 0;
+    const completedTopics = progressList.filter((p) => p.isCompleted).length;
+    const topicProgressPercentage = totalTopics > 0 ? (completedTopics / totalTopics) * 100 : 0;
+
+    let quizIds = [];
+    try {
+      quizIds = await getAssignedQuizIdsForSubject(subjectId);
+    } catch {
+      quizIds = [];
+    }
+    const assignedQuizCount = quizIds.length;
+
+    let passedQuizCount = 0;
+    let attemptedQuizCount = 0;
+    if (assignedQuizCount > 0) {
+      const q = await getStudentPassedQuizCounts(studentId, quizIds);
+      passedQuizCount = q.passedQuizCount;
+      attemptedQuizCount = q.attemptedQuizCount;
+    }
+
+    // When the subject has real quizzes, overall % is passed quizzes / assigned quizzes (empty topics do not count).
+    // Subjects with no quiz sets keep topic-based % so cheatsheet-only paths still show progress.
+    const progressPercentage =
+      assignedQuizCount > 0 ? (passedQuizCount / assignedQuizCount) * 100 : topicProgressPercentage;
 
     return {
       subjectId,
       totalTopics,
       completedTopics,
       progressPercentage,
-      topics: progressList
+      assignedQuizCount,
+      passedQuizCount,
+      attemptedQuizCount,
+      progressMode: assignedQuizCount > 0 ? 'quizzes' : 'topics',
+      topics: progressList,
     };
   }
 

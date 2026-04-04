@@ -36,28 +36,42 @@ export default function AdminUsersNewPage() {
       return;
     }
 
-    // Load batches
-    loadBatches();
-
-    // Load user data if editing
-    if (userId) {
-      loadUser(userId);
-    }
+    (async () => {
+      const list = await loadBatches();
+      if (userId) {
+        await loadUser(userId, list);
+      }
+    })();
   }, [isAuthenticated, user, router, userId]);
 
   const loadBatches = async () => {
     try {
-      const res = await apiService.getBatches(1, 100);
+      const res = await apiService.getBatches(1, 500);
       if (res.success && res.data) {
         const data: any = res.data;
-        setBatches(Array.isArray(data.items) ? data.items : []);
+        const items = Array.isArray(data.items) ? data.items : [];
+        setBatches(items);
+        return items;
       }
     } catch (err: any) {
       console.error('Failed to load batches:', err);
     }
+    return [];
   };
 
-  const loadUser = async (id: string) => {
+  function normalizeBatchSelection(raw: string[], batchList: any[]) {
+    if (!Array.isArray(raw) || raw.length === 0) return [];
+    return raw
+      .map((tag) => {
+        const byCode = batchList.find((b) => b.code === tag);
+        if (byCode) return byCode.code;
+        const byId = batchList.find((b) => String(b._id) === String(tag));
+        return byId ? byId.code : tag;
+      })
+      .filter(Boolean);
+  }
+
+  const loadUser = async (id: string, batchList: any[]) => {
     try {
       setLoading(true);
       const res = await apiService.getUserById(id);
@@ -67,7 +81,8 @@ export default function AdminUsersNewPage() {
         setEmail(userData.email || '');
         setPhone((userData as any).phone || '');
         setRoles(userData.roles || ['student']);
-        setSelectedBatches(Array.isArray((userData as any).batches) ? (userData as any).batches : []);
+        const raw = Array.isArray((userData as any).batches) ? (userData as any).batches : [];
+        setSelectedBatches(normalizeBatchSelection(raw, batchList));
         setStatus((userData as any).status || 'active');
       } else {
         throw new Error('Failed to load user');

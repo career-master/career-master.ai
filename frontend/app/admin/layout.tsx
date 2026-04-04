@@ -95,6 +95,7 @@ export default function AdminLayout({
       ],
     },
     { id: 'reports', label: 'Reports & Analytics', icon: 'robot', href: '/admin/reports' },
+    { id: 'certificates', label: 'Certificates', icon: 'award', href: '/admin/certificates' },
     { id: 'questions', label: 'Questions Bank', icon: 'database', href: '/admin/quizzes' },
     { id: 'leaderboard', label: 'Leaderboard', icon: 'trophy', href: '/admin/leaderboard' },
     { id: 'insights', label: 'AI insights', icon: 'sparkles', href: '/admin/ai-insights' },
@@ -302,6 +303,13 @@ export default function AdminLayout({
                           <path
                             fillRule="evenodd"
                             d="M7 2a1 1 0 00-1 1v1H4a1 1 0 00-1 1v1a4 4 0 003 3.874V12a3 3 0 01-3 3H3a1 1 0 100 2h14a1 1 0 100-2h-.001A3 3 0 0114 12v-2.126A4.002 4.002 0 0017 6V5a1 1 0 00-1-1h-2V3a1 1 0 00-1-1H7zm7 4a2 2 0 01-1.555 1.946A1 1 0 0012 8v-.382A3.001 3.001 0 0110.528 5H14v1zM6 5h3.472A3.001 3.001 0 019 7.618V8a1 1 0 01-1.445.894A2 2 0 016 6V5z"
+                            clipRule="evenodd"
+                          />
+                        )}
+                        {item.icon === 'award' && (
+                          <path
+                            fillRule="evenodd"
+                            d="M5 3a2 2 0 012-2h6a2 2 0 012 2v2h2v2l-2.5 4H14l-1-2H7l-1 2H4.5L2 7V5h2V3zm4 2v2h2V5H9zm-4 6.5L6 16h8l1-4.5V9H5v2.5zM8 18l1 2h2l1-2H8z"
                             clipRule="evenodd"
                           />
                         )}

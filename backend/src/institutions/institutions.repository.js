@@ -39,20 +39,60 @@ class InstitutionsRepository {
     }
   }
 
-  static async listPaginated({ page = 1, limit = 10, search = '' }) {
+  static async listPaginated({
+    page = 1,
+    limit = 10,
+    search = '',
+    institutionType,
+    location = '',
+    minStudentStrength,
+    maxStudentStrength,
+    sortBy = 'createdAt',
+    sortOrder = 'desc'
+  }) {
     try {
       const skip = (page - 1) * limit;
-      const filter = {};
+      const and = [];
+
       if (search && search.trim()) {
         const q = search.trim();
-        filter.$or = [
-          { institutionName: new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') },
-          { city: new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') },
-          { district: new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }
-        ];
+        const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+        and.push({
+          $or: [{ institutionName: rx }, { city: rx }, { district: rx }]
+        });
       }
+
+      const allowedTypes = Institution.INSTITUTION_TYPES || [];
+      if (institutionType && allowedTypes.includes(institutionType)) {
+        and.push({ institutionType });
+      }
+
+      if (location && String(location).trim()) {
+        const rx = new RegExp(String(location).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+        and.push({
+          $or: [{ city: rx }, { district: rx }, { state: rx }, { mandal: rx }]
+        });
+      }
+
+      const minN = minStudentStrength != null && minStudentStrength !== '' ? Number(minStudentStrength) : null;
+      const maxN = maxStudentStrength != null && maxStudentStrength !== '' ? Number(maxStudentStrength) : null;
+      const strengthRange = {};
+      if (minN != null && !Number.isNaN(minN)) strengthRange.$gte = minN;
+      if (maxN != null && !Number.isNaN(maxN)) strengthRange.$lte = maxN;
+      if (Object.keys(strengthRange).length) {
+        and.push({ studentStrength: strengthRange });
+      }
+
+      const filter = and.length ? { $and: and } : {};
+
+      const dir = sortOrder === 'asc' ? 1 : -1;
+      const sort = {};
+      if (sortBy === 'institutionName') sort.institutionName = dir;
+      else if (sortBy === 'studentStrength') sort.studentStrength = dir;
+      else sort.createdAt = dir;
+
       const [items, total] = await Promise.all([
-        Institution.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+        Institution.find(filter).sort(sort).skip(skip).limit(limit).lean(),
         Institution.countDocuments(filter)
       ]);
       const totalPages = Math.max(1, Math.ceil(total / limit));

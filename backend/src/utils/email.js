@@ -366,6 +366,54 @@ class EmailUtil {
    * @param {string} subjectTitle - Subject title
    * @returns {Promise<Object>} - Email send result
    */
+  /**
+   * Send subject certificate PDF to student
+   * @param {string} email
+   * @param {string} name
+   * @param {string} subjectTitle
+   * @param {Buffer} pdfBuffer
+   */
+  async sendCertificateEmail(email, name, subjectTitle, pdfBuffer) {
+    try {
+      if (!this.resend) {
+        return { success: false, error: 'Resend API is not initialized.' };
+      }
+      if (!Buffer.isBuffer(pdfBuffer) || pdfBuffer.length === 0) {
+        return { success: false, error: 'Invalid PDF attachment.' };
+      }
+
+      let displayName = env.EMAIL_FROM_NAME;
+      if (displayName.includes('<') && displayName.includes('>')) {
+        displayName = displayName.split('<')[0].trim();
+      }
+      const fromAddress = `${displayName} <${this.emailFrom || env.EMAIL_FROM}>`;
+
+      const filename = `certificate-${subjectTitle.replace(/[^a-z0-9]+/gi, '-').slice(0, 40)}.pdf`;
+      const base64 = pdfBuffer.toString('base64');
+
+      const html = `<p>Hello ${name || 'Student'},</p><p>Congratulations! Your <strong>${subjectTitle}</strong> subject completion certificate is attached.</p><p>— Career Master</p>`;
+      const text = `Hello ${name || 'Student'},\n\nYour certificate for ${subjectTitle} is attached.\n\n— Career Master`;
+
+      const { data, error } = await this.resend.emails.send({
+        from: fromAddress,
+        to: email,
+        subject: `Your certificate: ${subjectTitle} — Career Master`,
+        html,
+        text,
+        attachments: [{ filename, content: base64 }]
+      });
+
+      if (error) {
+        console.error('❌ Certificate email error:', error);
+        return { success: false, error: error.message };
+      }
+      return { success: true, messageId: data?.id };
+    } catch (error) {
+      console.error('❌ sendCertificateEmail:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   async sendSubjectAccessApprovalEmail(email, name, subjectTitle) {
     try {
       if (!this.resend) {

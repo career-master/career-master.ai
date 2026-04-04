@@ -1,54 +1,49 @@
 const { z } = require('zod');
 const { validate } = require('../auth/auth.validation');
 
-const institutionTypeEnum = z.enum(['school', 'college', 'coaching', 'training_institute']);
+const institutionTypeEnum = z.enum(['school', 'college', 'coaching', 'training_institute', 'university']);
 
-const emptyToUndef = (val) => (val === '' || val === undefined || val === null ? undefined : val);
-
-const optionalString = (max, msg) =>
+const reqStr = (max, label) =>
   z
-    .union([z.string().max(max, msg).trim(), z.literal('')])
-    .optional()
-    .transform((v) => emptyToUndef(v));
-
-const optionalEmail = z
-  .union([z.string().email('Invalid email').toLowerCase().trim().max(254), z.literal('')])
-  .optional()
-  .transform((v) => emptyToUndef(v));
+    .string()
+    .trim()
+    .min(1, `${label} is required`)
+    .max(max, `${label} is too long`);
 
 const institutionBodySchema = z.object({
-  institutionName: z
+  institutionName: z.string().trim().min(2, 'Institution name must be at least 2 characters').max(200),
+  institutionType: institutionTypeEnum,
+  yearEstablished: z.coerce
+    .number({ invalid_type_error: 'Year established is required' })
+    .int()
+    .min(1800)
+    .max(2100),
+  affiliationBoard: reqStr(200, 'Affiliation / board'),
+  studentStrength: z.coerce
+    .number({ invalid_type_error: 'Student strength is required' })
+    .min(0, 'Student strength cannot be negative'),
+  logoUrl: z
     .string()
-    .min(2, 'Institution name must be at least 2 characters')
-    .max(200, 'Institution name cannot exceed 200 characters')
-    .trim(),
-  institutionType: institutionTypeEnum.optional(),
-  yearEstablished: z.preprocess(
-    (v) => (v === '' || v === null || v === undefined ? undefined : v),
-    z.coerce.number().int().min(1800).max(2100).optional()
-  ),
-  affiliationBoard: optionalString(200, 'Affiliation / board is too long'),
-  studentStrength: z.preprocess(
-    (v) => (v === '' || v === null || v === undefined ? undefined : v),
-    z.coerce.number().min(0).optional()
-  ),
-  logoUrl: optionalString(2000, 'Logo URL is too long'),
-  chairmanName: optionalString(120, 'Chairman name is too long'),
-  principalName: optionalString(120, 'Principal name is too long'),
-  adminName: optionalString(120, 'Admin name is too long'),
-  adminEmail: optionalEmail,
-  adminMobile: optionalString(20, 'Admin mobile is too long'),
-  officialEmail: optionalEmail,
-  contactMobile1: optionalString(20, 'Contact mobile is too long'),
-  contactMobile2: optionalString(20, 'Contact mobile is too long'),
-  addressLine1: optionalString(300, 'Address line 1 is too long'),
-  addressLine2: optionalString(300, 'Address line 2 is too long'),
-  city: optionalString(120, 'City is too long'),
-  mandal: optionalString(120, 'Mandal is too long'),
-  district: optionalString(120, 'District is too long'),
-  state: optionalString(120, 'State is too long'),
-  pinCode: optionalString(12, 'PIN code is too long'),
-  googleMapLocation: optionalString(2000, 'Map link is too long')
+    .trim()
+    .min(1, 'Logo is required (upload a file or paste a URL)')
+    .max(2000)
+    .refine((s) => /^https?:\/\//i.test(s), { message: 'Logo must be a valid http(s) URL' }),
+  chairmanName: reqStr(120, 'Chairman name'),
+  principalName: reqStr(120, 'Principal / head name'),
+  adminName: reqStr(120, 'Admin name'),
+  adminEmail: z.string().trim().min(1, 'Admin email is required').email('Invalid admin email').max(254),
+  adminMobile: reqStr(20, 'Admin mobile'),
+  officialEmail: z.string().trim().min(1, 'Official email is required').email('Invalid official email').max(254),
+  contactMobile1: reqStr(20, 'Contact mobile 1'),
+  contactMobile2: reqStr(20, 'Contact mobile 2'),
+  addressLine1: reqStr(300, 'Address line 1'),
+  addressLine2: reqStr(300, 'Address line 2'),
+  city: reqStr(120, 'City'),
+  mandal: reqStr(120, 'Mandal'),
+  district: reqStr(120, 'District'),
+  state: reqStr(120, 'State'),
+  pinCode: reqStr(12, 'PIN code'),
+  googleMapLocation: z.string().trim().min(1, 'Google Maps link is required').max(2000)
 });
 
 const createInstitutionSchema = z.object({
@@ -59,7 +54,7 @@ const updateInstitutionSchema = z.object({
   params: z.object({
     id: z.string().min(1, 'Institution ID is required')
   }),
-  body: institutionBodySchema.partial()
+  body: institutionBodySchema
 });
 
 const institutionIdParamSchema = z.object({
@@ -72,7 +67,13 @@ const listInstitutionsQuerySchema = z.object({
   query: z.object({
     page: z.string().optional(),
     limit: z.string().optional(),
-    search: z.string().optional()
+    search: z.string().optional(),
+    institutionType: z.string().optional(),
+    location: z.string().optional(),
+    minStudentStrength: z.string().optional(),
+    maxStudentStrength: z.string().optional(),
+    sortBy: z.enum(['createdAt', 'institutionName', 'studentStrength']).optional(),
+    sortOrder: z.enum(['asc', 'desc']).optional()
   })
 });
 

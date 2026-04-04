@@ -36,6 +36,8 @@ export default function DashboardLayout({
       setActiveItem('subjects');
     } else if (pathname?.includes('/profile')) {
       setActiveItem('profile');
+    } else if (pathname?.includes('/certificates')) {
+      setActiveItem('certificates');
     } else if (pathname?.includes('/dashboard')) {
       setActiveItem('dashboard');
     }
@@ -91,6 +93,20 @@ export default function DashboardLayout({
         </svg>
       ), 
       href: '/dashboard/reports' 
+    },
+    {
+      id: 'certificates',
+      label: 'Certificates',
+      icon: (
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <path
+            fillRule="evenodd"
+            d="M6 3a2 2 0 012-2h4a2 2 0 012 2v2h2v2l-2.5 4H13l-1-2H8l-1 2H5.5L3 7V5h2V3zm3 2v2h2V5H9zm-4 6.5L6 16h8l1-4.5V9H5v2.5zM8 18l1 2h2l1-2H8z"
+            clipRule="evenodd"
+          />
+        </svg>
+      ),
+      href: '/dashboard/certificates',
     },
     { 
       id: 'profile', 
