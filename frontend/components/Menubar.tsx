@@ -103,11 +103,13 @@ export default function Menubar() {
         <div className="flex items-center justify-between h-16">
           {/* Left: Logo */}
           <Link href="/" className="flex items-center">
-            <img 
-              src="/logo.jpeg" 
-              alt="CareerMaster.AI Logo" 
-              className="h-12 w-auto"
-            />
+            <span className="inline-flex bg-white rounded-xl overflow-hidden shadow-sm">
+              <img 
+                src="/logo.jpeg" 
+                alt="CareerMaster.AI Logo" 
+                className="h-12 w-auto block"
+              />
+            </span>
           </Link>
 
           {/* Center: Navigation Links */}
