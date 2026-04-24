@@ -21,11 +21,13 @@ export default function Footer() {
           <div>
             <div className="flex items-center space-x-3 mb-4">
               {/* Logo Image */}
-              <img 
-                src="/logo.jpeg" 
-                alt="CareerMaster.AI Logo" 
-                className="h-12 w-auto"
-              />
+              <span className="inline-flex bg-white rounded-xl overflow-hidden shadow-sm">
+                <img 
+                  src="/logo.jpeg" 
+                  alt="CareerMaster.AI Logo" 
+                  className="h-12 w-auto block"
+                />
+              </span>
               <span className="text-[9px] text-gray-400 tracking-[0.2em] font-medium">LEARN • GROW • SUCCEED</span>
             </div>
             <p className="text-gray-300 mb-4">AI-powered learning for academic excellence & lifelong growth</p>

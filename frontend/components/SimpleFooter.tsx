@@ -8,11 +8,13 @@ export default function SimpleFooter() {
           {/* Left - Logo and Branding */}
           <div className="flex items-center gap-3">
             {/* Logo Image */}
-            <img 
-              src="/logo.jpeg" 
-              alt="CareerMaster.AI Logo" 
-              className="h-10 w-auto"
-            />
+            <span className="inline-flex bg-white rounded-xl overflow-hidden shadow-sm">
+              <img 
+                src="/logo.jpeg" 
+                alt="CareerMaster.AI Logo" 
+                className="h-10 w-auto block"
+              />
+            </span>
             <span className="text-xs text-gray-400 tracking-[0.15em] font-medium uppercase">Learn • Grow • Succeed</span>
           </div>
 
