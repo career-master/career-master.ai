@@ -89,7 +89,7 @@ export default function AdminUsersListPage() {
   }, [isAuthenticated, user]);
 
   useEffect(() => {
-    loadUsers(page);
+    loadUsers(page);  
   }, [page, loadUsers]);
 
   // Select-all checkbox state

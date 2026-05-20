@@ -48,7 +48,7 @@ class CertificatesController {
   });
 
   static getOne = asyncHandler(async (req, res) => {
-    const cert = await CertificatesService.getById(req.params.id);
+    const cert = await CertificatesService.getById(req.params.wid);
     const userId = reqUserId(req);
     const roles = reqRoles(req);
     const ownerId = cert.userId?._id ? String(cert.userId._id) : String(cert.userId);
