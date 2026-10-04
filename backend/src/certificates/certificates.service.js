@@ -16,7 +16,7 @@ const {
   fetchUrlToBuffer,
   formatDobForCertificate
 } = require('./certificatePdf');
-const { uploadPdfBuffer, deleteRawAsset } = require('../utils/cloudinary');
+const { uploadPdfBuffer, deleteRawAsset, fetchRawAssetBuffer } = require('../utils/cloudinary');
 const CertificatesRepository = require('./certificates.repository');
 const emailUtil = require('../utils/email');
 const env = require('../config/env');
@@ -24,6 +24,10 @@ const { ErrorHandler } = require('../middleware/errorHandler');
 
 function newCertificateNumber() {
   return `CM-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+}
+
+function certificateVerifyUrl(certificateNumber) {
+  return `${env.PUBLIC_APP_URL}/verify-certificate/${encodeURIComponent(certificateNumber)}`;
 }
 
 function normalizeScopeTopicIds(raw) {
@@ -441,7 +445,7 @@ class CertificatesService {
       if (!user || !user.email) continue;
 
       const recipientName = (row?.name || user.name || 'Student').trim();
-      const { candidateAge } = formatDobForCertificate(user);
+      const { candidateAge, dateOfBirthText } = formatDobForCertificate(user);
       const certificateNumber = newCertificateNumber();
 
       const pdfBuf = await buildSubjectCertificatePdf({
@@ -454,7 +458,8 @@ class CertificatesService {
         certificateScopeLine,
         certificateNumber,
         candidateAge,
-        quizAchievementDateText: issuedOnText
+        dateOfBirthText,
+        verifyUrl: certificateVerifyUrl(certificateNumber)
       });
 
       const up = await uploadPdfBuffer(pdfBuf, { folder: 'career-master/certificates' });
@@ -476,6 +481,8 @@ class CertificatesService {
         subjectTitle: subject.title,
         certificateNumber,
         recipientName,
+        candidateAge: candidateAge ?? null,
+        dateOfBirthText: dateOfBirthText || '',
         userEmail: user.email,
         averagePercentage: row.averagePercentage,
         assignedQuizCount,
@@ -515,6 +522,52 @@ class CertificatesService {
     return doc;
   }
 
+  /** Public verification: only non-sensitive fields (no email / user id). */
+  static async verifyByNumber(certificateNumber) {
+    const num = String(certificateNumber || '').trim();
+    const doc = num ? await CertificatesRepository.findByCertificateNumber(num) : null;
+    if (!doc) {
+      throw new ErrorHandler(404, 'No certificate found with this number');
+    }
+    return {
+      valid: true,
+      certificateNumber: doc.certificateNumber,
+      recipientName: doc.recipientName,
+      subjectTitle: doc.subjectTitle,
+      averagePercentage: doc.averagePercentage,
+      assignedQuizCount: doc.assignedQuizCount,
+      issuedOnText: doc.issuedOnText,
+      issuedAt: doc.createdAt,
+      certificateScope: doc.certificateScope,
+      scopeDescription: doc.scopeDescription || '',
+      hasPdf: Boolean(doc.pdfPublicId || doc.pdfUrl)
+    };
+  }
+
+  /** The issued PDF file, fetched server-side (public Cloudinary PDF delivery may be blocked). */
+  static async getPdfBuffer(cert) {
+    if (cert.pdfPublicId) {
+      return fetchRawAssetBuffer(cert.pdfPublicId);
+    }
+    if (cert.pdfUrl) {
+      try {
+        return await fetchUrlToBuffer(cert.pdfUrl);
+      } catch {
+        /* fall through */
+      }
+    }
+    throw new ErrorHandler(404, 'Certificate PDF not available');
+  }
+
+  static async getPdfByNumber(certificateNumber) {
+    const num = String(certificateNumber || '').trim();
+    const doc = num ? await CertificatesRepository.findByCertificateNumber(num) : null;
+    if (!doc) {
+      throw new ErrorHandler(404, 'No certificate found with this number');
+    }
+    return { cert: doc, buffer: await CertificatesService.getPdfBuffer(doc) };
+  }
+
   static async listMine(userId) {
     return CertificatesRepository.listForUser(userId);
   }
@@ -545,9 +598,10 @@ class CertificatesService {
 
     const uid = existing.userId?._id || existing.userId;
     let candidateAge;
+    let dateOfBirthText;
     if (uid) {
       const u = await User.findById(uid).select('profile.dateOfBirth').lean();
-      candidateAge = formatDobForCertificate(u).candidateAge;
+      ({ candidateAge, dateOfBirthText } = formatDobForCertificate(u));
     }
 
     const certificateNumber =
@@ -565,7 +619,8 @@ class CertificatesService {
       certificateScopeLine,
       certificateNumber,
       candidateAge,
-      quizAchievementDateText: dateLine
+      dateOfBirthText,
+      verifyUrl: certificateVerifyUrl(certificateNumber)
     });
 
     if (existing.pdfPublicId) {
@@ -580,6 +635,8 @@ class CertificatesService {
 
     const updates = {
       recipientName: name,
+      candidateAge: candidateAge ?? null,
+      dateOfBirthText: dateOfBirthText || '',
       issuedOnText: dateLine,
       pdfUrl: up.url,
       pdfPublicId: up.publicId

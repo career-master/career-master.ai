@@ -2,6 +2,7 @@ const User = require('../user/users.model');
 const Quiz = require('../quiz/quiz.model');
 const Batch = require('../batches/batches.model');
 const QuizSet = require('../quiz-sets/quiz-sets.model');
+const Institution = require('../institutions/institutions.model');
 const { ErrorHandler } = require('../middleware/errorHandler');
 
 class DashboardRepository {
@@ -19,6 +20,7 @@ class DashboardRepository {
         usersThisMonth,
         quizzesThisWeek,
         quizzesThisMonth,
+        totalInstitutions,
       ] = await Promise.all([
         User.countDocuments(),
         Quiz.countDocuments(),
@@ -38,6 +40,7 @@ class DashboardRepository {
         Quiz.countDocuments({
           createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
         }),
+        Institution.countDocuments(),
       ]);
 
       // Get user growth data (last 7 days)
@@ -175,8 +178,8 @@ class DashboardRepository {
           activeUsers,
           activeQuizzes,
           activeBatches,
-          // Super admin dashboard headline metrics (can be wired to real data later)
-          institutions: 0,
+          // Super admin dashboard headline metrics (revenue can be wired to real data later)
+          institutions: totalInstitutions,
           totalRevenue: 0,
           subscriptions: activeUsers,
         },

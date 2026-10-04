@@ -24,6 +24,18 @@ class CertificatesRepository {
     }
   }
 
+  static async findByCertificateNumber(certificateNumber) {
+    try {
+      return await SubjectCertificate.findOne({ certificateNumber })
+        .select(
+          'certificateNumber recipientName subjectTitle averagePercentage assignedQuizCount issuedOnText certificateScope scopeDescription pdfUrl pdfPublicId createdAt'
+        )
+        .lean();
+    } catch (error) {
+      throw new ErrorHandler(500, `Error fetching certificate: ${error.message}`);
+    }
+  }
+
   static async listForAdmin({ page = 1, limit = 20, subjectId, search }) {
     try {
       const skip = (page - 1) * limit;
@@ -35,7 +47,7 @@ class CertificatesRepository {
       if (q) {
         const safe = String(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const rx = new RegExp(safe, 'i');
-        filter.$or = [{ recipientName: rx }, { userEmail: rx }];
+        filter.$or = [{ recipientName: rx }, { userEmail: rx }, { certificateNumber: rx }];
       }
       const [items, total] = await Promise.all([
         SubjectCertificate.find(filter)

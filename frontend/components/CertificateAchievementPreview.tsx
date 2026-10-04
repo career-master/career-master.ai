@@ -1,16 +1,115 @@
 'use client';
 
+import { useEffect, useState, type CSSProperties } from 'react';
+
 /** Must match backend bundled template (1024×682). */
 export const CERTIFICATE_TEMPLATE_PUBLIC_PATH = '/certificates/default-certificate-template.png';
 
 const SERIF = '"Times New Roman", Times, Georgia, serif';
+const TPL_W = 1024;
+const TPL_H = 682;
+/** The PDF page is 842pt wide; sizes below are PDF points converted to template pixels. */
+const PT = TPL_W / 842;
+
+/** Keep in sync with `ACHIEVEMENT_LINES` in backend/src/certificates/certificatePdf.js. */
+const LINES = {
+  name: { x0: 353, x1: 605, y: 289 },
+  age: { x0: 665, x1: 828, y: 289 },
+  dob: { x0: 322, x1: 828, y: 318 },
+  course: { x0: 563, x1: 755, y: 378, overflowX1: 935 },
+  scope: { x0: 262, x1: 762, y: 392 },
+  score: { x0: 358, x1: 574, y: 492 },
+  certNo: { x0: 769, x1: 950, y: 496 },
+  issue: { x0: 359, x1: 492, y: 590 },
+} as const;
+
+type Line = { x0: number; x1: number; y: number; overflowX1?: number };
+
+type FieldStyle = {
+  size: number;
+  minSize?: number;
+  softMin?: number;
+  bold?: boolean;
+  italic?: boolean;
+  color?: string;
+  gap?: number;
+};
+
+const NAVY = '#152c52';
+const BRONZE = '#9a3412';
+const SLATE = '#475569';
+
+let measureCtx: CanvasRenderingContext2D | null = null;
+
+function textWidthPx(text: string, style: FieldStyle, sizePx: number, canMeasure: boolean): number {
+  if (canMeasure) {
+    if (!measureCtx) measureCtx = document.createElement('canvas').getContext('2d');
+    if (measureCtx) {
+      measureCtx.font = `${style.italic ? 'italic ' : ''}${style.bold ? 'bold ' : ''}100px ${SERIF}`;
+      return (measureCtx.measureText(text).width / 100) * sizePx;
+    }
+  }
+  return text.length * sizePx * (style.bold ? 0.5 : 0.45);
+}
+
+/** Same rules as the PDF: shrink to the line (not below softMin), then into the overflow area (not below minSize). */
+function fitField(text: string, line: Line, style: FieldStyle, canMeasure: boolean) {
+  const lineW = line.x1 - line.x0;
+  const maxW = (line.overflowX1 ?? line.x1) - line.x0;
+  const minPx = (style.minSize ?? 7) * PT;
+  const softPx = (style.softMin ?? style.minSize ?? 7) * PT;
+  let px = style.size * PT;
+  const w = (p: number) => textWidthPx(text, style, p, canMeasure);
+  while (w(px) > lineW && px > softPx) px -= 0.25 * PT;
+  while (w(px) > maxW && px > minPx) px -= 0.25 * PT;
+  const textW = Math.min(w(px), maxW);
+  const left = textW <= lineW ? line.x0 + (lineW - textW) / 2 : line.x0;
+  return { px, left, width: Math.max(textW, 1) + 2 };
+}
+
+function Field({
+  text,
+  line,
+  style,
+  canMeasure,
+}: {
+  text: string;
+  line: Line;
+  style: FieldStyle;
+  canMeasure: boolean;
+}) {
+  const value = text.trim();
+  if (!value) return null;
+  const { px, left, width } = fitField(value, line, style, canMeasure);
+  const css: CSSProperties = {
+    position: 'absolute',
+    left: `${(left / TPL_W) * 100}%`,
+    top: `${((line.y - (style.gap ?? 4)) / TPL_H) * 100}%`,
+    width: `${(width / TPL_W) * 100}%`,
+    transform: 'translateY(-84%)',
+    fontFamily: SERIF,
+    fontSize: `${(px / TPL_W) * 100}cqw`,
+    fontWeight: style.bold ? 700 : 400,
+    fontStyle: style.italic ? 'italic' : 'normal',
+    color: style.color ?? NAVY,
+    lineHeight: 1,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  };
+  return (
+    <p style={css} title={value}>
+      {value}
+    </p>
+  );
+}
 
 export type CertificateAchievementPreviewProps = {
   recipientName: string;
   subjectTitle: string;
   averagePercentage: number;
   issuedOnText?: string;
-  quizAchievementDateText?: string;
+  dateOfBirthText?: string;
   certificateNumber?: string;
   scopeDescription?: string;
   assignedQuizCount?: number;
@@ -19,100 +118,67 @@ export type CertificateAchievementPreviewProps = {
 };
 
 /**
- * Mirrors PDF: template supplies labels — we show **values only** in the same regions (1024×682).
+ * Mirrors the PDF: the template supplies labels and lines; we draw only the values on each line.
  */
 export function CertificateAchievementPreview({
   recipientName,
   subjectTitle,
   averagePercentage,
   issuedOnText,
-  quizAchievementDateText,
+  dateOfBirthText,
   certificateNumber,
   scopeDescription,
   assignedQuizCount,
   candidateAge,
   className = '',
 }: CertificateAchievementPreviewProps) {
-  const achievementDate = (quizAchievementDateText || issuedOnText || '—').trim();
-  const issueDate = (issuedOnText || '—').trim();
-  const pct = Number(averagePercentage).toFixed(1);
-  const pctWithNote =
-    assignedQuizCount != null
-      ? `${pct}% (${assignedQuizCount} quiz${assignedQuizCount === 1 ? '' : 'zes'})`
-      : `${pct}%`;
+  const [canMeasure, setCanMeasure] = useState(false);
+  useEffect(() => setCanMeasure(true), []);
+
+  const pctNum = Number(averagePercentage);
+  const pct = Number.isFinite(pctNum) ? `${pctNum.toFixed(1)}%` : '—';
+  const scoreText =
+    assignedQuizCount != null && Number.isFinite(pctNum)
+      ? `${pct} (${assignedQuizCount} quiz${assignedQuizCount === 1 ? '' : 'zes'})`
+      : pct;
+  const ageText =
+    candidateAge != null && candidateAge >= 0 && candidateAge < 130 ? String(candidateAge) : '—';
 
   return (
     <div
       className={`relative w-full overflow-hidden rounded-lg shadow-md ring-1 ring-black/10 ${className}`}
-      style={{ aspectRatio: '1024 / 682', fontFamily: SERIF }}
+      style={{ aspectRatio: `${TPL_W} / ${TPL_H}`, containerType: 'inline-size' }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={CERTIFICATE_TEMPLATE_PUBLIC_PATH}
         alt=""
-        className="absolute inset-0 h-full w-full object-cover"
-        width={1024}
-        height={682}
+        className="absolute inset-0 h-full w-full"
+        width={TPL_W}
+        height={TPL_H}
         loading="lazy"
       />
-      <div className="pointer-events-none absolute inset-0 select-none text-[#152c52]">
-        <p
-          className="absolute left-[18%] top-[34.5%] max-w-[35%] truncate font-bold leading-none"
-          style={{ fontFamily: SERIF, fontSize: 'clamp(0.65rem, 2.4vw, 0.8rem)' }}
-          title={recipientName}
-        >
-          {recipientName || 'Student'}
-        </p>
-        {candidateAge != null && candidateAge >= 0 && candidateAge < 130 ? (
-          <p
-            className="absolute left-[61%] top-[34.5%] w-[10%] text-center leading-none"
-            style={{ fontFamily: SERIF, fontSize: 'clamp(0.6rem, 2.1vw, 0.72rem)' }}
-          >
-            {candidateAge}
-          </p>
-        ) : null}
-        <p
-          className="absolute left-1/2 top-[39%] w-[52%] -translate-x-1/2 text-center leading-none"
-          style={{ fontFamily: SERIF, fontSize: 'clamp(0.55rem, 2vw, 0.68rem)' }}
-        >
-          {achievementDate}
-        </p>
-        <p
-          className="absolute left-1/2 top-[46%] w-[54%] -translate-x-1/2 truncate text-center font-bold leading-none text-[#9a3412]"
-          style={{ fontFamily: SERIF, fontSize: 'clamp(0.6rem, 2.2vw, 0.75rem)' }}
-          title={subjectTitle}
-        >
-          {subjectTitle || '—'}
-        </p>
+      <div className="pointer-events-none absolute inset-0 select-none">
+        <Field text={recipientName || 'Student'} line={LINES.name} style={{ size: 17, minSize: 7.5, bold: true }} canMeasure={canMeasure} />
+        <Field text={ageText} line={LINES.age} style={{ size: 14, bold: true }} canMeasure={canMeasure} />
+        <Field text={dateOfBirthText || '—'} line={LINES.dob} style={{ size: 13 }} canMeasure={canMeasure} />
+        <Field
+          text={subjectTitle || '—'}
+          line={LINES.course}
+          style={{ size: 15, softMin: 11, minSize: 7.5, bold: true, color: BRONZE }}
+          canMeasure={canMeasure}
+        />
         {scopeDescription ? (
-          <p
-            className="absolute left-1/2 top-[49%] w-[60%] -translate-x-1/2 text-center leading-tight text-slate-600"
-            style={{ fontFamily: SERIF, fontSize: 'clamp(0.45rem, 1.6vw, 0.55rem)' }}
-          >
-            {scopeDescription}
-          </p>
+          <Field
+            text={scopeDescription}
+            line={LINES.scope}
+            style={{ size: 8.5, minSize: 6, italic: true, color: SLATE, gap: 0 }}
+            canMeasure={canMeasure}
+          />
         ) : null}
-        <p
-          className="absolute left-[27%] top-[58.2%] max-w-[14%] truncate leading-none"
-          style={{ fontFamily: SERIF, fontSize: 'clamp(0.55rem, 2vw, 0.7rem)' }}
-        >
-          {pctWithNote}
-        </p>
-        {certificateNumber ? (
-          <p
-            className="absolute left-[60.5%] top-[58.2%] max-w-[24%] truncate leading-none"
-            style={{ fontFamily: SERIF, fontSize: 'clamp(0.55rem, 2vw, 0.7rem)' }}
-            title={certificateNumber}
-          >
-            {certificateNumber}
-          </p>
-        ) : null}
-        <p
-          className="absolute bottom-[8.8%] left-[28%] max-w-[36%] truncate leading-none"
-          style={{ fontFamily: SERIF, fontSize: 'clamp(0.55rem, 2vw, 0.7rem)' }}
-        >
-          {issueDate}
-        </p>
+        <Field text={scoreText} line={LINES.score} style={{ size: 13, bold: true }} canMeasure={canMeasure} />
+        <Field text={certificateNumber || '—'} line={LINES.certNo} style={{ size: 11.5, minSize: 7, bold: true }} canMeasure={canMeasure} />
+        <Field text={issuedOnText || '—'} line={LINES.issue} style={{ size: 12 }} canMeasure={canMeasure} />
       </div>
     </div>
   );

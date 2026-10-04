@@ -34,7 +34,7 @@ const collectionsToCopy = [];
 // Strategy: 'skip' (skip duplicates) or 'overwrite' (replace existing)
 const duplicateStrategy = process.env.DUPLICATE_STRATEGY || 'skip';
 
-async function copyCollection(oldDb, mainDb, collectionName) {
+async function copyCollection(oldDb, mainDb, collectionName, strategy = duplicateStrategy) {
   try {
     console.log(`\n📦 Copying collection: ${collectionName}...`);
     
@@ -81,14 +81,14 @@ async function copyCollection(oldDb, mainDb, collectionName) {
       
       for (const doc of batch) {
         try {
-          if (duplicateStrategy === 'overwrite') {
+          if (strategy === 'overwrite') {
             // Replace existing document
-            await mainCollection.replaceOne(
+            const result = await mainCollection.replaceOne(
               { _id: doc._id },
               doc,
               { upsert: true }
             );
-            if (existingCount > 0 && await mainCollection.findOne({ _id: doc._id })) {
+            if (result.matchedCount > 0) {
               overwritten++;
             } else {
               copied++;

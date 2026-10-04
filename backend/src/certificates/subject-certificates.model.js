@@ -20,6 +20,9 @@ const subjectCertificateSchema = new mongoose.Schema(
     subjectTitle: { type: String, required: true, trim: true },
     certificateNumber: { type: String, trim: true, default: '' },
     recipientName: { type: String, required: true, trim: true },
+    /** As printed on the PDF (from profile DOB at issue time) */
+    candidateAge: { type: Number, default: null },
+    dateOfBirthText: { type: String, trim: true, default: '' },
     userEmail: { type: String, required: true, lowercase: true, trim: true },
     averagePercentage: { type: Number, required: true },
     assignedQuizCount: { type: Number, required: true },
@@ -49,6 +52,7 @@ const subjectCertificateSchema = new mongoose.Schema(
   }
 );
 
+subjectCertificateSchema.index({ certificateNumber: 1 });
 subjectCertificateSchema.index({ userId: 1, createdAt: -1 });
 subjectCertificateSchema.index({ subjectId: 1, createdAt: -1 });
 

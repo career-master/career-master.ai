@@ -1,24 +1,37 @@
-/**
- * Try to save the PDF locally. If the file is on another origin and CORS blocks it, opens a new tab.
- */
-export async function downloadCertificatePdf(pdfUrl: string, filenameBase: string): Promise<void> {
+import { apiService } from '@/lib/api';
+
+/** Save the issued certificate PDF (fetched through the backend with the user's token). */
+export async function downloadCertificatePdf(certificateId: string, filenameBase: string): Promise<void> {
   const safe = filenameBase.replace(/[^\w\s.-]/g, '').replace(/\s+/g, '-').slice(0, 80) || 'certificate';
   const filename = safe.toLowerCase().endsWith('.pdf') ? safe : `${safe}.pdf`;
 
+  const blob = await apiService.getCertificatePdfBlob(certificateId);
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = filename;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
+}
+
+/** Open the issued certificate PDF in a new tab. */
+export async function openCertificatePdf(certificateId: string): Promise<void> {
+  // Open synchronously (inside the click) so popup blockers allow it; fill it once the PDF arrives.
+  const win = window.open('', '_blank');
   try {
-    const res = await fetch(pdfUrl, { mode: 'cors' });
-    if (!res.ok) throw new Error('bad status');
-    const blob = await res.blob();
+    const blob = await apiService.getCertificatePdfBlob(certificateId);
     const objectUrl = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = objectUrl;
-    a.download = filename;
-    a.rel = 'noopener';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(objectUrl);
-  } catch {
-    window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+    if (win) {
+      win.location.href = objectUrl;
+    } else {
+      window.location.href = objectUrl;
+    }
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+  } catch (e) {
+    win?.close();
+    throw e;
   }
 }

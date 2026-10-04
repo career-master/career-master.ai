@@ -7,6 +7,7 @@ const {
   generateBodySchema,
   listQuerySchema,
   idParamSchema,
+  verifyParamSchema,
   updateBodySchema,
   validate
 } = require('./certificates.validation');
@@ -14,6 +15,10 @@ const {
 const router = express.Router();
 
 const superAdmin = [authenticate, requireRole(['super_admin'])];
+
+/** Public: verify a certificate by its number (target of the QR code printed on the PDF) */
+router.get('/verify/:certificateNumber', validate(verifyParamSchema), CertificatesController.verify);
+router.get('/verify/:certificateNumber/pdf', validate(verifyParamSchema), CertificatesController.verifyPdf);
 
 /** Student / user: my certificates (must be before /:id) */
 router.get('/my', authenticate, CertificatesController.my);
@@ -29,6 +34,9 @@ router.post('/generate', ...superAdmin, validate(generateBodySchema), Certificat
 router.get('/', ...superAdmin, validate(listQuerySchema), CertificatesController.list);
 
 router.get('/:id', authenticate, validate(idParamSchema), CertificatesController.getOne);
+
+/** Owner or super_admin: stream the issued PDF */
+router.get('/:id/pdf', authenticate, validate(idParamSchema), CertificatesController.pdf);
 
 router.put('/:id', ...superAdmin, validate(updateBodySchema), CertificatesController.update);
 

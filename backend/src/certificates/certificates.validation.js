@@ -40,6 +40,17 @@ const idParamSchema = z.object({
   })
 });
 
+const verifyParamSchema = z.object({
+  params: z.object({
+    certificateNumber: z
+      .string()
+      .trim()
+      .min(3)
+      .max(64)
+      .regex(/^[A-Za-z0-9-]+$/, 'Invalid certificate number')
+  })
+});
+
 const updateBodySchema = z.object({
   params: z.object({
     id: z.string().min(1)
@@ -59,6 +70,7 @@ module.exports = {
   generateBodySchema,
   listQuerySchema,
   idParamSchema,
+  verifyParamSchema,
   updateBodySchema,
   validate
 };

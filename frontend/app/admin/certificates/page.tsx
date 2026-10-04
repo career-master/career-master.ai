@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { apiService } from '@/lib/api';
+import { openCertificatePdf } from '@/lib/downloadCertificatePdf';
 import { toast } from 'react-hot-toast';
 
 type ProgressQuiz = {
@@ -45,6 +46,7 @@ type CertRow = {
   userId?: { _id?: string; name?: string; email?: string };
   certificateScope?: 'subject' | 'topics';
   scopeDescription?: string;
+  certificateNumber?: string;
 };
 
 type TopicRow = { _id: string; title: string; parentTopicId?: string | null; order?: number };
@@ -839,7 +841,7 @@ export default function AdminCertificatesPage() {
                 type="search"
                 value={manageSearch}
                 onChange={(e) => setManageSearch(e.target.value)}
-                placeholder="Name or email…"
+                placeholder="Name, email or certificate no.…"
                 className={filterSelectClass}
                 autoComplete="off"
               />
@@ -892,6 +894,9 @@ export default function AdminCertificatesPage() {
                           {row.certificateScope === 'topics' && row.scopeDescription ? (
                             <div className="mt-0.5 text-xs text-gray-600">Scope: {row.scopeDescription}</div>
                           ) : null}
+                          {row.certificateNumber ? (
+                            <div className="mt-0.5 font-mono text-xs text-gray-500">{row.certificateNumber}</div>
+                          ) : null}
                         </td>
                         <td className="px-3 py-2">
                           <PercentBar
@@ -908,14 +913,27 @@ export default function AdminCertificatesPage() {
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex flex-wrap gap-2">
-                            <a
-                              href={row.pdfUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openCertificatePdf(row._id).catch((e: unknown) =>
+                                  toast.error(e instanceof Error ? e.message : 'Could not open PDF')
+                                )
+                              }
                               className="text-blue-600 hover:underline"
                             >
                               PDF
-                            </a>
+                            </button>
+                            {row.certificateNumber ? (
+                              <a
+                                href={`/verify-certificate/${encodeURIComponent(row.certificateNumber)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-green-700 hover:underline"
+                              >
+                                Verify
+                              </a>
+                            ) : null}
                             <button
                               type="button"
                               onClick={() => openEdit(row)}

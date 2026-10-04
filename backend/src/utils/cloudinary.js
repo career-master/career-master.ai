@@ -147,11 +147,37 @@ const deleteRawAsset = async (publicId) => {
   }
 };
 
+/**
+ * Download a raw asset through the signed Admin download API. Works even when the account
+ * blocks public PDF delivery ("deny or ACL failure" on res.cloudinary.com URLs).
+ * @param {string} publicId
+ * @returns {Promise<Buffer>}
+ */
+const fetchRawAssetBuffer = async (publicId) => {
+  if (!publicId) {
+    throw new ErrorHandler(404, 'File not found');
+  }
+  if (!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) {
+    throw new ErrorHandler(500, 'Cloudinary configuration is missing.');
+  }
+  const url = cloudinary.utils.private_download_url(publicId, '', {
+    resource_type: 'raw',
+    type: 'upload',
+    expires_at: Math.floor(Date.now() / 1000) + 300
+  });
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new ErrorHandler(res.status === 404 ? 404 : 502, `Could not fetch file from Cloudinary (HTTP ${res.status})`);
+  }
+  return Buffer.from(await res.arrayBuffer());
+};
+
 module.exports = {
   uploadImage,
   uploadPdfBuffer,
   deleteImage,
   deleteRawAsset,
+  fetchRawAssetBuffer,
   cloudinary
 };
 

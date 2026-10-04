@@ -300,7 +300,7 @@ export default function AdminDashboardPage() {
           </div>
           <div className="mt-2">
             <small className="text-gray-600 text-xs font-semibold">
-              {overview.activeBatches} active
+              View all institutions
             </small>
           </div>
         </div>

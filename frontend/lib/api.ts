@@ -899,6 +899,33 @@ class ApiService {
     return this.request('/certificates/my', { method: 'GET' });
   }
 
+  async verifyCertificate(certificateNumber: string): Promise<ApiResponse> {
+    return this.request(`/certificates/verify/${encodeURIComponent(certificateNumber)}`, { method: 'GET' });
+  }
+
+  /** Public URL of the issued PDF (served by the backend, not directly from Cloudinary). */
+  certificateVerifyPdfUrl(certificateNumber: string, download = false): string {
+    return `${this.baseURL}/certificates/verify/${encodeURIComponent(certificateNumber)}/pdf${download ? '?download=1' : ''}`;
+  }
+
+  async getCertificatePdfBlob(id: string): Promise<Blob> {
+    const token = this.getToken();
+    const res = await fetch(`${this.baseURL}/certificates/${encodeURIComponent(id)}/pdf`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      let message = `Could not load certificate PDF (HTTP ${res.status})`;
+      try {
+        const data = await res.json();
+        message = data?.error?.message || data?.message || message;
+      } catch {
+        /* non-JSON error body */
+      }
+      throw new Error(message);
+    }
+    return res.blob();
+  }
+
   async getCertificateById(id: string): Promise<ApiResponse> {
     return this.request(`/certificates/${id}`, { method: 'GET' });
   }

@@ -1,4 +1,5 @@
 const PDFDocument = require('pdfkit');
+const QRCode = require('qrcode');
 const https = require('https');
 const http = require('http');
 const path = require('path');
@@ -126,11 +127,48 @@ function formatDobForCertificate(userLean) {
 }
 
 /**
- * Achievement layout: bundled **1024×682** template already prints labels
- * (Candidate Name, Age, Date of Birth line → we put *quiz date* on that line, Course Name, Score, etc.).
- * We draw **values only** in Times to match the serif artwork; coords are template pixels → page space.
+ * Blank lines printed on the bundled 1024×682 achievement template, in template pixels
+ * (x0..x1 = horizontal extent of the rule, y = the rule's row). Measured from the artwork;
+ * re-measure if the template image is replaced with a different design.
  */
-function buildAchievementCertificatePdf(opts) {
+const ACHIEVEMENT_LINES = {
+  name: { x0: 353, x1: 605, y: 289 },
+  age: { x0: 665, x1: 828, y: 289 },
+  dob: { x0: 322, x1: 828, y: 318 },
+  course: { x0: 563, x1: 755, y: 378, overflowX1: 935 },
+  scope: { x0: 262, x1: 762, y: 392 },
+  score: { x0: 358, x1: 574, y: 492 },
+  certNo: { x0: 769, x1: 950, y: 496 },
+  issue: { x0: 359, x1: 492, y: 590 }
+};
+
+/** Free space between “Date of Issue” and the signature, in template pixels. */
+const ACHIEVEMENT_QR = { x: 566, y: 558, size: 50 };
+
+/**
+ * @param {string} text
+ * @returns {Promise<Buffer|null>}
+ */
+async function buildQrPngBuffer(text) {
+  if (!text) return null;
+  try {
+    return await QRCode.toBuffer(text, {
+      type: 'png',
+      errorCorrectionLevel: 'M',
+      margin: 1,
+      width: 240,
+      color: { dark: '#152c52', light: '#ffffff' }
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Achievement layout: the template already prints the labels and blank lines; we draw only the
+ * values, each sitting just above its printed line, shrunk to fit the line width.
+ */
+async function buildAchievementCertificatePdf(opts) {
   const {
     recipientName,
     subjectTitle,
@@ -140,104 +178,103 @@ function buildAchievementCertificatePdf(opts) {
     certificateNumber,
     certificateScopeLine,
     candidateAge,
-    quizAchievementDateText,
-    assignedQuizCount
+    dateOfBirthText,
+    assignedQuizCount,
+    verifyUrl
   } = opts;
 
   const intr = imageIntrinsicSize(templateBuffer);
   const tw = intr?.w || BUNDLED_TEMPLATE_W;
   const th = intr?.h || BUNDLED_TEMPLATE_H;
-  const scale = Math.max(W / tw, H / th);
-  const drawW = tw * scale;
-  const drawH = th * scale;
-  const ox = (W - drawW) / 2;
-  const oy = (H - drawH) / 2;
+  const pageW = W;
+  const pageH = Math.round((W * th) / tw);
+  const k = pageW / tw;
+  const P = (v) => v * k;
 
   const navy = '#152c52';
   const bronze = '#9a3412';
+  const slate = '#475569';
 
-  const achievementDate = quizAchievementDateText || issuedOnText || '—';
-  const issueDate = issuedOnText || '—';
-  const pct = Number(averagePercentage).toFixed(1);
-  const pctWithNote =
-    assignedQuizCount != null ? `${pct}% (${assignedQuizCount} quiz${assignedQuizCount === 1 ? '' : 'zes'})` : `${pct}%`;
+  const pct = Number(averagePercentage);
+  const pctText = Number.isFinite(pct) ? `${pct.toFixed(1)}%` : '—';
+  const scoreText =
+    assignedQuizCount != null && Number.isFinite(pct)
+      ? `${pctText} (${assignedQuizCount} quiz${assignedQuizCount === 1 ? '' : 'zes'})`
+      : pctText;
+  const ageText = candidateAge != null && candidateAge >= 0 && candidateAge < 130 ? String(candidateAge) : '—';
 
-  /**
-   * Template pixels (1024×682). For `align: 'center'`, `x` is the **left** edge of the text box (center − width/2).
-   */
-  const TP = {
-    name: { x: 188, y: 236, w: 360 },
-    age: { x: 628, y: 236, w: 96 },
-    quizDate: { x: 252, y: 266, w: 520 },
-    course: { x: 242, y: 314, w: 540 },
-    scope: { x: 212, y: 334, w: 600 },
-    scoreVal: { x: 278, y: 398, w: 120 },
-    certVal: { x: 618, y: 398, w: 220 },
-    issueVal: { x: 286, y: 612, w: 340 }
-  };
-
-  const px = (ix, iy) => ({ x: ox + ix * scale, y: oy + iy * scale });
-  const pw = (w) => w * scale;
+  const qrPng = await buildQrPngBuffer(verifyUrl);
 
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({
-      size: [W, H],
-      layout: 'landscape',
-      margin: 0
-    });
+    const doc = new PDFDocument({ size: [pageW, pageH], margin: 0 });
     const chunks = [];
     doc.on('data', (c) => chunks.push(c));
     doc.on('error', reject);
     doc.on('end', () => resolve(Buffer.concat(chunks)));
 
-    try {
-      doc.image(templateBuffer, ox, oy, { width: drawW, height: drawH });
-
-      const pName = px(TP.name.x, TP.name.y);
-      doc.font('Times-Bold').fontSize(12).fillColor(navy);
-      doc.text((recipientName || 'Student').trim(), pName.x, pName.y, { width: pw(TP.name.w) });
-
-      const pAge = px(TP.age.x, TP.age.y);
-      doc.font('Times-Roman').fontSize(11).fillColor(navy);
-      if (candidateAge != null && candidateAge >= 0 && candidateAge < 130) {
-        doc.text(String(candidateAge), pAge.x, pAge.y, { width: pw(TP.age.w), align: 'center' });
+    /**
+     * Draw `text` with its baseline `gap` template-px above the printed line, centered on it.
+     * Font shrinks to fit the line (not below `softMin`); if the line has `overflowX1`, longer text
+     * may then extend right to it, shrinking further down to `minSize`. Truncation is a last resort.
+     */
+    const onLine = (text, line, { font, size, minSize = 7, softMin = minSize, color = navy, gap = 4 }) => {
+      const value = String(text ?? '').trim();
+      if (!value) return;
+      doc.font(font).fillColor(color);
+      const lineW = P(line.x1 - line.x0);
+      const maxW = P((line.overflowX1 || line.x1) - line.x0);
+      let fs = size;
+      doc.fontSize(fs);
+      while (doc.widthOfString(value) > lineW && fs > softMin) {
+        fs -= 0.25;
+        doc.fontSize(fs);
       }
+      while (doc.widthOfString(value) > maxW && fs > minSize) {
+        fs -= 0.25;
+        doc.fontSize(fs);
+      }
+      let out = value;
+      let textW = doc.widthOfString(out);
+      if (textW > maxW) {
+        while (out.length > 1 && doc.widthOfString(`${out}…`) > maxW) out = out.slice(0, -1);
+        out = `${out.trimEnd()}…`;
+        textW = doc.widthOfString(out);
+      }
+      const x = textW <= lineW ? P(line.x0) + (lineW - textW) / 2 : P(line.x0);
+      doc.text(out, x, P(line.y - gap), { lineBreak: false, baseline: 'alphabetic' });
+    };
 
-      /* On the printed “Date of Birth” line we only write the quiz date (label stays on artwork). */
-      const pQuiz = px(TP.quizDate.x, TP.quizDate.y);
-      doc.font('Times-Roman').fontSize(10).fillColor(navy);
-      doc.text(achievementDate, pQuiz.x, pQuiz.y, {
-        width: pw(TP.quizDate.w),
-        align: 'center'
+    try {
+      doc.image(templateBuffer, 0, 0, { width: pageW, height: pageH });
+
+      const L = ACHIEVEMENT_LINES;
+      onLine(recipientName || 'Student', L.name, { font: 'Times-Bold', size: 17, minSize: 7.5 });
+      onLine(ageText, L.age, { font: 'Times-Bold', size: 14 });
+      onLine(dateOfBirthText || '—', L.dob, { font: 'Times-Roman', size: 13 });
+      onLine(subjectTitle || '—', L.course, {
+        font: 'Times-Bold',
+        size: 15,
+        softMin: 11,
+        minSize: 7.5,
+        color: bronze
       });
-
-      const pCourse = px(TP.course.x, TP.course.y);
-      doc.font('Times-Bold').fontSize(11).fillColor(bronze);
-      doc.text((subjectTitle || '—').trim(), pCourse.x, pCourse.y, {
-        width: pw(TP.course.w),
-        align: 'center'
-      });
-
       if (certificateScopeLine && String(certificateScopeLine).trim()) {
-        const pSc = px(TP.scope.x, TP.scope.y);
-        doc.font('Times-Roman').fontSize(8).fillColor('#475569');
-        doc.text(String(certificateScopeLine).trim(), pSc.x, pSc.y, {
-          width: pw(TP.scope.w),
-          align: 'center'
+        onLine(certificateScopeLine, L.scope, { font: 'Times-Italic', size: 8.5, minSize: 6, color: slate, gap: 0 });
+      }
+      onLine(scoreText, L.score, { font: 'Times-Bold', size: 13 });
+      onLine(certificateNumber || '—', L.certNo, { font: 'Times-Bold', size: 11.5, minSize: 7 });
+      onLine(issuedOnText || '—', L.issue, { font: 'Times-Roman', size: 12 });
+
+      if (qrPng) {
+        const q = ACHIEVEMENT_QR;
+        doc.image(qrPng, P(q.x), P(q.y), { width: P(q.size), height: P(q.size) });
+        doc.font('Helvetica').fontSize(5.5).fillColor(slate);
+        doc.text('Scan to verify', P(q.x - 10), P(q.y + q.size + 2), {
+          width: P(q.size + 20),
+          align: 'center',
+          lineBreak: false
         });
       }
-
-      const pScore = px(TP.scoreVal.x, TP.scoreVal.y);
-      doc.font('Times-Roman').fontSize(11).fillColor(navy);
-      doc.text(pctWithNote, pScore.x, pScore.y, { width: pw(TP.scoreVal.w) });
-
-      const pCert = px(TP.certVal.x, TP.certVal.y);
-      doc.text((certificateNumber || '—').trim(), pCert.x, pCert.y, {
-        width: pw(TP.certVal.w)
-      });
-
-      const pIss = px(TP.issueVal.x, TP.issueVal.y);
-      doc.text(issueDate, pIss.x, pIss.y, { width: pw(TP.issueVal.w) });
 
       doc.end();
     } catch (e) {
@@ -262,11 +299,7 @@ function buildLegacyCertificatePdf(opts) {
   } = opts;
 
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({
-      size: [W, H],
-      layout: 'landscape',
-      margin: 0
-    });
+    const doc = new PDFDocument({ size: [W, H], margin: 0 });
     const chunks = [];
     doc.on('data', (c) => chunks.push(c));
     doc.on('error', reject);
@@ -368,5 +401,6 @@ module.exports = {
   buildSubjectCertificatePdf,
   fetchUrlToBuffer,
   formatDobForCertificate,
-  resolveAchievementTemplateBuffer
+  resolveAchievementTemplateBuffer,
+  ACHIEVEMENT_LINES
 };

@@ -15,6 +15,8 @@ type Subject = {
   description?: string;
   category?: string;
   level?: 'basic' | 'hard';
+  batches?: string[];
+  isActive?: boolean;
 };
 
 type Topic = {
@@ -57,15 +59,15 @@ export default function SubjectDetailPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [subjectsRes, topicsRes, progressRes] = await Promise.all([
-        apiService.getSubjects({ page: 1, limit: 100, isActive: true }),
+      const [subjectRes, topicsRes, progressRes] = await Promise.all([
+        apiService.getSubjectById(subjectId).catch(() => ({ success: false, data: null })),
         apiService.getTopics(subjectId, true),
         apiService.getSubjectProgress(subjectId).catch(() => ({ success: false, data: null })),
       ]);
 
-      if (subjectsRes.success && subjectsRes.data?.items) {
-        const found = subjectsRes.data.items.find((s: Subject) => s._id === subjectId);
-        setSubject(found || null);
+      if (subjectRes.success) {
+        const found: Subject | null = subjectRes.data && subjectRes.data.isActive !== false ? subjectRes.data : null;
+        setSubject(found);
         if (found) {
           const userBatches = (user as any)?.batches || [];
           const access =
@@ -380,7 +382,7 @@ export default function SubjectDetailPage() {
                         {/* Action */}
                         {hasAccess ? (
                           <Link
-                            href={`/dashboard/subjects/${subjectId}/topics/${topic._id}`}
+                            href={`/dashboard/quizzes?subject=${subjectId}`}
                             onClick={(e) => {
                               // Check profile completion before accessing any topic (including General Knowledge)
                               if (PROFILE_COMPLETION_ENFORCED && profileCompletion < PROFILE_MIN_COMPLETION_PERCENT) {

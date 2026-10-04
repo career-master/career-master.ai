@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import { CertificateAchievementPreview } from '@/components/CertificateAchievementPreview';
-import { downloadCertificatePdf } from '@/lib/downloadCertificatePdf';
+import { downloadCertificatePdf, openCertificatePdf } from '@/lib/downloadCertificatePdf';
 
 type Row = {
   _id: string;
@@ -19,6 +19,8 @@ type Row = {
   scopeDescription?: string;
   certificateNumber?: string;
   assignedQuizCount?: number;
+  candidateAge?: number | null;
+  dateOfBirthText?: string;
 };
 
 export default function DashboardCertificatesPage() {
@@ -93,7 +95,8 @@ export default function DashboardCertificatesPage() {
                   subjectTitle={row.subjectTitle}
                   averagePercentage={row.averagePercentage}
                   issuedOnText={row.issuedOnText}
-                  quizAchievementDateText={row.issuedOnText}
+                  dateOfBirthText={row.dateOfBirthText}
+                  candidateAge={row.candidateAge}
                   certificateNumber={row.certificateNumber}
                   scopeDescription={
                     row.certificateScope === 'topics' && row.scopeDescription
@@ -106,20 +109,35 @@ export default function DashboardCertificatesPage() {
                   <button
                     type="button"
                     onClick={() =>
-                      void downloadCertificatePdf(row.pdfUrl, `${row.subjectTitle}-${row.certificateNumber || row._id}`)
+                      downloadCertificatePdf(row._id, `${row.subjectTitle}-${row.certificateNumber || row._id}`).catch(
+                        (e: unknown) => setErr(e instanceof Error ? e.message : 'Download failed')
+                      )
                     }
                     className="inline-flex items-center justify-center rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700"
                   >
                     Download PDF
                   </button>
-                  <a
-                    href={row.pdfUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openCertificatePdf(row._id).catch((e: unknown) =>
+                        setErr(e instanceof Error ? e.message : 'Could not open PDF')
+                      )
+                    }
                     className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50"
                   >
                     Open in new tab
-                  </a>
+                  </button>
+                  {row.certificateNumber ? (
+                    <a
+                      href={`/verify-certificate/${encodeURIComponent(row.certificateNumber)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50"
+                    >
+                      Verification link
+                    </a>
+                  ) : null}
                 </div>
               </div>
             </li>

@@ -50,6 +50,15 @@ const env = {
   // CORS Configuration
   CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:3000,http://localhost:3001',
 
+  /** Public frontend URL; certificate QR codes link to `${PUBLIC_APP_URL}/verify-certificate/<number>` */
+  PUBLIC_APP_URL: (
+    process.env.PUBLIC_APP_URL ||
+    process.env.FRONTEND_URL ||
+    (process.env.CORS_ORIGIN || 'http://localhost:3000').split(',')[0]
+  )
+    .trim()
+    .replace(/\/+$/, ''),
+
   // Cloudinary Configuration
   // Get credentials from: https://cloudinary.com/console
   // Example format:

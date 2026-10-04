@@ -39,6 +39,9 @@ temp/
 # Ignore the entire lms3-main folder
 lms3-main/
 
+# Reference Datavalley certificate app (not part of this project)
+Datavalley-Certificate-main/
+
 # Dependencies and build (do not commit)
 node_modules/
 .next/
